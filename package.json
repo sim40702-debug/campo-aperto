@@ -1,0 +1,112 @@
+{
+  "name": "campo-aperto",
+  "productName": "Campo Aperto",
+  "version": "0.3.2",
+  "description": "Gioco di calcio 3D originale, undici contro undici",
+  "author": "Simone",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/sim40702-debug",
+  "private": true,
+  "main": "desktop/main.js",
+  "engines": {
+    "node": ">=22.12.0 <27"
+  },
+  "scripts": {
+    "build:web": "node build.js web",
+    "build:test": "node build.js test",
+    "build:desktop": "node build.js desktop",
+    "test": "node tests/rules_test.js && node tests/sim_test.js && node tests/net_test.js",
+    "start": "node scripts/controlla-electron.js && node build.js desktop && electron .",
+    "dist:win": "node scripts/controlla-electron.js && node build.js desktop && electron-builder --win",
+    "dist:mac": "node scripts/controlla-electron.js && node build.js desktop && electron-builder --mac",
+    "dist:linux": "node scripts/controlla-electron.js && node build.js desktop && electron-builder --linux",
+    "postinstall": "node scripts/controlla-electron.js",
+    "server": "node server/relay.js",
+    "server:lan": "node server/relay.js --host 0.0.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@fontsource/saira": "5.3.0",
+    "@fontsource/saira-condensed": "5.3.0",
+    "electron": "33.4.11",
+    "electron-builder": "25.1.8",
+    "three": "0.128.0",
+    "ws": "8.22.0"
+  },
+  "overrides": {
+    "yauzl": "3.4.0"
+  },
+  "build": {
+    "appId": "ch.simone.campoaperto",
+    "productName": "Campo Aperto",
+    "copyright": "Copyright © 2026 Simone",
+    "directories": {
+      "buildResources": "risorse",
+      "output": "release/${version}"
+    },
+    "files": [
+      "desktop/main.js",
+      "desktop/app/**/*",
+      "package.json"
+    ],
+    "artifactName": "CampoAperto-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.sports-games",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "risorse/icon.png"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "risorse/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Campo Aperto"
+    },
+    "portable": {
+      "artifactName": "CampoAperto-${version}-portable.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Game",
+      "icon": "risorse/icon.png",
+      "maintainer": "Simone"
+    }
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
+  }
+}

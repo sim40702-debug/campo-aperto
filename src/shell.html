@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Campo Aperto — calcio 3D</title>
+<!--FONTS-->
+<style>
+:root {
+  --night: #0c1a2b; --night-2: #13253b; --night-3: #1b3150; --chalk: #f3f5ee; --flood: #ffd84a;
+  --turf: #2f7a3f; --turf-light: #57c26e; --signal: #e2412e; --slate: #93a1b3; --sky: #9fd8ff;
+  --display: 'Saira Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+  --text: 'Saira', 'Segoe UI', Roboto, Arial, sans-serif;
+  --slant: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: inherit; }
+html, body { height: 100%; margin: 0; background: var(--night); color: var(--chalk); font-family: var(--text); overflow: hidden; -webkit-font-smoothing: antialiased; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.45; }
+:focus-visible { outline: 2px solid var(--flood); outline-offset: 2px; }
+[hidden] { display: none !important; }
+input[type=text] { font: inherit; color: var(--chalk); background: rgba(243,245,238,0.06); border: 1px solid rgba(243,245,238,0.2); padding: 10px 12px; width: 100%; }
+input[type=text]:focus { border-color: var(--flood); outline: none; }
+input[type=range] { width: 100%; accent-color: var(--flood); }
+
+/* ---------- caricamento ---------- */
+#loading { position: fixed; inset: 0; z-index: 50; background: var(--night); display: flex; flex-direction: column; justify-content: center; padding: 0 clamp(24px, 8vw, 120px); transition: opacity 0.6s; }
+#loading.out { opacity: 0; pointer-events: none; }
+#loading .title { font-size: clamp(48px, 8vw, 96px); }
+.sweep { margin-top: 26px; width: min(420px, 70vw); height: 3px; background: rgba(243,245,238,0.12); overflow: hidden; }
+.sweep div { width: 35%; height: 100%; background: var(--flood); animation: sweep 1.1s ease-in-out infinite; }
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+#loading p { color: var(--slate); margin: 14px 0 0; }
+
+/* ---------- menu ---------- */
+.menu { position: fixed; inset: 0; display: flex; align-items: center;
+  background: linear-gradient(90deg, rgba(12,26,43,0.95) 0%, rgba(12,26,43,0.8) 34%, rgba(12,26,43,0) 62%); }
+.menu-col { padding: 3vh clamp(20px, 6vw, 88px); max-width: 540px; max-height: 100%; overflow-y: auto; }
+.title { font-family: var(--display); font-weight: 800; font-size: clamp(44px, min(9vw, 13vh), 112px); line-height: 0.86; margin: 0; letter-spacing: -0.01em; font-style: italic; }
+.title span { display: block; }
+.tagline { color: var(--slate); margin: 14px 0 30px; font-size: 16px; max-width: 34ch; }
+.modes { list-style: none; margin: 0; padding: 0; }
+.mode { display: grid; grid-template-columns: 1fr; width: 100%; text-align: left; background: none; border: 0; border-left: 3px solid transparent; padding: 8px 0 8px 14px; transition: border-color 0.12s, padding-left 0.12s; }
+.mode b { font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1.1; }
+.mode small { color: var(--slate); font-size: 14px; }
+.mode:hover, .mode:focus-visible { border-left-color: var(--flood); padding-left: 20px; outline: none; }
+.mode:hover b, .mode:focus-visible b { color: var(--flood); }
+.later { margin-top: 20px; color: var(--slate); font-size: 14px; line-height: 1.6; max-width: 42ch; }
+.later strong { color: var(--chalk); font-weight: 600; }
+.version { color: var(--slate); font-size: 13px; margin: 16px 0 0 17px; letter-spacing: 0.02em; }
+
+/* ---------- pannelli (sovrimpressione TV, lo stadio resta visibile a destra) ---------- */
+.panel { position: fixed; inset: 0; overflow-y: auto; display: flex; align-items: flex-start; padding: 5vh clamp(16px, 5vw, 72px);
+  background: linear-gradient(90deg, rgba(12,26,43,0.97) 0%, rgba(12,26,43,0.93) 55%, rgba(12,26,43,0.55) 100%); }
+.sheet { width: 100%; max-width: 920px; }
+.panel.enter .sheet { animation: slidein 0.28s cubic-bezier(.2,.8,.2,1); }
+@keyframes slidein { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.sheet h2 { font-family: var(--display); font-size: clamp(36px, 4.6vw, 52px); font-weight: 800; font-style: italic; margin: 0 0 22px; display: inline-block; padding-bottom: 6px;
+  background: linear-gradient(var(--flood), var(--flood)) left bottom / 64px 5px no-repeat; }
+.sheet h3 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 10px; }
+.sub { color: var(--slate); margin: -10px 0 22px; max-width: 60ch; line-height: 1.5; }
+.teams { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 26px; }
+.teamcard { background: var(--night-2); padding: 18px 18px 16px; border-top: 4px solid var(--flood); }
+.teamcard .side { color: var(--slate); font-size: 14px; }
+.teamrow { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.teamrow .tn { flex: 1; font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1.05; }
+.arrow { background: rgba(243,245,238,0.08); border: 0; width: 38px; height: 38px; font-size: 20px; }
+.arrow:hover { background: rgba(243,245,238,0.18); }
+.kit { display: flex; gap: 4px; margin: 8px 0; }
+.kit span { width: 26px; height: 26px; border: 1px solid rgba(255,255,255,0.25); }
+.teamcard p { margin: 4px 0; font-size: 14px; color: var(--slate); }
+.opts { display: grid; grid-template-columns: 170px 1fr; gap: 14px 16px; align-items: center; }
+.opts > label, .opts > .lbl { color: var(--slate); font-size: 15px; }
+.segs { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg { background: rgba(243,245,238,0.07); border: 1px solid rgba(243,245,238,0.12); padding: 7px 14px; font-size: 15px; transition: background 0.12s; }
+.seg:hover { background: rgba(243,245,238,0.14); }
+.seg.on { background: var(--flood); color: var(--night); border-color: var(--flood); font-weight: 600; }
+.actions { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; align-items: center; }
+.primary { background: var(--flood); color: var(--night); border: 0; padding: 12px 34px 12px 26px; font-family: var(--display); font-weight: 700; font-size: 22px; clip-path: var(--slant); transition: transform 0.1s, filter 0.1s; }
+.primary:hover:not(:disabled) { filter: brightness(1.08); }
+.primary:active:not(:disabled) { transform: translateY(1px); }
+.ghost { background: none; border: 1px solid rgba(243,245,238,0.3); padding: 11px 20px; font-size: 16px; transition: border-color 0.12s; }
+.ghost:hover:not(:disabled) { border-color: var(--chalk); }
+.danger { border-color: rgba(226,65,46,0.6); color: #ffb1a6; }
+.hintline { color: var(--slate); font-size: 14px; }
+
+/* ---------- online ---------- */
+.online-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 8px; }
+.card { background: var(--night-2); padding: 20px; }
+.card p { color: var(--slate); margin: 0 0 16px; line-height: 1.5; font-size: 15px; }
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field span { color: var(--slate); font-size: 14px; }
+.codebox { display: flex; gap: 6px; margin-bottom: 14px; }
+.codebox input { width: 100%; text-align: center; font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: 0.35em; text-transform: uppercase; padding: 8px 4px 8px 14px; }
+.status { min-height: 24px; margin-top: 14px; font-size: 15px; }
+.status.err { color: #ffb1a6; } .status.ok { color: var(--turf-light); }
+.webonly { background: rgba(226,65,46,0.12); border-left: 3px solid var(--signal); padding: 12px 14px; margin-bottom: 18px; line-height: 1.5; }
+
+/* tabellone a palette con il codice partita: l'elemento da ricordare */
+.board { display: flex; gap: 8px; margin: 4px 0 10px; }
+.flap { position: relative; width: clamp(46px, 7vw, 74px); height: clamp(64px, 9.5vw, 100px); background: #071222; display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-weight: 800; font-size: clamp(40px, 6.4vw, 70px); color: var(--flood); box-shadow: inset 0 0 0 1px rgba(255,216,74,0.12); }
+.flap::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(0,0,0,0.75); }
+.flap.flip { animation: flip 0.35s ease-out both; }
+@keyframes flip { 0% { transform: rotateX(90deg); } 100% { transform: none; } }
+.code-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
+
+.lobby-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.col { background: var(--night-2); padding: 14px; min-height: 160px; border-top: 4px solid var(--slate); }
+.col h3 { display: flex; align-items: center; gap: 8px; font-size: 22px; }
+.col h3 .kitdot { width: 14px; height: 14px; }
+.col ul { list-style: none; margin: 0 0 10px; padding: 0; }
+.col li { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(243,245,238,0.07); }
+.col li .nm { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col li.me .nm { color: var(--flood); }
+.tag { font-size: 12px; color: var(--night); background: var(--chalk); padding: 1px 6px; }
+.ping { color: var(--slate); font-size: 13px; font-variant-numeric: tabular-nums; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--turf-light); flex: none; }
+.dot.warn { background: var(--flood); } .dot.bad { background: var(--signal); }
+.col .seg { width: 100%; }
+.empty { color: var(--slate); font-size: 14px; padding: 6px 0; }
+
+/* ---------- impostazioni ---------- */
+.tabs { display: flex; gap: 4px; margin-bottom: 22px; flex-wrap: wrap; }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 14px; font-family: var(--display); font-weight: 700; font-size: 21px; color: var(--slate); }
+.tab.on { color: var(--chalk); border-bottom-color: var(--flood); }
+.range { display: flex; align-items: center; gap: 12px; }
+.range output { min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; color: var(--chalk); }
+.keytable { display: grid; grid-template-columns: minmax(150px, 1fr) 110px 110px 130px; gap: 6px 10px; align-items: center; max-width: 760px; }
+.keybtn.pad { color: var(--sky); }
+.small.ok { color: var(--turf-light); }
+.helptable { width: 100%; max-width: 860px; border-collapse: collapse; margin-bottom: 18px; font-size: 15px; table-layout: fixed; }
+.helptable th:first-child, .helptable td:first-child { width: 56%; }
+.helptable th { text-align: left; color: var(--slate); font-weight: 400; font-size: 13px; padding: 4px 8px; }
+.helptable th.cur { color: var(--flood); }
+.helptable td { padding: 6px 8px; border-bottom: 1px solid rgba(243,245,238,0.08); vertical-align: top; line-height: 1.4; }
+.helptable td.k { font-family: var(--display); font-weight: 700; font-size: 17px; }
+#help h3 { margin-top: 8px; }
+.ghost.confirm { border-color: var(--signal); background: rgba(226,65,46,0.18); color: #ffd2cb; }
+/* navigazione con controller o frecce: il pulsante selezionato si vede sempre */
+body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
+body.pad-nav .mode:focus { border-left-color: var(--flood); padding-left: 20px; outline: none; }
+body.pad-nav .mode:focus b { color: var(--flood); }
+.keytable .kh { color: var(--slate); font-size: 13px; }
+.keybtn { background: rgba(243,245,238,0.07); border: 1px solid rgba(243,245,238,0.14); padding: 7px 8px; font-family: var(--display); font-weight: 700; font-size: 17px; }
+.keybtn.wait { border-color: var(--flood); color: var(--flood); animation: pulse 0.9s infinite; }
+@keyframes pulse { 50% { opacity: 0.5; } }
+.check { display: flex; align-items: center; gap: 10px; }
+.check input { width: 18px; height: 18px; accent-color: var(--flood); }
+.small { color: var(--slate); font-size: 13px; }
+
+/* ---------- HUD ---------- */
+.scoreboard { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; display: flex; align-items: stretch; font-family: var(--display); font-weight: 700; font-size: 24px; background: var(--night); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.scoreboard > * { padding: 4px 12px; display: flex; align-items: center; }
+.sb-kit { width: 8px; padding: 0 !important; }
+#sb-score { background: var(--chalk); color: var(--night); min-width: 78px; justify-content: center; font-weight: 800; }
+#sb-time { color: var(--flood); min-width: 62px; justify-content: center; clip-path: var(--slant); padding-right: 20px !important; }
+.banner { position: fixed; top: 24%; left: 0; right: 0; text-align: center; font-family: var(--display); font-weight: 800; font-style: italic; font-size: clamp(34px, 6vw, 64px); text-shadow: 0 3px 0 rgba(0,0,0,0.45); pointer-events: none; animation: pop 0.25s ease-out; }
+.banner.goal { font-size: clamp(80px, 16vw, 190px); color: var(--flood); top: 18%; animation: pop 0.4s cubic-bezier(.2,1.6,.4,1); }
+@keyframes pop { from { transform: scale(0.82); opacity: 0; } to { transform: none; opacity: 1; } }
+#scorer { position: fixed; top: 44%; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 600; text-shadow: 0 2px 0 rgba(0,0,0,0.5); }
+#replay-tag { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 18px; font-family: var(--display); font-weight: 800; font-style: italic; font-size: 26px; color: var(--night); background: var(--flood); padding: 2px 14px; }
+#replay-tag small { font-family: var(--text); font-style: normal; font-weight: 400; font-size: 13px; margin-left: 8px; }
+.netind { position: fixed; top: calc(60px + env(safe-area-inset-top, 0px)); left: 16px; display: flex; align-items: center; gap: 8px; background: rgba(12,26,43,0.85); padding: 4px 10px; font-size: 14px; }
+.pc { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 280px; background: rgba(12,26,43,0.85); padding: 10px 12px; }
+.pc-top { display: flex; gap: 10px; align-items: baseline; }
+#pc-num { font-family: var(--display); font-weight: 800; font-size: 32px; color: var(--flood); line-height: 1; }
+#pc-name { font-weight: 600; font-size: 16px; }
+#pc-role { color: var(--slate); font-size: 13px; margin-left: auto; }
+.bar { height: 5px; background: rgba(243,245,238,0.15); margin-top: 6px; }
+.bar div { height: 100%; transition: width 0.08s linear; }
+#pc-power { background: var(--signal); }
+#pc-tip { color: var(--flood); font-size: 13px; margin-top: 6px; }
+#minimap { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 210px; height: 136px; }
+.chips { position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+.chip { background: rgba(12,26,43,0.78); padding: 4px 9px; font-size: 13px; color: rgba(243,245,238,0.75); white-space: nowrap; transition: background 0.08s, color 0.08s; }
+.chip b { font-family: var(--display); font-weight: 700; font-size: 15px; color: var(--chalk); margin-right: 5px; }
+.chip.hit, .chip.held { background: var(--flood); color: var(--night); }
+.chip.hit b, .chip.held b { color: var(--night); }
+@media (max-width: 1279px) {
+  .chips { left: 312px; transform: none; }
+  .chip .cl { display: none; }
+  .chip b { margin-right: 0; }
+}
+#note { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(12,26,43,0.9); padding: 6px 14px; font-size: 15px; }
+#fps { position: fixed; top: 8px; right: 10px; font-size: 12px; color: var(--slate); font-variant-numeric: tabular-nums; background: rgba(12,26,43,0.6); padding: 2px 6px; z-index: 40; }
+.ft-score { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 4.5vw, 46px); margin: 0 0 6px; }
+#ft-goals { color: var(--slate); margin-bottom: 20px; line-height: 1.6; }
+#ft-stats { width: 100%; max-width: 520px; border-collapse: collapse; font-size: 17px; }
+#ft-stats td, #ft-stats th { padding: 7px 8px; border-bottom: 1px solid rgba(243,245,238,0.1); }
+#ft-stats td { font-family: var(--display); font-weight: 700; font-size: 21px; width: 30%; }
+#ft-stats td:first-child { text-align: right; } #ft-stats th { font-weight: 400; color: var(--slate); }
+
+/* ---------- avvisi ---------- */
+#toast { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); z-index: 60; background: var(--night-3); border-left: 4px solid var(--flood); padding: 12px 18px; max-width: min(560px, 90vw); box-shadow: 0 6px 24px rgba(0,0,0,0.4); animation: pop 0.2s ease-out; }
+#toast.err { border-left-color: var(--signal); }
+#busy { position: fixed; inset: 0; z-index: 45; background: rgba(12,26,43,0.75); display: flex; align-items: center; justify-content: center; }
+#busy .box { background: var(--night-2); padding: 26px 30px; min-width: 300px; }
+#busy .sweep { margin: 16px 0; }
+#fatal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 30px; font-size: 20px; text-align: center; background: var(--night); z-index: 70; }
+
+@media (max-width: 820px) {
+  .teams, .online-grid, .lobby-grid { grid-template-columns: 1fr; }
+  .opts { grid-template-columns: 1fr; }
+  .menu, .panel { background: rgba(12,26,43,0.9); }
+  #minimap, .chips { display: none; }
+  .pc { width: auto; right: 16px; }
+  .keytable { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .helptable td.k { white-space: normal; }
+}
+@media (max-height: 640px) {
+  .tagline { margin: 8px 0 14px; }
+  .mode { padding-top: 4px; padding-bottom: 4px; }
+  .mode b { font-size: 22px; }
+  .later { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
+}
+</style>
+</head>
+<body>
+<div id="stage" aria-hidden="true"></div>
+
+<div id="loading" role="status">
+  <h1 class="title"><span>Campo</span><span>Aperto</span></h1>
+  <div class="sweep"><div></div></div>
+  <p>Accensione dei fari…</p>
+</div>
+
+<main id="menu" class="menu" hidden>
+  <div class="menu-col">
+    <h1 class="title"><span>Campo</span><span>Aperto</span></h1>
+    <p class="tagline">Calcio 3D, undici contro undici. Dietro questo menu si sta giocando una partita vera.</p>
+    <ul class="modes">
+      <li><button class="mode" id="btn-quick"><b>Nuova partita</b><small>Scegli le squadre e gioca contro l'IA</small></button></li>
+      <li><button class="mode" id="btn-online"><b>Gioca online</b><small>Crea una partita o entra con un codice</small></button></li>
+      <li><button class="mode" id="btn-watch"><b>Guarda una partita</b><small>Due squadre guidate dall'IA</small></button></li>
+      <li><button class="mode" id="btn-settings"><b>Impostazioni</b><small>Grafica, audio, tasti</small></button></li>
+      <li><button class="mode" id="btn-controls"><b>Comandi</b><small>Tastiera, controller e regole</small></button></li>
+      <li id="li-quit" hidden><button class="mode" id="btn-quit"><b>Esci</b><small>Chiudi il gioco</small></button></li>
+    </ul>
+    <p class="later"><strong>In costruzione:</strong> allenamento, torneo, campionato, coppe, carriera, mercato, creazione squadra ed editor giocatori.</p>
+    <p class="version" id="version"></p>
+  </div>
+</main>
+
+<section id="setup" class="panel" hidden>
+  <div class="sheet">
+    <h2>Nuova partita</h2>
+    <div class="teams">
+      <div class="teamcard">
+        <div class="side">Casa</div>
+        <div class="teamrow"><button class="arrow" data-cycle="home:-1" aria-label="Squadra di casa precedente">‹</button><div class="tn" id="home-name"></div><button class="arrow" data-cycle="home:1" aria-label="Squadra di casa successiva">›</button></div>
+        <div class="kit" id="home-kit"></div>
+        <p id="home-meta"></p><p id="home-stars"></p>
+      </div>
+      <div class="teamcard">
+        <div class="side">Ospiti</div>
+        <div class="teamrow"><button class="arrow" data-cycle="away:-1" aria-label="Squadra ospite precedente">‹</button><div class="tn" id="away-name"></div><button class="arrow" data-cycle="away:1" aria-label="Squadra ospite successiva">›</button></div>
+        <div class="kit" id="away-kit"></div>
+        <p id="away-meta"></p><p id="away-stars"></p>
+      </div>
+    </div>
+    <div class="opts">
+      <label>Tu controlli</label><div class="segs" id="opt-side"></div>
+      <label>Difficoltà</label><div class="segs" id="opt-diff"></div>
+      <label>Durata di un tempo</label><div class="segs" id="opt-len"></div>
+      <label>Formazione</label><div class="segs" id="row-form"><div class="segs" id="opt-form"></div></div>
+      <label>Mentalità</label><div class="segs" id="opt-ment"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="setup-start">Scendi in campo</button>
+      <button class="ghost" id="setup-back">Indietro</button>
+    </div>
+  </div>
+</section>
+
+<section id="online" class="panel" hidden>
+  <div class="sheet">
+    <h2>Gioca online</h2>
+    <p class="sub">Chi crea la partita fa da host: la simula sul suo computer e decide il risultato. Gli altri entrano con il codice e mandano solo i propri comandi.</p>
+    <div id="online-webonly" class="webonly" hidden>Nella versione browser pubblicata il gioco online non è disponibile, perché la pagina non può collegarsi a server esterni. Usa l'app desktop.</div>
+    <div class="field" style="max-width:420px"><span>Il tuo nome</span><input type="text" id="on-name" maxlength="16" autocomplete="nickname"></div>
+    <div class="online-grid">
+      <div class="card">
+        <h3>Crea partita</h3>
+        <p>Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.</p>
+        <button class="primary" id="on-create">Crea partita</button>
+      </div>
+      <div class="card">
+        <h3>Unisciti</h3>
+        <p>Scrivi il codice che ti ha dato chi ha creato la partita.</p>
+        <div class="codebox"><input type="text" id="on-code" maxlength="7" placeholder="ABC123" autocomplete="off" spellcheck="false" aria-label="Codice partita"></div>
+        <button class="primary" id="on-join">Entra</button>
+      </div>
+    </div>
+    <div class="status" id="on-status" role="status" aria-live="polite"></div>
+    <p class="hintline">Server: <span id="on-server"></span> <button class="ghost" id="on-server-edit" style="padding:4px 10px;font-size:14px;margin-left:6px">Cambia</button></p>
+    <div class="actions"><button class="ghost" id="on-back">Indietro</button></div>
+  </div>
+</section>
+
+<section id="lobby" class="panel" hidden>
+  <div class="sheet">
+    <h2>Lobby</h2>
+    <p class="sub" id="lb-sub"></p>
+    <div class="code-row">
+      <div class="board" id="lb-board" aria-label="Codice partita"></div>
+      <div>
+        <button class="ghost" id="lb-copy">Copia codice</button>
+        <p class="small" id="lb-copied" style="margin:8px 0 0">Dai questo codice agli altri giocatori.</p>
+      </div>
+    </div>
+    <div class="lobby-grid">
+      <div class="col" id="lb-col-0"><h3><span class="kitdot" id="lb-kit-0"></span><span id="lb-team-0">Casa</span></h3><ul id="lb-list-0"></ul><button class="seg" data-side="0">Gioca qui</button></div>
+      <div class="col" id="lb-col-1"><h3><span class="kitdot" id="lb-kit-1"></span><span id="lb-team-1">Ospiti</span></h3><ul id="lb-list-1"></ul><button class="seg" data-side="1">Gioca qui</button></div>
+      <div class="col" id="lb-col--1"><h3>Spettatori</h3><ul id="lb-list--1"></ul><button class="seg" data-side="-1">Guarda</button></div>
+    </div>
+    <div id="lb-host-opts" class="opts">
+      <span class="lbl">Squadra di casa</span><div class="segs"><button class="arrow" data-lcycle="home:-1" aria-label="Squadra di casa precedente">‹</button><button class="seg" id="lb-home-name" disabled style="opacity:1;cursor:default"></button><button class="arrow" data-lcycle="home:1" aria-label="Squadra di casa successiva">›</button></div>
+      <span class="lbl">Squadra ospite</span><div class="segs"><button class="arrow" data-lcycle="away:-1" aria-label="Squadra ospite precedente">‹</button><button class="seg" id="lb-away-name" disabled style="opacity:1;cursor:default"></button><button class="arrow" data-lcycle="away:1" aria-label="Squadra ospite successiva">›</button></div>
+      <span class="lbl">Durata di un tempo</span><div class="segs" id="lb-len"></div>
+      <span class="lbl">Difficoltà IA</span><div class="segs" id="lb-diff"></div>
+    </div>
+    <p class="hintline" id="lb-settings-ro"></p>
+    <div class="actions">
+      <button class="primary" id="lb-start">Inizia la partita</button>
+      <span class="hintline" id="lb-wait" hidden>In attesa che l'host avvii la partita…</span>
+      <button class="ghost danger" id="lb-leave">Esci dalla lobby</button>
+    </div>
+  </div>
+</section>
+
+<section id="settings" class="panel" hidden>
+  <div class="sheet">
+    <h2>Impostazioni</h2>
+    <div class="tabs" role="tablist">
+      <button class="tab" data-tab="grafica" role="tab">Grafica</button>
+      <button class="tab" data-tab="audio" role="tab">Audio</button>
+      <button class="tab" data-tab="controlli" role="tab">Controlli</button>
+      <button class="tab" data-tab="online" role="tab">Online</button>
+    </div>
+    <div data-pane="grafica" class="opts">
+      <span class="lbl">Qualità</span><div class="segs" id="st-quality"></div>
+      <span class="lbl">Scala di risoluzione</span><div class="range"><input type="range" id="st-res" min="50" max="100" step="5"><output id="st-res-out"></output></div>
+      <span class="lbl">Risoluzione dinamica</span><label class="check"><input type="checkbox" id="st-dyn"> Abbassa la risoluzione da sola se gli fps calano</label>
+      <span class="lbl">Limite fps</span><div class="segs" id="st-fps"></div>
+      <span class="lbl">Schermo intero</span><div class="segs"><button class="seg" id="st-full">Attiva</button></div>
+      <span class="lbl">Mostra fps</span><label class="check"><input type="checkbox" id="st-showfps"> Contatore in alto a destra</label>
+      <span class="lbl">Disegno attuale</span><span class="small" id="st-drawinfo"></span>
+    </div>
+    <div data-pane="audio" class="opts">
+      <span class="lbl">Volume generale</span><div class="range"><input type="range" id="st-vm" min="0" max="100"><output id="st-vm-out"></output></div>
+      <span class="lbl">Effetti</span><div class="range"><input type="range" id="st-vs" min="0" max="100"><output id="st-vs-out"></output></div>
+      <span class="lbl">Pubblico</span><div class="range"><input type="range" id="st-vc" min="0" max="100"><output id="st-vc-out"></output></div>
+      <span class="lbl">Audio</span><label class="check"><input type="checkbox" id="st-mute"> Silenzioso</label>
+    </div>
+    <div data-pane="controlli">
+      <p class="sub" style="margin-top:0">Clicca un tasto (o selezionalo e premi A) e poi premi quello nuovo. Esc annulla, Backspace toglie il tasto alternativo. Se il tasto era già usato, viene tolto dall'altra azione.</p>
+      <div class="keytable" id="st-keys"></div>
+      <div class="actions" style="margin-top:16px"><button class="ghost" id="st-keys-reset">Tastiera predefinita</button>
+        <button class="ghost" id="st-pad-reset">Controller predefinito</button>
+        <label class="check"><input type="checkbox" id="st-mouse"> Mouse in partita: clic sinistro passaggio, clic destro tiro</label></div>
+      <h3 style="margin-top:26px">Controller</h3>
+      <div class="opts">
+        <span class="lbl">Stato</span><span class="small" id="st-pad-status"></span>
+        <span class="lbl">Controller</span><label class="check"><input type="checkbox" id="st-pad"> Usa il controller (gamepad)</label>
+        <span class="lbl">Nomi dei pulsanti</span><div class="segs" id="st-padlayout"></div>
+        <span class="lbl">Vibrazione</span><label class="check"><input type="checkbox" id="st-vib"> Vibra per tiri, contrasti, pali e gol</label>
+        <span class="lbl">Zona morta levette</span><div class="range"><input type="range" id="st-dz" min="10" max="40" step="2"><output id="st-dz-out"></output></div>
+        <span class="lbl">Aiuto ricezione</span><label class="check"><input type="checkbox" id="st-assist"> Senza direzione, chi riceve il passaggio va incontro alla palla</label>
+      </div>
+      <p class="later">Regole attive: fuorigioco, falli, punizioni, rigori, rimesse laterali, calci d'angolo, rinvii dal fondo, intervallo con cambio di campo. I colpi di testa sono automatici quando la palla arriva alta. In difesa il passaggio diventa contrasto e il tiro diventa scivolata.</p>
+    </div>
+    <div data-pane="online" class="opts">
+      <label for="st-server">Indirizzo del server</label><input type="text" id="st-server" spellcheck="false">
+      <span></span><div><button class="ghost" id="st-server-test">Prova collegamento</button> <span class="status" id="st-server-status" style="margin-left:10px"></span></div>
+      <span></span><p class="small" style="margin:0">Sul tuo computer: ws://localhost:8787 (avvia il server con npm run server). Su un server in internet usa wss:// con il nome del dominio.</p>
+    </div>
+    <div class="actions"><button class="primary" id="st-back">Fatto</button></div>
+  </div>
+</section>
+
+<div id="hud" hidden>
+  <div class="scoreboard" role="status" aria-live="polite">
+    <span class="sb-kit" id="sb-home-kit"></span><span id="sb-home"></span><span id="sb-score">0 – 0</span><span id="sb-away"></span><span class="sb-kit" id="sb-away-kit"></span><span id="sb-time">1'</span>
+  </div>
+  <div class="netind" id="netind" hidden><span class="dot" id="net-dot"></span><span id="net-text"></span></div>
+  <div id="banner" class="banner" hidden></div>
+  <div id="scorer" hidden></div>
+  <div id="replay-tag" hidden>Replay<small>Spazio per saltare</small></div>
+  <div class="pc" id="pc" hidden>
+    <div class="pc-top"><span id="pc-num"></span><span id="pc-name"></span><span id="pc-role"></span></div>
+    <div class="bar"><div id="pc-energy"></div></div>
+    <div class="bar"><div id="pc-power" style="width:0"></div></div>
+    <div id="pc-tip"></div>
+  </div>
+  <div class="chips" id="chips"></div>
+  <canvas id="minimap" width="210" height="136"></canvas>
+  <div id="note" hidden></div>
+</div>
+
+<section id="help" class="panel" hidden>
+  <div class="sheet">
+    <h2>Comandi</h2>
+    <p class="sub"><span id="help-pad"></span> Tutti i tasti e i pulsanti si possono cambiare.</p>
+    <div id="help-body"></div>
+    <p class="later">Regole attive: fuorigioco, falli, punizioni, rigori, rimesse laterali, calci d'angolo, rinvii dal fondo, intervallo con cambio di campo. I colpi di testa sono automatici quando la palla arriva alta: la direzione indica dove mandarla. Con la telecamera "Dietro al giocatore" su vuol dire sempre verso la porta avversaria.</p>
+    <div class="actions">
+      <button class="primary" id="help-back">Fatto</button>
+      <button class="ghost" id="help-keys">Cambia tasti</button>
+    </div>
+  </div>
+</section>
+
+<section id="pause" class="panel" hidden>
+  <div class="sheet">
+    <h2>Pausa</h2>
+    <p class="sub" id="pause-online" hidden>Partita online: il gioco continua mentre sei in questo menu.</p>
+    <div id="pause-tactics" class="opts" style="margin-bottom:24px">
+      <label>Mentalità</label><div class="segs" id="pt-ment"></div>
+      <label>Pressing</label><div class="segs" id="pt-press"></div>
+      <label>Formazione</label><div class="segs" id="pt-form"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="pause-resume">Riprendi</button>
+      <button class="ghost" id="pause-settings">Impostazioni</button>
+      <button class="ghost" id="pause-help">Comandi</button>
+      <button class="ghost" id="pause-camera">Telecamera: Televisiva</button>
+      <button class="ghost" id="pause-restart">Ricomincia</button>
+      <button class="ghost danger" id="pause-quit">Esci al menu</button>
+    </div>
+    <p class="hintline" id="pause-keys" style="margin-top:18px"></p>
+  </div>
+</section>
+
+<section id="fulltime" class="panel" hidden>
+  <div class="sheet">
+    <h2 id="ft-verdict">Fine partita</h2>
+    <p class="ft-score" id="ft-score"></p>
+    <div id="ft-goals"></div>
+    <table id="ft-stats"></table>
+    <div class="actions">
+      <button class="primary" id="ft-rematch">Rivincita</button>
+      <span class="hintline" id="ft-wait" hidden>In attesa che l'host torni alla lobby…</span>
+      <button class="ghost" id="ft-setup">Cambia squadre</button>
+      <button class="ghost" id="ft-menu">Menu principale</button>
+    </div>
+  </div>
+</section>
+
+<div id="busy" hidden><div class="box" role="status" aria-live="polite"><h3 id="busy-text">Collegamento…</h3><div class="sweep"><div></div></div><button class="ghost" id="busy-cancel">Annulla</button></div></div>
+<div id="toast" hidden role="alert"></div>
+<div id="fps" hidden></div>
+<div id="fatal" hidden></div>
+
+<!--THREE-->
+<script>
+/*GAME*/
+</script>
+</body>
+</html>

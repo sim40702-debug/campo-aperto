@@ -1,0 +1,42 @@
+# Compila l'app per Windows, Mac e Linux quando si pubblica un tag di versione (es. v0.2.0).
+# I file finiti compaiono in una "Release" bozza su GitHub.
+name: Rilascio app desktop
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - run: npm ci
+      - run: npm test
+      - name: Compila Windows
+        if: matrix.os == 'windows-latest'
+        run: npm run dist:win -- --publish always -c.publish.provider=github -c.publish.releaseType=draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compila Mac
+        if: matrix.os == 'macos-latest'
+        run: npm run dist:mac -- --publish always -c.publish.provider=github -c.publish.releaseType=draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Compila Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run dist:linux -- --publish always -c.publish.provider=github -c.publish.releaseType=draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
