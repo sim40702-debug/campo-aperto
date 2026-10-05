@@ -1435,7 +1435,8 @@ class Game {
       $('lb-lan-more').hidden = ad.length < 2;
       $('lb-lan-more').textContent = ad.length < 2 ? '' : 'Altri indirizzi: ' + ad.slice(1).map(a => a + ':' + li.port).join(' / ');
     }
-    $('lb-sub').textContent = isHost ? 'Sei l\'host: la partita gira sul tuo computer. Tieni aperto il gioco finché giocate.' : 'Sei collegato alla partita. Scegli una squadra e aspetta l\'avvio.';
+    const teamsHint = ' Ognuno sceglie la squadra con «Gioca qui»: vanno bene anche squadre diverse, come 2 contro 1 (fino a ' + NET.MAX_PER_TEAM + ' per squadra, gli altri calciatori li muove l\'IA).';
+    $('lb-sub').textContent = (isHost ? 'Sei l\'host: la partita gira sul tuo computer. Tieni aperto il gioco finché giocate.' : 'Sei collegato alla partita. Scegli una squadra e aspetta l\'avvio.') + teamsHint;
     if (!L) { $('lb-list-0').innerHTML = '<li class="empty">Caricamento…</li>'; return; }
     const s = L.settings, myId = this.net.link.id;
     const teams = [this.db[s.home], this.db[s.away]];
