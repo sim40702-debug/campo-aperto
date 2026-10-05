@@ -1,7 +1,7 @@
 {
   "name": "campo-aperto",
   "productName": "Campo Aperto",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Gioco di calcio 3D originale, undici contro undici",
   "author": "Simone",
   "license": "UNLICENSED",
@@ -57,6 +57,9 @@
     "artifactName": "CampoAperto-${version}-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.sports-games",
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "Campo Aperto usa la rete locale per ospitare le partite e per trovare quelle degli amici sulla stessa rete."
+      },
       "target": [
         {
           "target": "dmg",

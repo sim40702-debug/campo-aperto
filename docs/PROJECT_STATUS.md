@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 02/10/2026, sessione 5, versione 0.4.1
+Aggiornato: 05/10/2026, sessione 6, versione 0.4.2
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -13,7 +13,7 @@ Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a 
 - Simulazione (moduli 01-08) e rete (12) indipendenti da THREE e DOM: girano anche in Node per i test.
 - Online: server relay WebSocket (server/relay.js, libreria ws) + host autorevole che simula la partita; i client mandano
   solo comandi e ricevono istantanee binarie (34 + 22x12 float, 30 al secondo) che interpolano.
-- Rete locale (app desktop): desktop/lan.js avvia il relay sul PC dell'host (porta 8787, o libera) e risponde a UDP 8788 al codice;
+- Rete locale (app desktop): "Crea partita" avvia il relay sul PC dell'host (porta 8787, o libera) che risponde a UDP 8788 al codice;
   chi entra manda il codice in broadcast e ottiene l'indirizzo. desktop/preload.js espone window.campoLan (hostStart, hostStop, find).
 - Passo fisso 1/60 s. Coordinate: x lunghezza (±52.5), z larghezza (±34), y altezza.
 

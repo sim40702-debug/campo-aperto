@@ -44,7 +44,10 @@ function startLoops(host, clients, hostInput) {
   check('codice inesistente -> errore chiaro', err && err.code === 'NOT_FOUND', err && err.message);
   err = null;
   try { await new A.NetLink(url).join('abc', 'X'); } catch (e) { err = e; }
-  check('codice malformato -> rifiutato prima di contattare il server', err && /6 caratteri/.test(err.message));
+  check('codice malformato -> rifiutato prima di contattare il server', err && err.code === 'BAD_CODE' && /6 caratteri/.test(err.message));
+  err = null;
+  try { await new A.NetLink('ws://127.0.0.1:1').join('ABCDEF', 'X'); } catch (e) { err = e; }
+  check('server spento -> errore UNREACHABLE (non un generico "connection failed")', err && err.code === 'UNREACHABLE', err && err.code);
   check('normalizzazione codice (minuscole, spazi)', A.normalizeCode(' ab-c2 3d ') === 'ABC23D');
 
   // --- versione diversa
@@ -185,7 +188,11 @@ function startLoops(host, clients, hostInput) {
   const lhLink = new A.NetLink('ws://127.0.0.1:' + lh.port);
   const lc = await lhLink.create('Simone');
   check('LAN: il codice della rete locale inizia con L', lc.code[0] === 'L', lc.code);
+  const st0 = await lan.status();
   const found = await lan.findGame(lc.code, { discoveryPort: LP.discoveryPort });
+  const st1 = await lan.status();
+  check('LAN: status dell host (porta, collegamenti) e richieste di ricerca contate', st0.hosting && st0.port === lh.port && st0.discoveryPort === LP.discoveryPort && st0.conns >= 1
+    && st1.queries > st0.queries && st1.answered > st0.answered && /^\d+\.\d+\.\d+\.\d+$/.test(st1.lastFrom), JSON.stringify(st1));
   check('LAN: findGame trova l host dal solo codice (HMAC)', found && /^ws:\/\/\d+\.\d+\.\d+\.\d+:\d+$/.test(found.url) && found.url.endsWith(':' + lh.port), JSON.stringify(found));
   const lcLink = new A.NetLink(found ? found.url : url);
   let lerr = null;
@@ -208,6 +215,8 @@ function startLoops(host, clients, hostInput) {
   const sw = lan.sweepTargets([{ address: '172.20.10.2', netmask: '255.255.255.240' }, { address: '169.254.3.4', netmask: '255.255.255.0' }, { address: '10.0.0.5', netmask: '255.0.0.0' }]);
   check('LAN: scansione di una /28: 13 indirizzi (senza il proprio, rete e broadcast), niente link-local né sottoreti grandi',
     sw.length === 13 && !sw.includes('172.20.10.2') && !sw.includes('172.20.10.0') && !sw.includes('172.20.10.15') && sw.includes('172.20.10.9') && !sw.some(a => a.startsWith('169.254.') || a.startsWith('10.')), JSON.stringify(sw));
+  check('LAN: scansione di una /22 (Wi-Fi mesh) = 1021 indirizzi, /21 esclusa', lan.sweepTargets([{ address: '10.20.1.10', netmask: '255.255.252.0' }]).length === 1021
+    && lan.sweepTargets([{ address: '10.20.1.10', netmask: '255.255.248.0' }]).length === 0);
   check('LAN: scansione di una /24 = 253 indirizzi e limite totale rispettato', lan.sweepTargets([{ address: '192.168.1.7', netmask: '255.255.255.0' }]).length === 253
     && lan.sweepTargets([{ address: '192.168.1.7', netmask: '255.255.255.0' }, { address: '192.168.2.7', netmask: '255.255.255.0' }], 300).length === 300);
   // prova TCP diretta
@@ -264,6 +273,7 @@ function startLoops(host, clients, hostInput) {
   fake.close();
   lhLink.leave(); lcLink.leave();
   await lan.stopHost();
+  check('LAN: status senza partita ospitata: solo gli indirizzi locali', await lan.status().then(x => !x.hosting && Array.isArray(x.addresses) && !('port' in x)));
   check('LAN: stopHost libera le porte (riavvio possibile)', await lan.startHost(LP).then(() => true, () => false));
   // avvio e arresto in fila: un arresto in coda non spegne un host avviato dopo
   const pStop = lan.stopHost(), pStart = lan.startHost(LP);
@@ -306,6 +316,21 @@ function startLoops(host, clients, hostInput) {
   check('join: codice diverso da quello richiesto -> rifiutato', e1 && /non valida/.test(e1.message), e1 && e1.message);
   check('create: codice non valido -> rifiutato', e2 && /non valida/.test(e2.message), e2 && e2.message);
   evil.close();
+
+  // --- collegamento morto senza chiusura (Wi-Fi caduto, PC dell'host spento): il client se ne accorge da solo
+  const mute = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+  await new Promise(r => mute.on('listening', r));
+  mute.on('connection', ws3 => ws3.on('message', d => {
+    const m = JSON.parse(d.toString());
+    if (m.t === 'join') ws3.send(JSON.stringify({ t: 'joined', code: 'LABCDE', id: 'a', token: 'b', hostId: 'c' }));
+  }));
+  const muteLink = new A.NetLink('ws://127.0.0.1:' + mute.address().port);
+  await muteLink.join('LABCDE', 'x');
+  let dead = false; muteLink.on('reconnecting', () => { dead = true; });
+  const tDead = Date.now();
+  await until(() => dead, 14000, 100);
+  check('connessione muta: dopo 4 ping senza risposta parte il rientro automatico (8-12 s)', dead && Date.now() - tDead >= 7000, (Date.now() - tDead) + ' ms');
+  muteLink.leave(); mute.close();
 
   // --- lobby ostile: il client la ripulisce o la ignora
   const stub = { on() { return this; }, toHost() {}, leave() {} };

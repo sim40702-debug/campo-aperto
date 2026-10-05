@@ -2,6 +2,27 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.4.2 — 05/10/2026 (rete locale: un solo "Crea partita", ricerca più robusta, diagnostica)
+- Causa del "stesso codice ma non trova la partita": il pulsante principale "Crea partita" creava la stanza sul server delle
+  impostazioni, che per difetto era ws://localhost:8787, cioè il computer di CHI lo usa. L'host creava la partita sul proprio
+  computer, l'amico la cercava sul suo: stesso codice, due elenchi di stanze diversi. In più il server autonomo ascolta solo su
+  127.0.0.1 e i codici senza L non venivano mai cercati in rete. Ora nell'app desktop "Crea partita" ospita sempre sul computer
+  di chi crea (server integrato su tutte le schede di rete, codice con L) e il server online è facoltativo (vuoto per difetto;
+  il vecchio valore localhost viene tolto). Con un server impostato compare "Crea sul server online".
+- Ricerca: scansione unicast anche per sottoreti /22 e /23 (Wi-Fi mesh), con l'interfaccia della rotta predefinita per prima.
+  Ogni gruppo della scansione usa un proprio socket: i datagrammi verso indirizzi vuoti aspettano l'ARP occupando il buffer di
+  invio, e con un socket solo oltre circa 250 indirizzi l'invio verso l'host restava fermo (riprodotto in una /22).
+- Collegamento: dopo 4 ping senza risposta (circa 8 s) il socket è considerato perso e parte il rientro automatico (prima un
+  host spento o un Wi-Fi caduto potevano lasciare il client bloccato per minuti). Errori con codice (TIMEOUT, UNREACHABLE,
+  NO_REPLY...) e messaggi precisi: codice non valido, partita non trovata, trovata ma host irraggiungibile, server non
+  disponibile, connessione scaduta, host disconnesso, partita già iniziata (si entra come spettatore).
+- Diagnostica di rete (Ctrl+Maiusc+D o Impostazioni, Online): ruolo, IP locali, server, porte, codice, stato, ping, ultimo
+  errore, eventi con orario; sull'host anche le richieste di ricerca ricevute. Nuovo comando IPC lan:status.
+- Installatore Windows: regola del firewall per il gioco limitata alla sottorete locale (risorse/installer.nsh). Mac:
+  NSLocalNetworkUsageDescription per il permesso Rete locale.
+- Relay: i tentativi di codice falliti vecchi vengono dimenticati (la tabella cresceva senza limite).
+- Test: net_test 78 (+5: errore UNREACHABLE, stato dell'host, scansione /22, collegamento muto).
+
 ## 0.4.1 — 05/10/2026 (rete locale: ricerca più robusta e diagnosi)
 - Caso reale: Windows (host) e Mac (client) sull'hotspot di un iPhone, "Impossibile collegarsi al server". L'hotspot può non
   inoltrare i broadcast UDP e macOS può bloccare la rete locale all'app (permesso "Rete locale"); prima ogni errore di invio era
