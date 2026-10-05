@@ -96,6 +96,7 @@ class NetLink {
     this.ws = ws;
     try {
       const r = await this.request({ t: 'create', v: NET.PROTOCOL, name: name }, ['created']);
+      if (typeof r.code !== 'string' || !NET.CODE_RE.test(r.code) || typeof r.id !== 'string' || typeof r.token !== 'string') throw new Error('Risposta del server non valida');
       this.code = r.code; this.id = r.id; this.token = r.token; this.isHost = true; this.hostId = r.id;
       this.state = 'online'; this.attach(ws);
       return r;
@@ -110,6 +111,7 @@ class NetLink {
     this.ws = ws;
     try {
       const r = await this.request({ t: 'join', v: NET.PROTOCOL, code: code, name: name }, ['joined']);
+      if (r.code !== code || typeof r.id !== 'string' || typeof r.token !== 'string' || typeof r.hostId !== 'string') throw new Error('Risposta del server non valida');
       this.code = r.code; this.id = r.id; this.token = r.token; this.isHost = false; this.hostId = r.hostId;
       this.state = 'online'; this.attach(ws);
       return r;
@@ -418,7 +420,7 @@ class ClientSession {
 
   onMsg(d) {
     switch (d.t) {
-      case 'lobby': this.lobby = d; if (this.onLobby) this.onLobby(d); break;
+      case 'lobby': { const L = this.cleanLobby(d); if (L) { this.lobby = L; if (this.onLobby) this.onLobby(L); } break; }
       case 'start': this.buildMatch(d); break;
       case 'meta': this.meta = d; this.applyMeta(); break;
       case 'ev': for (const e of d.l || []) this.events.push(e); break;
@@ -428,10 +430,35 @@ class ClientSession {
     }
   }
 
+  // db è un array di squadre: indici interi nell'intervallo; durata e difficoltà devono essere numeri
+  validSetup(s) {
+    if (!s || typeof s !== 'object') return false;
+    const okTeam = i => Number.isInteger(i) && i >= 0 && i < this.db.length;
+    return okTeam(s.home) && okTeam(s.away) && Number.isFinite(s.halfSeconds) && Number.isFinite(s.difficulty);
+  }
+
+  // il messaggio della lobby arriva dall'host (non fidato): la UI vede solo dati ripuliti, oppure niente
+  cleanLobby(d) {
+    if (!d || typeof d !== 'object' || !this.validSetup(d.settings) || !Array.isArray(d.members)) return null;
+    const str = v => typeof v === 'string' ? v : '';
+    const members = d.members.slice(0, 8).filter(m => m && typeof m === 'object').map(m => ({
+      id: str(m.id), name: str(m.name).slice(0, 16),
+      side: m.side === 0 || m.side === 1 ? m.side : -1,
+      connected: m.connected === true,
+      ping: Number.isFinite(m.ping) ? Math.min(9999, Math.max(0, Math.round(m.ping))) : 0,
+      isHost: m.isHost === true,
+    }));
+    return {
+      t: 'lobby', code: typeof d.code === 'string' && NET.CODE_RE.test(d.code) ? d.code : '', hostId: str(d.hostId), phase: str(d.phase),
+      settings: { home: d.settings.home, away: d.settings.away, halfSeconds: d.settings.halfSeconds, difficulty: d.settings.difficulty },
+      members: members,
+    };
+  }
+
   buildMatch(d) {
     if (this.match && this.mid === d.mid) return;   // stessa partita (es. dopo una riconnessione)
     const s = d.setup;
-    if (!this.db[s.home] || !this.db[s.away]) return;
+    if (!this.validSetup(s)) return;
     const hs = (d.humans || []).slice().sort((a, b) => a.slot - b.slot);
     this.slots = hs.map(h => h.id);
     this.names = {}; hs.forEach(h => { this.names[h.id] = h.name; });
