@@ -343,6 +343,13 @@ async function main() {
   check('SEC 8 password sbagliate → account bloccato per qualche minuto (anche con la password giusta)', lastLock.status === 401 && locked.status === 429);
   check('SEC nessuna via per scrivere un risultato o liquidare dal client', (await POST('/api/bets/' + codeA + '/settle', { status: 'WON' }, A)).status === 404 && (await POST('/api/fixtures/' + F1.code + '/result', { goals: [9, 0] }, A)).status === 404);
 
+  // ===== preferenze (comandi personalizzati) sull'account =====
+  const pr = await POST('/api/me/prefs', { prefs: { keys: { sprint: ['KeyX', null] }, padKeys: { pass: 0 }, mouse: false, padLayout: 'ps', deadzone: 0.2, updatedAt: 123 } }, B);
+  check('comandi salvati sull\'account e riletti dal profilo', pr.status === 200 && (await GET('/api/me', B)).body.prefs.keys.sprint[0] === 'KeyX');
+  check('preferenze non valide rifiutate (tasto con caratteri strani, campo sconosciuto ignorato)', (await POST('/api/me/prefs', { prefs: { keys: { sprint: ['<script>'] } } }, B)).status === 400 &&
+    (await POST('/api/me/prefs', { prefs: { boh: 1, updatedAt: 5 } }, B)).status === 200 && (await GET('/api/me', B)).body.prefs.boh === undefined);
+  check('preferenze solo con l\'accesso', (await POST('/api/me/prefs', { prefs: {} })).status === 401);
+
   // ===== negozio e personaggio =====
   const eq = await POST('/api/inventory/equip', { item: buyList[0] }, B);
   await POST('/api/me/avatar', { number: 7, name: 'Beta' }, B);

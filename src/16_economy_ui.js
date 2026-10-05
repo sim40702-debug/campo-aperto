@@ -27,7 +27,8 @@ class Economy {
     this.btTab = 'open'; this.btCursor = null; this.lb = { metric: 'profit', period: 'week' };
     this.shopCat = 'tutti'; this.shopItems = [];
     this.loadouts = new Map();     // aspetto dei giocatori (dal server), per pochi minuti
-    this.api.onChange(() => this.renderWallet());
+    this.api.onChange(() => { this.renderWallet(); this.pullPrefs(); });
+    settingsSavedHook = s => this.prefsChanged(s);
     this.bind();
     this.renderWallet();
     if (this.api.loggedIn()) this.api.refresh().catch(() => this.renderWallet());
@@ -149,6 +150,55 @@ class Economy {
     if (name === 'character') this.loadCharacter();
     if (name === 'profile') this.loadProfile();
     if (slipScreens.includes(name) && this.slip.items.length) { this.requote(); this.every(20000, () => this.requote()); }
+  }
+
+  // ---------- comandi personalizzati sull'account ----------
+  // Con l'account i comandi seguono il giocatore su ogni computer; senza, restano solo su questo (localStorage).
+  // Vince la configurazione modificata per ultima.
+  controlsOf(s) { return { keys: s.keys, padKeys: s.padKeys, mouse: s.mouse, padLayout: s.padLayout, deadzone: s.deadzone, vibration: s.vibration, assistReceive: s.assistReceive }; }
+  prefsChanged(s) {
+    if (this.applyingPrefs) return;
+    const sig = JSON.stringify(this.controlsOf(s));
+    if (sig === this.lastControlsSig) return;
+    const first = this.lastControlsSig === undefined;
+    this.lastControlsSig = sig;
+    if (first) return;                         // primo salvataggio dopo l'avvio: niente di nuovo
+    s.controlsUpdatedAt = Date.now();
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) { /* */ }
+    if (!this.api.loggedIn()) return;
+    clearTimeout(this.prefsTimer);
+    this.prefsTimer = setTimeout(() => {
+      this.api.post('/api/me/prefs', { prefs: Object.assign(this.controlsOf(this.g.settings), { updatedAt: this.g.settings.controlsUpdatedAt }) }).catch(() => { /* al prossimo cambio */ });
+    }, 1500);
+  }
+  pullPrefs() {
+    const me = this.api.me, s = this.g.settings;
+    if (this.lastControlsSig === undefined) this.lastControlsSig = JSON.stringify(this.controlsOf(s));
+    if (!me) return;
+    if (!me.prefs) {
+      // account senza comandi salvati: si salvano quelli di questo computer, se sono stati personalizzati
+      if (s.controlsUpdatedAt && !this.prefsSent) { this.prefsSent = true; this.api.post('/api/me/prefs', { prefs: Object.assign(this.controlsOf(s), { updatedAt: s.controlsUpdatedAt }) }).catch(() => {}); }
+      return;
+    }
+    if (this.prefsSeen === me.prefs.updatedAt) return;
+    this.prefsSeen = me.prefs.updatedAt;
+    const local = s.controlsUpdatedAt || 0;
+    if ((me.prefs.updatedAt || 0) > local) {
+      // configurazione dell'account più recente: si applica qui
+      this.applyingPrefs = true;
+      const p = me.prefs;
+      if (p.keys) s.keys = Object.assign({}, s.keys, p.keys);
+      if (p.padKeys) s.padKeys = Object.assign({}, s.padKeys, p.padKeys);
+      for (const k of ['mouse', 'padLayout', 'deadzone', 'vibration', 'assistReceive']) if (p[k] !== undefined) s[k] = p[k];
+      s.controlsUpdatedAt = p.updatedAt;
+      this.g.input.setKeys(s.keys); this.g.input.setPadKeys(s.padKeys); this.g.input.mouseEnabled = s.mouse; this.g.applyPadSettings();
+      saveSettings(s);
+      this.lastControlsSig = JSON.stringify(this.controlsOf(s));
+      this.applyingPrefs = false;
+      if (this.g.screen === 'settings') this.g.renderSettings();
+    } else if (local > (me.prefs.updatedAt || 0)) {
+      this.api.post('/api/me/prefs', { prefs: Object.assign(this.controlsOf(s), { updatedAt: local }) }).catch(() => {});
+    }
   }
 
   // ---------- account ----------
