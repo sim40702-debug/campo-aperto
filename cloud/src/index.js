@@ -9,6 +9,8 @@ import { catalog, inventory, buy, equip, unequip, setAvatar, loadout } from './s
 import { me, balance, transactions, setPrivacy, publicProfile, setPrefs } from './profile.js';
 import { claimDaily, claimWatch } from './rewards.js';
 import { engineVersion, gameVersion } from './simulate.js';
+import { leagueView } from './league.js';
+import { getCareer, putCareer, CAREER_MAX_BYTES } from './career.js';
 export { Engine } from './engine-do.js';
 export { Relay } from './relay-do.js';
 import { relayFetch } from './relay-do.js';
@@ -55,7 +57,7 @@ async function route(request, env, ctx) {
   }
   const p = seg.slice(1);
   const is = (m, ...parts) => method === m && p.length === parts.length && parts.every((x, i) => x === '*' || x === p[i]);
-  const body = method === 'POST' ? await readJson(request) : null;
+  const body = method === 'POST' ? await readJson(request, path === '/api/me/career' ? CAREER_MAX_BYTES + 2000 : undefined) : null;
   const user = () => requireUser(env, request, t);
   const viewer = () => authenticate(env, request, t);
 
@@ -72,6 +74,10 @@ async function route(request, env, ctx) {
   if (is('GET', 'me', 'bets')) return json(await myBets(env, await user(), q));
   if (is('POST', 'me', 'privacy')) return json(await setPrivacy(env, await user(), body));
   if (is('POST', 'me', 'prefs')) return json(await setPrefs(env, await user(), body));
+  if (is('GET', 'me', 'career')) return json(await getCareer(env, await user()));
+  if (is('POST', 'me', 'career')) return json(await putCareer(env, await user(), body, t));
+  // campionato del server: classifica, giornata, marcatori (uguale per tutti: in cache per pochi secondi)
+  if (is('GET', 'league')) return env.TEST_MODE === '1' ? json(await leagueView(env, t)) : cached(request, 15, () => leagueView(env, t));
   if (is('POST', 'me', 'avatar')) return json(await setAvatar(env, await user(), body));
   if (is('POST', 'me', 'daily')) return json(await claimDaily(env, await user(), t));
   if (is('GET', 'players', '*')) return json(await publicProfile(env, p[1]));

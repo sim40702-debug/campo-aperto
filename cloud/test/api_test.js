@@ -425,6 +425,31 @@ async function main() {
     mv.items[0].status !== 'OPEN' && mv.items[1].status === 'OPEN' && (mv.items[0].status === 'LOST' ? mv.status === 'LOST' : mv.status === 'OPEN'),
     { tick: tk3.status, tickBody: tk3.body, f2: { phase: f2now.phase, settled: f2now.settled, durationMs: f2now.durationMs, kickoffAt: f2now.kickoffAt, serverTime: f2now.serverTime }, f3: F3.code, items: mv.items.map(i => i.fixture + ':' + i.status) });
 
+  // ===== campionato del server: le partite delle scommesse seguono il calendario =====
+  const allFx = (await GET('/api/fixtures')).body;
+  const lgFx = allFx.next.concat(allFx.live, allFx.finished);
+  check('partite del server nel campionato: stagione e giornata indicate', lgFx.length > 0 && lgFx.every(f => /^Serie del server · stagione \d+ · giornata \d+$/.test(f.comp)), lgFx.map(f => f.comp));
+  const lv = (await GET('/api/league')).body;
+  const sumPg = lv.standings.reduce((x, r) => x + r.pg, 0), sumV = lv.standings.reduce((x, r) => x + r.v, 0), sumP = lv.standings.reduce((x, r) => x + r.p, 0);
+  check('classifica del campionato: 8 squadre, solo le partite finite (' + lv.played + ')', lv.standings.length === 8 && lv.played >= 1 && sumPg === lv.played * 2 && sumV === sumP &&
+    lv.standings.reduce((x, r) => x + r.pt, 0) === sumV * 3 + (sumPg - 2 * sumV), { played: lv.played, sumPg, sumV, sumP });
+  check('classifica: solo risultati già finiti (niente futuro), nessun seme o dato privato', lv.played === allFx.finished.filter(f => f.comp).length && forbiddenKeys(lv).length === 0, { played: lv.played, fin: allFx.finished.length, bad: forbiddenKeys(lv) });
+  const roundTeams = lv.fixtures.flatMap(f => [f.home, f.away]);
+  check('giornata in corso: 4 partite, ogni squadra una volta sola', lv.fixtures.length === 4 && new Set(roundTeams).size === 8 && lv.round >= 1 && lv.rounds === 14, lv.fixtures);
+  check('marcatori del campionato dalle partite finite', Array.isArray(lv.scorers) && lv.scorers.every(x => x.goals >= 1 && x.name));
+
+  // ===== carriera salvata sull'account =====
+  const save = { comps: [{ kind: 'league', name: 'Prova', config: { teams: [0, 1, 2, 3] }, fixtures: [{ home: 0, away: 1, played: true, h: 2, a: 1 }] }] };
+  const sv1 = await POST('/api/me/career', { data: save, updatedAt: 1000 }, A);
+  const gv1 = await GET('/api/me/career', A);
+  check('carriera salvata sull\'account e riletta', sv1.status === 200 && gv1.body.updatedAt === 1000 && gv1.body.data.comps[0].fixtures[0].h === 2, gv1.body);
+  check('salvataggio più vecchio di quello sul server rifiutato (409 STALE)', (await POST('/api/me/career', { data: save, updatedAt: 500 }, A)).status === 409);
+  check('carriera non valida rifiutata (tipo sconosciuto, squadre strane)', (await POST('/api/me/career', { data: { comps: [{ kind: 'boh', config: { teams: [] }, fixtures: [] }] }, updatedAt: 2000 }, A)).status === 400 &&
+    (await POST('/api/me/career', { data: { comps: [{ kind: 'cup', config: { teams: [-1] }, fixtures: [] }] }, updatedAt: 2000 }, A)).status === 400);
+  const huge = { comps: [{ kind: 'league', config: { teams: [0, 1] }, fixtures: Array.from({ length: 1100 }, () => ({ home: 0, away: 1, scorers: 'x'.repeat(400) })) }] };
+  check('carriera troppo grande rifiutata (413)', (await POST('/api/me/career', { data: huge, updatedAt: 3000 }, A)).status === 413);
+  check('carriera solo con l\'accesso, ognuno vede solo la sua', (await GET('/api/me/career')).status === 401 && (await GET('/api/me/career', B)).body.data === null);
+
   // ===== persistenza dopo tutto: riavvio =====
   const snap = { A: await balanceOf(A), B: await balanceOf(B), betA: JSON.stringify((await GET('/api/bets/' + codeA, A)).body) };
   await stopServer();

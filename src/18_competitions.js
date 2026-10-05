@@ -76,13 +76,14 @@ class Career {
       Array.isArray(c.config.teams) && c.config.teams.every(okTeam) && c.fixtures.every(f => f && okTeam(f.home) && okTeam(f.away))).slice(0, CAREER_MAX_COMPS);
     return { v: 1, comps: comps, updatedAt: Number(d.updatedAt) || 0 };
   }
-  save(silent) {
-    this.data.updatedAt = Date.now();
+  save(silent, keepTime) {
+    if (!keepTime) this.data.updatedAt = Date.now();
     try { localStorage.setItem(CAREER_KEY, JSON.stringify(this.data)); } catch (e) { /* spazio pieno: resta in memoria */ }
     if (!silent) for (const fn of this.listeners) { try { fn(this); } catch (e) { console.error(e); } }
   }
   // sostituisce tutto (dati più recenti dall'account)
-  replace(d) { const c = this.clean(d); if (!c) return false; this.data = c; this.save(true); for (const fn of this.listeners) fn(this); return true; }
+  // (con la data di quei dati: non è una modifica fatta qui)
+  replace(d) { const c = this.clean(d); if (!c) return false; this.data = c; this.profiles.clear(); this.save(true, true); this.replaced = true; for (const fn of this.listeners) fn(this); this.replaced = false; return true; }
   get comps() { return this.data.comps; }
   byId(id) { return this.data.comps.find(c => c.id === id) || null; }
   profile(t) {

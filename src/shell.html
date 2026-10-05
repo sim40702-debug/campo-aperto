@@ -479,6 +479,9 @@ table.stand tr.q td:first-child { box-shadow: inset 3px 0 0 var(--turf-light); }
 .champ-grid b { font-family: var(--display); font-size: 21px; }
 .champ-grid span:last-child { font-size: 13px; color: var(--slate); }
 .hist { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; background: var(--night-2); padding: 10px 14px; }
+.fxcomp { grid-column: 2 / -1; font-size: 12px; color: var(--slate); margin-top: -6px; }
+.srv-league { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; background: var(--night-2); padding: 14px 16px; }
+@media (max-width: 1000px) { .srv-league { grid-template-columns: 1fr; } }
 select.sel { font: inherit; color: var(--chalk); background: var(--night-2); border: 1px solid rgba(243,245,238,0.25); padding: 9px 10px; max-width: 420px; }
 select.sel:focus { outline: none; border-color: var(--flood); }
 </style>
@@ -768,6 +771,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 <section id="center" class="panel" hidden>
   <div class="sheet wide">
     <div class="ecohead"><h2 id="mc-title">Partita</h2><span class="wallet">🪙 <span data-balance>—</span></span></div>
+    <p class="small" id="mc-comp" style="margin:-12px 0 14px"></p>
     <div class="mc-top">
       <div class="mc-teams" id="mc-teams"></div>
       <div class="mc-state" id="mc-state"></div>
