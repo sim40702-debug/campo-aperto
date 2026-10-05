@@ -2,6 +2,23 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.4.1 — 05/10/2026 (rete locale: ricerca più robusta e diagnosi)
+- Caso reale: Windows (host) e Mac (client) sull'hotspot di un iPhone, "Impossibile collegarsi al server". L'hotspot può non
+  inoltrare i broadcast UDP e macOS può bloccare la rete locale all'app (permesso "Rete locale"); prima ogni errore di invio era
+  nascosto dietro un messaggio generico.
+- La ricerca scrive anche, in unicast, a tutti gli indirizzi delle sottoreti piccole (da /24 in su, al massimo 1024 destinatari,
+  a gruppi per non sparare tutto insieme), oltre ai broadcast. Il tempo massimo sale a 2 secondi; se l'host risponde si entra subito.
+- Campo facoltativo "Indirizzo dell'host (solo se la ricerca non funziona)" in Unisciti (solo desktop): accetta IP, IP:porta o
+  ws://IP:porta. Viene ricordato dopo un ingresso riuscito e usato come destinatario in più; se la ricerca non risponde si prova
+  il collegamento diretto a quell'indirizzo.
+- Messaggi precisi al posto di quello generico: nessuna rete, invio bloccato (su Mac: istruzioni per il permesso Rete locale),
+  nessuna risposta, host trovato ma connessione rifiutata / scaduta (firewall dell'host) / non raggiungibile; sempre con il codice errore.
+- findGame ora restituisce { url } oppure { url: null, why, detail }. Nuovi: checkHost (prova TCP) e comando IPC lan:check.
+- Nuovo strumento `npm run prova-lan -- IP-host[:porta] CODICE` (scripts/prova-lan.js): controlla passo per passo interfacce, invii UDP,
+  risposta alla ricerca, TCP, WebSocket e ingresso, e indica il passo che fallisce.
+- Versione 0.4.1: tutti i giocatori devono avere la stessa versione.
+- Test: net_test +11 (scansione unicast, why no-reply, analisi dell'indirizzo, checkHost).
+
 ## 0.4.0 — 05/10/2026 (partita in rete locale)
 - Nuovo pulsante "Ospita in rete locale" (solo app desktop): avvia un piccolo server sul computer di chi ospita e apre la
   lobby con il codice. Gli amici scrivono SOLO il codice in "Unisciti": il gioco cerca l'host nella rete con un breve

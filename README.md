@@ -121,6 +121,12 @@ Se la rete blocca la ricerca (alcuni Wi-Fi pubblici o di scuola), nella lobby de
 Il codice non viaggia in chiaro nella rete (nonce e HMAC), ma essendo di 6 caratteri non protegge da un attaccante deciso sulla stessa rete: gioca solo su reti fidate.
 Usano le porte 8787 (TCP, partita) e 8788 (UDP, ricerca). Tutti devono avere la stessa versione del gioco.
 
+Se non funziona:
+- Scrivi l'indirizzo dell'host (quello grande nella sua lobby, per esempio 172.20.10.9:8787) nel campo "Indirizzo dell'host" sotto il codice: funziona anche quando la rete non inoltra la ricerca (per esempio l'hotspot di un telefono). Dopo il primo ingresso il gioco lo ricorda.
+- Per vedere quale passo fallisce: `npm run prova-lan -- IP-DELL-HOST CODICE` (per esempio `npm run prova-lan -- 172.20.10.9 LABC23`) controlla rete, invii, ricerca, connessione e ingresso e dà una conclusione.
+- Mac: Impostazioni di Sistema, Privacy e sicurezza, Rete locale, attiva il Terminale (o l'app con cui avvii il gioco), poi riavvia il gioco.
+- Windows: nel firewall consenti Campo Aperto (electron.exe) per TCP e UDP sulle reti private e pubbliche.
+
 ### Rete di casa (due computer)
 Sul computer che fa da server:
 
