@@ -111,12 +111,15 @@ async def run():
         await A.click('[data-eco=fixtures]'); await A.wait_for_selector('.fxrow', timeout=20000)
         n = await A.evaluate("document.querySelectorAll('.fxrow').length")
         check('PARTITE: elenco dal server (%d)' % n, n >= 2)
+        labels = await A.evaluate("[...document.querySelectorAll('.fxrow .fxcomp')].map(e=>e.textContent)")
+        check('partite del campionato del server: stagione e giornata su ogni partita', len(labels) == n and all('giornata' in x for x in labels), labels[:3])
         await A.screenshot(path=HERE + '/shots/41_partite.png')
         code = await A.evaluate("game.eco.fixtures.next[0].code")
         await A.click('.fxrow[data-fx="%s"]' % code)
         await A.wait_for_function("game.screen==='center' && game.eco.fx && document.querySelectorAll('#mc-markets .sel').length > 0", timeout=20000)
         tabs = await A.evaluate("[...document.querySelectorAll('#mc-tabs .tab')].map(t=>t.textContent)")
         check('centro partita: schede 1X2 / Gol / Corner / Cartellini / Altro', tabs == ['1X2', 'Gol', 'Corner', 'Cartellini', 'Altro'], tabs)
+        check('centro partita: competizione e giornata', 'Serie del server' in (await A.text_content('#mc-comp') or ''))
         for t in ['Gol', 'Corner', 'Cartellini', 'Altro']:
             await A.click('#mc-tabs .tab:has-text("%s")' % t)
             k = await A.evaluate("document.querySelectorAll('#mc-markets .sel').length")
@@ -234,6 +237,18 @@ async def run():
         await A.screenshot(path=HERE + '/shots/47_profilo.png')
         await A.click('#pf-public'); await A.wait_for_timeout(800)
 
+        # ---- competizioni: campionato del server e carriera sull'account ----
+        await A.evaluate("game.showScreen('menu')")
+        await A.click('#btn-comps'); await A.wait_for_function("game.screen==='comps'", timeout=5000)
+        await A.wait_for_function("document.querySelectorAll('#cl-server table.stand tbody tr').length === 8", timeout=15000)
+        check('Competizioni: riquadro Serie del server con la classifica (8 squadre) e la giornata', not await A.is_hidden('#cs-server') and 'Giornata' in await A.text_content('#cl-server'))
+        await A.screenshot(path=HERE + '/shots/48b_serie_server.png')
+        await A.evaluate("game.comps.career.create({kind: 'league', name: 'Sync', teams: [0, 1, 2, 3, 4, 5], userTeam: 0, legs: 1})")
+        await A.wait_for_timeout(2800)   # salvataggio sull'account dopo 2 secondi
+        st_c, sv = http('GET', '/api/me/career', token=tokA)
+        check('carriera salvata sull\'account da sola (una richiesta, dopo 2 s)', st_c == 200 and sv['data'] and any(c['name'] == 'Sync' for c in sv['data']['comps']), st_c)
+        await A.evaluate("game.showScreen('menu')")
+
         # ---- persistenza: refresh, altro browser, logout/login ----
         balA = http('GET', '/api/me/balance', token=tokA)[1]['balance']; balB = http('GET', '/api/me/balance', token=tokB)[1]['balance']
         pre = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), tok: !!game.eco.api.token, url: location.href})")
@@ -256,6 +271,8 @@ async def run():
         await A2.click('#eco-user'); await A2.fill('#ac-user', NA); await A2.fill('#ac-pass', 'password-a1'); await A2.click('#ac-login')
         await A2.wait_for_function("game.screen==='menu' && game.eco.api.me", timeout=30000)
         check('A da un altro browser: stesso saldo %d' % balA, await A2.evaluate("game.eco.api.me.balance") == balA)
+        await A2.wait_for_function("game.comps.career.comps.some(c => c.name === 'Sync')", timeout=15000, polling=250)
+        check('A da un altro browser: ritrova le sue competizioni (carriera dall\'account)', True)
         await A2.click('[data-eco=bets]'); await A2.wait_for_selector('#bt-list .betcard', timeout=15000)
         check('SCOMMESSE di A dall\'altro browser: in corso %d' % await A2.evaluate("document.querySelectorAll('#bt-list .betcard').length"), await A2.evaluate("document.querySelectorAll('#bt-list .betcard').length") == 3)
         await A2.click('[data-bt=top]'); await A2.wait_for_selector('#bt-list table, #bt-list .empty', timeout=15000)

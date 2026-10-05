@@ -51,8 +51,8 @@ async def main():
         f2 = await pg.evaluate("document.activeElement.id")
         await tap(pg, 13)
         f3 = await pg.evaluate("document.activeElement.id")
-        # Home: Gioca, sotto la casella larga Guarda partita, poi la riga di caselle (Multiplayer a sinistra)
-        check('controller: la croce sposta la selezione nel menu', f1 == 'btn-quick' and f2 == 'btn-watch' and f3 == 'btn-online', (f1, f2, f3))
+        # Home: Gioca, sotto le caselle larghe Competizioni e Guarda partita
+        check('controller: la croce sposta la selezione nel menu', f1 == 'btn-quick' and f2 == 'btn-comps' and f3 == 'btn-watch', (f1, f2, f3))
         await tap(pg, 12); await tap(pg, 12)   # su, su: torna a Gioca
         await tap(pg, 0)    # A
         await pg.wait_for_timeout(200)
