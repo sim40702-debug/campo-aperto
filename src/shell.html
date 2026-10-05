@@ -409,6 +409,78 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
 }
+
+/* ---------- competizioni ---------- */
+.comp-tile { border-left: 4px solid var(--flood); }
+.comp-secs { display: grid; gap: 26px; }
+.comp-sec > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.comp-sec > header h3 { margin: 0; }
+.comp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 10px; }
+.comp-card { background: var(--night-2); padding: 14px 16px; border-top: 3px solid var(--flood); display: grid; gap: 8px; }
+.comp-card.done { border-top-color: var(--turf-light); }
+.cc-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cc-top b { font-family: var(--display); font-size: 22px; margin-right: auto; }
+.cc-team { font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cc-team .pos { color: var(--flood); font-weight: 600; }
+.cc-row { display: grid; grid-template-columns: 78px 1fr; gap: 8px; font-size: 14px; }
+.cc-row > span:first-child { color: var(--slate); }
+.cc-prog { height: 6px; background: rgba(243,245,238,0.1); overflow: hidden; }
+.cc-prog i { display: block; height: 100%; background: var(--flood); transition: width 0.25s ease-out; }
+.cc-prog.big { height: 8px; margin-top: 22px; }
+.cc-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.primary.sm { font-size: 17px; padding: 8px 26px 8px 18px; }
+.tt { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.tt.mine { color: var(--flood); font-weight: 600; }
+.kd { display: inline-block; width: 10px; height: 10px; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(0,0,0,0.4); }
+.cp-round { display: flex; gap: 10px; align-items: baseline; margin-bottom: 10px; }
+.cp-round b { font-family: var(--display); font-size: 26px; }
+.nextmatch { background: var(--night-2); padding: 18px 20px; border-left: 4px solid var(--flood); }
+.nextmatch p { margin: 6px 0 0; }
+.nm-teams { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-family: var(--display); font-weight: 700; font-size: clamp(24px, 3vw, 34px); }
+.nm-teams .kd { width: 16px; height: 16px; }
+.nm-teams .vs { font-size: 16px; color: var(--slate); font-weight: 600; }
+.cp-strip { margin: 14px 0 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 15px; }
+.form { display: inline-flex; gap: 3px; vertical-align: middle; }
+.form i { font-style: normal; font-size: 11px; font-weight: 700; width: 17px; height: 17px; display: inline-grid; place-items: center; color: #fff; }
+.form .fV { background: var(--turf); } .form .fN { background: #66707f; } .form .fP { background: #a3352a; }
+.fx-list { display: grid; gap: 4px; }
+.fx-item { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 82px; gap: 12px; align-items: center; background: var(--night-2); padding: 8px 12px; font-size: 15px; }
+.fx-item .h { justify-self: end; text-align: right; } .fx-item .h .tt { flex-direction: row-reverse; }
+.fx-item.mine { box-shadow: inset 3px 0 0 var(--flood); }
+.fx-item .pill { justify-self: end; }
+.sc { font-family: var(--display); font-weight: 800; font-size: 19px; background: var(--chalk); color: var(--night); padding: 0 10px; white-space: nowrap; text-align: center; }
+.sc small { font-family: var(--text); font-weight: 600; font-size: 11px; opacity: 0.75; }
+.sc.none { background: rgba(243,245,238,0.12); color: var(--slate); }
+.pill.played { background: var(--flood); color: var(--night); }
+.tbl-wrap { overflow-x: auto; }
+table.stand { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+table.stand th, table.stand td { padding: 7px 8px; text-align: center; border-bottom: 1px solid rgba(243,245,238,0.07); white-space: nowrap; }
+table.stand th { color: var(--slate); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+table.stand .tl { text-align: left; }
+table.stand tr.mine td { background: rgba(255,216,74,0.08); }
+table.stand tr.q td:first-child { box-shadow: inset 3px 0 0 var(--turf-light); }
+.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 18px; }
+.gsub { margin: 14px 0 6px; font-size: 19px !important; }
+.calnav { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.calnav b { font-family: var(--display); font-size: 22px; }
+.bracket { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.br-col { flex: 0 0 210px; display: flex; flex-direction: column; justify-content: space-around; gap: 8px; }
+.br-col h3 { font-size: 18px !important; }
+.br-tie { background: var(--night-2); padding: 6px 8px; display: grid; gap: 3px; }
+.br-tie.final { border: 1px solid var(--flood); }
+.br-team { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.br-team.win { font-weight: 700; } .br-team.out { opacity: 0.5; } .br-team.tbd { color: var(--slate); font-style: italic; }
+.br-g { font-family: var(--display); font-weight: 700; }
+.champ-line { font-family: var(--display); font-size: 26px; font-weight: 800; }
+.champion { background: linear-gradient(120deg, rgba(255,216,74,0.18), rgba(19,37,59,0.9)); padding: 20px; border-left: 4px solid var(--flood); }
+.champion > b { display: block; font-family: var(--display); font-size: clamp(30px, 4vw, 44px); font-weight: 800; margin: 4px 0; }
+.champ-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 12px; }
+.champ-grid > div { background: rgba(12,26,43,0.6); padding: 10px 12px; display: grid; gap: 2px; }
+.champ-grid b { font-family: var(--display); font-size: 21px; }
+.champ-grid span:last-child { font-size: 13px; color: var(--slate); }
+.hist { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; background: var(--night-2); padding: 10px 14px; }
+select.sel { font: inherit; color: var(--chalk); background: var(--night-2); border: 1px solid rgba(243,245,238,0.25); padding: 9px 10px; max-width: 420px; }
+select.sel:focus { outline: none; border-color: var(--flood); }
 </style>
 </head>
 <body>
@@ -425,6 +497,7 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
     <h1 class="title"><span>Campo</span><span>Aperto</span></h1>
     <button class="primary home-play" id="btn-quick"><b>Gioca</b><small>Partita 11 contro 11 contro l'IA</small></button>
     <div class="home-tiles" role="list">
+      <button class="home-tile wide comp-tile" id="btn-comps" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 3.6M17 6h2.5a2.5 2.5 0 0 1-2.6 3.6"/><path d="M12 13v3.5M8.5 20h7l-.8-3.5H9.3z"/></svg><b>Competizioni</b><small>Campionato, torneo e coppe: calendario, classifica, tabellone</small></button>
       <button class="home-tile wide" id="btn-watch" data-eco="fixtures" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12.5" rx="1.5"/><path d="M8 21h8M12 17.5V21"/><path d="M10 9l5 2.3-5 2.3z" class="f"/></svg><b>Guarda partita</b><small>Partite del server, cronaca e scommesse dei giocatori</small></button>
       <button class="home-tile" id="btn-online" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M2.5 19c.6-3.6 2.8-5.5 5.5-5.5s4.9 1.9 5.5 5.5M13.6 14.6c.9-.7 1.8-1 2.9-1 2.3 0 4 1.6 4.6 4.9"/></svg><b>Multiplayer</b><small>Online o in rete locale</small></button>
       <button class="home-tile" data-eco="bets" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v4a2.5 2.5 0 0 0 0 5v4H4v-4a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 5.5v13" stroke-dasharray="1.6 1.8"/></svg><b>Scommesse</b><small>Schedine, feed, classifiche</small></button>
@@ -631,6 +704,50 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
     <div class="status" id="ac-status" role="status" aria-live="polite"></div>
     <p class="hintline">Server dell'economia: <span id="ac-server"></span> <button class="ghost" id="ac-server-edit" style="padding:4px 10px;font-size:14px;margin-left:6px">Cambia</button></p>
     <div class="actions"><button class="ghost" id="ac-back">Indietro</button></div>
+  </div>
+</section>
+
+<section id="comps" class="panel" hidden>
+  <div class="sheet wide">
+    <h2>Competizioni</h2>
+    <div class="comp-secs">
+      <section class="comp-sec"><header><h3>Campionato</h3><button class="ghost" data-new="league">Nuovo campionato</button></header><div class="comp-list" id="cl-league"></div></section>
+      <section class="comp-sec"><header><h3>Torneo</h3><button class="ghost" data-new="tournament">Nuovo torneo</button></header><div class="comp-list" id="cl-tournament"></div></section>
+      <section class="comp-sec"><header><h3>Coppe</h3><button class="ghost" data-new="cup">Nuova coppa</button></header><div class="comp-list" id="cl-cup"></div></section>
+      <section class="comp-sec" id="cs-server" hidden><header><h3>Serie del server</h3><span class="pill">scommesse</span></header><div id="cl-server"></div></section>
+    </div>
+    <div class="actions"><button class="ghost" id="comps-back">Indietro</button></div>
+  </div>
+</section>
+
+<section id="comp" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2 id="cp-title">Competizione</h2><span class="pill" id="cp-season"></span></div>
+    <div class="tabs" id="cp-tabs" role="tablist"></div>
+    <div id="cp-body"></div>
+    <div class="status" id="cp-status" aria-live="polite"></div>
+    <div class="actions"><button class="ghost" id="cp-back">Competizioni</button><button class="ghost danger" id="cp-delete">Elimina</button></div>
+  </div>
+</section>
+
+<section id="comp-new" class="panel" hidden>
+  <div class="sheet wide">
+    <h2 id="cn-title">Nuova competizione</h2>
+    <div class="opts">
+      <label for="cn-name">Nome</label><input type="text" id="cn-name" maxlength="40" spellcheck="false" autocomplete="off">
+      <label id="cn-preset-l">Modello</label><div class="segs" id="cn-preset"></div>
+      <label id="cn-format-l">Formato</label><div class="segs" id="cn-format"></div>
+      <label>Squadre</label><div class="segs" id="cn-size"></div>
+      <label id="cn-legs-l">Partite</label><div class="segs" id="cn-legs"></div>
+      <label id="cn-et-l">Supplementari</label><div class="segs" id="cn-et"></div>
+      <label id="cn-pen-l">Rigori</label><div class="segs" id="cn-pen"></div>
+      <label for="cn-team">La tua squadra</label><select id="cn-team" class="sel"></select>
+      <label>Durata di un tempo</label><div class="segs" id="cn-len"></div>
+      <label>Difficoltà IA</label><div class="segs" id="cn-diff"></div>
+    </div>
+    <p class="small" id="cn-summary" style="margin-top:16px;line-height:1.5"></p>
+    <div class="status" id="cn-status" aria-live="polite"></div>
+    <div class="actions"><button class="primary" id="cn-create">Crea</button><button class="ghost" id="cn-back">Indietro</button></div>
   </div>
 </section>
 
@@ -843,9 +960,11 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
   <div class="sheet">
     <h2 id="ft-verdict">Fine partita</h2>
     <p class="ft-score" id="ft-score"></p>
+    <p class="ft-comp-note" id="ft-comp-note" hidden></p>
     <div id="ft-goals"></div>
     <table id="ft-stats"></table>
     <div class="actions">
+      <button class="primary" id="ft-comp" hidden>Torna alla competizione</button>
       <button class="primary" id="ft-rematch">Rivincita</button>
       <span class="hintline" id="ft-wait" hidden>In attesa che l'host torni alla lobby…</span>
       <button class="ghost" id="ft-setup">Cambia squadre</button>
