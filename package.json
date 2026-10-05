@@ -1,7 +1,7 @@
 {
   "name": "campo-aperto",
   "productName": "Campo Aperto",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Gioco di calcio 3D originale, undici contro undici",
   "author": "Simone",
   "license": "UNLICENSED",
@@ -24,14 +24,15 @@
     "server": "node server/relay.js",
     "server:lan": "node server/relay.js --host 0.0.0.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ws": "8.22.0"
+  },
   "devDependencies": {
     "@fontsource/saira": "5.3.0",
     "@fontsource/saira-condensed": "5.3.0",
     "electron": "33.4.11",
     "electron-builder": "25.1.8",
-    "three": "0.128.0",
-    "ws": "8.22.0"
+    "three": "0.128.0"
   },
   "overrides": {
     "yauzl": "3.4.0"
@@ -46,6 +47,9 @@
     },
     "files": [
       "desktop/main.js",
+      "desktop/preload.js",
+      "desktop/lan.js",
+      "server/relay.js",
       "desktop/app/**/*",
       "package.json"
     ],

@@ -292,6 +292,10 @@ body.pad-nav .mode:focus b { color: var(--flood); }
         <h3>Crea partita</h3>
         <p>Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.</p>
         <button class="primary" id="on-create">Crea partita</button>
+        <div id="on-lan" hidden>
+          <p style="margin-top:14px">Oppure gioca con amici sulla stessa rete (Wi-Fi o cavo di casa): parte un piccolo server su questo computer e gli amici entrano con il codice. Al primo avvio Windows può chiedere il permesso del firewall: va consentito.</p>
+          <button class="primary" id="on-create-lan">Ospita in rete locale</button>
+        </div>
       </div>
       <div class="card">
         <h3>Unisciti</h3>
@@ -317,6 +321,7 @@ body.pad-nav .mode:focus b { color: var(--flood); }
         <p class="small" id="lb-copied" style="margin:8px 0 0">Dai questo codice agli altri giocatori.</p>
       </div>
     </div>
+    <p class="hintline" id="lb-lan" hidden></p>
     <div class="lobby-grid">
       <div class="col" id="lb-col-0"><h3><span class="kitdot" id="lb-kit-0"></span><span id="lb-team-0">Casa</span></h3><ul id="lb-list-0"></ul><button class="seg" data-side="0">Gioca qui</button></div>
       <div class="col" id="lb-col-1"><h3><span class="kitdot" id="lb-kit-1"></span><span id="lb-team-1">Ospiti</span></h3><ul id="lb-list-1"></ul><button class="seg" data-side="1">Gioca qui</button></div>

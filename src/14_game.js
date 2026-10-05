@@ -124,6 +124,7 @@ class Game {
     $('on-code').oninput = () => { const v = normalizeCode($('on-code').value); if ($('on-code').value !== v) $('on-code').value = v; };
     $('on-code').onkeydown = e => { if (e.key === 'Enter') this.joinOnline(); };
     $('on-create').onclick = () => this.createOnline();
+    $('on-create-lan').onclick = () => this.createOnline(true);
     $('on-join').onclick = () => this.joinOnline();
     $('on-back').onclick = () => this.showScreen('menu');
     $('on-server-edit').onclick = () => this.openSettings('online', 'online');
@@ -1092,6 +1093,8 @@ class Game {
     const blocked = BUILD_TARGET === 'web';
     $('online-webonly').hidden = !blocked;
     $('on-create').disabled = blocked; $('on-join').disabled = blocked;
+    $('on-lan').hidden = !window.campoLan;
+    $('on-create-lan').disabled = blocked;
     $('on-status').textContent = ''; $('on-status').className = 'status';
   }
   onlineName() {
@@ -1103,15 +1106,29 @@ class Game {
     this.busy(null);
     const st = $('on-status');
     st.className = 'status err';
-    st.textContent = e.message + (e.code ? '' : '. Controlla l\'indirizzo del server nelle impostazioni (' + this.settings.server + ').');
+    st.textContent = e.message + (e.code || e.lan ? '' : '. Controlla l\'indirizzo del server nelle impostazioni (' + this.settings.server + ').');
   }
 
-  async createOnline() {
+  // ferma il server in rete locale (se questa sessione lo aveva avviato)
+  stopLan() {
+    if (!this.lanHosting) return;
+    this.lanHosting = false; this.lanInfo = null;
+    try { window.campoLan.hostStop().catch(() => {}); } catch (e) { /* ignora */ }
+  }
+
+  async createOnline(lan) {
     const name = this.onlineName();
-    const link = new NetLink(this.settings.server);
-    let cancelled = false;
-    this.busy('Creo la partita…', () => { cancelled = true; link.leave(); });
+    let url = this.settings.server, cancelled = false, link = null;
+    this.busy(lan ? 'Avvio il server in rete locale…' : 'Creo la partita…', () => { cancelled = true; if (link) link.leave(); this.stopLan(); });
     try {
+      if (lan) {
+        const r = await window.campoLan.hostStart();
+        if (cancelled) { try { window.campoLan.hostStop(); } catch (e) { /* ignora */ } return; }
+        if (!r || r.error) { const er = new Error(r && r.error || 'Non riesco ad avviare il server in rete locale'); er.lan = true; throw er; }
+        this.lanHosting = true; this.lanInfo = r;
+        url = 'ws://127.0.0.1:' + r.port;
+      }
+      link = new NetLink(url);
       await link.create(name);
       if (cancelled) return;
       const host = new HostSession(link, this.db, name);
@@ -1121,17 +1138,27 @@ class Game {
       this.busy(null);
       this.mode = 'menu';
       this.showLobby();
-    } catch (e) { if (!cancelled) this.onlineError(e); }
+    } catch (e) { if (lan) this.stopLan(); if (!cancelled) { if (lan) e.lan = true; this.onlineError(e); } }
   }
 
   async joinOnline() {
     const name = this.onlineName();
     const code = normalizeCode($('on-code').value);
     if (!NET.CODE_RE.test(code)) { this.onlineError(new Error('Il codice è di 6 caratteri, lettere e numeri')); return; }
-    const link = new NetLink(this.settings.server);
-    let cancelled = false;
-    this.busy('Entro nella partita ' + code + '…', () => { cancelled = true; link.leave(); });
+    let link = null, cancelled = false, viaLan = false;
+    const tryLan = !!window.campoLan && code[0] === 'L'; // i codici della rete locale iniziano con L: gli altri non vengono mai cercati in rete
+    this.busy((tryLan ? 'Cerco la partita ' : 'Entro nella partita ') + code + '…', () => { cancelled = true; if (link) link.leave(); });
     try {
+      let url = this.settings.server;
+      if (tryLan) {
+        // prima cerco l'host nella rete locale, poi ripiego sul server impostato
+        let f = null;
+        try { f = await window.campoLan.find(code); } catch (e) { f = null; }
+        if (cancelled) return;
+        if (f && typeof f.url === 'string' && /^ws:\/\/[0-9.]+:\d+$/.test(f.url)) { url = f.url; viaLan = true; }
+      }
+      link = new NetLink(url);
+      if (tryLan) $('busy-text').textContent = 'Entro nella partita ' + code + '…';
       await link.join(code, name);
       if (cancelled) return;
       const client = new ClientSession(link, this.db, name);
@@ -1144,7 +1171,13 @@ class Game {
       client.hello();
       this.busy(null);
       this.showLobby();
-    } catch (e) { if (!cancelled) this.onlineError(e); }
+    } catch (e) {
+      if (cancelled) return;
+      // codice di rete locale non trovato né sul server: suggerimento sulla rete, non solo sull'indirizzo del server
+      if (tryLan && !viaLan && (!e.code || e.code === 'NOT_FOUND')) { e = new Error("Non trovo la partita nella rete locale. Siete sulla stessa rete? Sul computer dell'host il firewall deve consentire il gioco"); e.lan = true; }
+      if (viaLan) e.lan = true;
+      this.onlineError(e);
+    }
   }
 
   bindLinkEvents(link) {
@@ -1155,11 +1188,12 @@ class Game {
     link.on('closed', e => {
       if (!this.net || this.net.link !== link) return;
       const why = { 'host-left': 'L\'host ha chiuso la partita', kicked: 'Sei stato tolto dalla partita', 'server-stop': 'Il server è stato spento' }[e.reason] || 'La partita è stata chiusa';
-      this.net = null;
+      this.net = null; this.stopLan();
       this.backToMenuWith(why, true);
     });
     link.on('lost', () => {
       if (!this.net || this.net.link !== link) return;
+      this.stopLan();
       if (this.net.host && this.net.host.match && this.mode === 'host') {
         // l'host perde il server: la partita continua offline contro l'IA
         const m = this.net.host.match;
@@ -1186,6 +1220,7 @@ class Game {
     const n = this.net;
     this.net = null;
     if (n) { if (n.client) n.client.close(); else n.link.leave(); }
+    this.stopLan();
     $('netind').hidden = true;
     if (toMenu) { this.mode = 'menu'; this.match = null; this.startDemo(); this.showScreen('online'); }
   }
@@ -1203,8 +1238,12 @@ class Game {
     const board = $('lb-board');
     if (flip || board.dataset.code !== code) {
       board.dataset.code = code;
-      board.innerHTML = code.split('').map((ch, i) => '<span class="flap flip" style="animation-delay:' + (i * 0.06) + 's">' + ch + '</span>').join('');
+      board.textContent = '';
+      code.split('').forEach((ch, i) => { const sp = document.createElement('span'); sp.className = 'flap flip'; sp.style.animationDelay = (i * 0.06) + 's'; sp.textContent = ch; board.appendChild(sp); });
     }
+    const li = isHost && this.lanHosting && this.lanInfo;
+    $('lb-lan').hidden = !li;
+    if (li) $('lb-lan').textContent = 'Rete locale: ' + (li.addresses.length ? li.addresses.map(a => a + ':' + li.port).join(' / ') : 'nessuna rete trovata') + ' — gli amici entrano con il codice. Se Windows chiede il permesso del firewall, consentilo.';
     $('lb-sub').textContent = isHost ? 'Sei l\'host: la partita gira sul tuo computer. Tieni aperto il gioco finché giocate.' : 'Sei collegato alla partita. Scegli una squadra e aspetta l\'avvio.';
     if (!L) { $('lb-list-0').innerHTML = '<li class="empty">Caricamento…</li>'; return; }
     const s = L.settings, myId = this.net.link.id;
@@ -1220,11 +1259,12 @@ class Game {
       $('lb-list-' + side).innerHTML = list.length ? list.map(m => {
         const dot = !m.connected ? 'dot bad' : m.ping > 150 ? 'dot warn' : 'dot';
         return '<li class="' + (m.id === myId ? 'me' : '') + '"><span class="' + dot + '" title="' + (m.connected ? 'Collegato' : 'Disconnesso') + '"></span><span class="nm"></span>' +
-          (m.isHost ? '<span class="tag">host</span>' : '') + '<span class="ping">' + (m.isHost ? '' : m.connected ? m.ping + ' ms' : 'perso') + '</span></li>';
+          (m.isHost ? '<span class="tag">host</span>' : '') + '<span class="ping"></span></li>';
       }).join('') : '<li class="empty">Nessuno</li>';
       // i nomi vanno inseriti come testo (mai come HTML)
       const items = $('lb-list-' + side).querySelectorAll('.nm');
-      list.forEach((m, i) => { if (items[i]) items[i].textContent = m.name; });
+      const pings = $('lb-list-' + side).querySelectorAll('.ping');
+      list.forEach((m, i) => { if (items[i]) items[i].textContent = m.name; if (pings[i]) pings[i].textContent = m.isHost ? '' : m.connected ? m.ping + ' ms' : 'perso'; });
       const btn = document.querySelector('[data-side="' + side + '"]');
       btn.classList.toggle('on', !!me && me.side === side);
       btn.disabled = L.phase !== 'lobby' || (side >= 0 && list.length >= NET.MAX_PER_TEAM && !(me && me.side === side));

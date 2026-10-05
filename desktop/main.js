@@ -1,8 +1,33 @@
 // ============================================================
 // APP DESKTOP — apre il gioco in una finestra (Electron)
 // ============================================================
-const { app, BrowserWindow, Menu, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
+const { fileURLToPath } = require('url');
+const lan = require('./lan.js');
+
+const INDEX = path.join(__dirname, 'app', 'index.html');
+const norm = p => { p = path.normalize(p); return process.platform === 'win32' ? p.toLowerCase() : p; };
+const INDEX_NORM = norm(INDEX);
+
+// rete locale: solo la pagina principale del gioco può usare questi comandi
+function fidato(e) {
+  try { return e.senderFrame === e.sender.mainFrame && norm(fileURLToPath(e.senderFrame.url.split(/[?#]/)[0])) === INDEX_NORM; } catch (err) { return false; }
+}
+ipcMain.handle('lan:host-start', async e => {
+  if (!fidato(e)) return { error: 'Richiesta non consentita' };
+  try { const r = await lan.startHost(); return { port: r.port, addresses: r.addresses, discovery: r.discovery }; }
+  catch (err) { return { error: 'Non riesco ad avviare il server in rete locale (porta occupata o rete non disponibile)' }; }
+});
+ipcMain.handle('lan:host-stop', async e => {
+  if (!fidato(e)) return { error: 'Richiesta non consentita' };
+  try { await lan.stopHost(); return { ok: true }; } catch (err) { return { error: 'Non riesco a fermare il server in rete locale' }; }
+});
+ipcMain.handle('lan:find', async (e, code) => {
+  if (!fidato(e)) return { error: 'Richiesta non consentita' };
+  if (typeof code !== 'string' || !lan.CODE_RE.test(code)) return { error: 'Codice non valido' };
+  try { return (await lan.findGame(code)) || { url: null }; } catch (err) { return { url: null }; }
+});
 
 // l'audio del pubblico può partire senza aspettare un clic
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -30,10 +55,16 @@ function creaFinestra() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.js'),
       backgroundThrottling: false,
     },
   });
-  win.loadFile(path.join(__dirname, 'app', 'index.html'));
+  win.loadFile(INDEX);
+  // chiudendo la finestra si ferma anche il server in rete locale
+  win.on('closed', () => { lan.stopHost().catch(() => {}); });
+  // anche ricaricando/navigando la pagina o se il processo di pagina muore
+  win.webContents.on('did-start-navigation', (e, url, isInPlace, isMainFrame) => { if (isMainFrame) lan.stopHost().catch(() => {}); });
+  win.webContents.on('render-process-gone', () => { lan.stopHost().catch(() => {}); });
   // mostro la finestra solo quando è pronta
   win.once('ready-to-show', () => win.show());
 
@@ -61,3 +92,4 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => app.quit());
+app.on('will-quit', () => { lan.stopHost().catch(() => {}); });
