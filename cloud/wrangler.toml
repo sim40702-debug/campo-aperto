@@ -1,0 +1,31 @@
+# Configurazione Cloudflare del backend di Campo Aperto (vedi docs/ECONOMIA.md).
+name = "campo-aperto-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# un giro al minuto: crea le prossime partite, liquida quelle finite, premi di stagione
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "campo-aperto"
+# sostituire con l'id stampato da: npx wrangler d1 create campo-aperto
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "ENGINE"
+class_name = "Engine"
+
+# Durable Object con SQLite: disponibile anche sul piano gratuito
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Engine"]
+
+[vars]
+FIXTURE_INTERVAL_MIN = "10"
+FIXTURES_AHEAD = "6"
+START_BALANCE = "1000"
+SIGNUP_PER_DAY = "5"
+# SIGNUP_SALT è un segreto: npx wrangler secret put SIGNUP_SALT

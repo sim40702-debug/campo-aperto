@@ -4,6 +4,7 @@
 //   node build.js web      -> dist/index.html   (browser, three.js e font da internet)
 //   node build.js test     -> dist/test.html    (test locali con node_modules/three)
 //   node build.js desktop  -> desktop/app/      (app desktop, tutto offline)
+//   node build.js engine   -> cloud/src/engine.gen.js (motore della partita per il server)
 // ============================================================
 const fs = require('fs');
 const path = require('path');
@@ -13,8 +14,24 @@ const root = __dirname;
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const version = pkg.version;
 
-// 1. codice del gioco: tutti i file src che iniziano con due cifre, in ordine
 const srcDir = path.join(root, 'src');
+
+// motore per il server (cloud/): gli stessi file della simulazione del gioco (01..08) in un modulo ES.
+// Il server non ha una seconda simulazione: calcola le partite con questo codice.
+if (target === 'engine') {
+  const sim = fs.readdirSync(srcDir).filter(f => /^0[1-8]_.*\.js$/.test(f)).sort();
+  let mod = '// GENERATO da "node build.js engine": motore di Campo Aperto per il server. Non modificare a mano.\n' +
+    'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = "engine";\n';
+  for (const f of sim) mod += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
+  mod += 'export { Match, buildDatabase, setSeed, makeRng, CONFIG, GAME_VERSION };\n';
+  const out = path.join(root, 'cloud', 'src', 'engine.gen.js');
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, mod);
+  console.log('build engine -> ' + path.relative(root, out) + ' (versione ' + version + ')');
+  process.exit(0);
+}
+
+// 1. codice del gioco: tutti i file src che iniziano con due cifre, in ordine
 const files = fs.readdirSync(srcDir).filter(f => /^\d\d_.*\.js$/.test(f)).sort();
 let code = 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = ' + JSON.stringify(target) + ';\n';
 for (const f of files) code += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
