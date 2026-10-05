@@ -27,7 +27,8 @@ class Economy {
     this.btTab = 'open'; this.btCursor = null; this.lb = { metric: 'profit', period: 'week' };
     this.shopCat = 'tutti'; this.shopItems = [];
     this.loadouts = new Map();     // aspetto dei giocatori (dal server), per pochi minuti
-    this.api.onChange(() => this.renderWallet());
+    this.api.onChange(() => { this.renderWallet(); this.pullPrefs(); });
+    settingsSavedHook = s => this.prefsChanged(s);
     this.bind();
     this.renderWallet();
     if (this.api.loggedIn()) this.api.refresh().catch(() => this.renderWallet());
@@ -40,7 +41,21 @@ class Economy {
   renderWallet() {
     const b = this.balance();
     document.querySelectorAll('[data-balance]').forEach(el => { el.textContent = fmtCoins(b); });
-    $('eco-user').textContent = this.api.loggedIn() ? (this.api.username || 'Profilo') : 'Accedi';
+    const logged = this.api.loggedIn();
+    $('eco-user').textContent = logged ? 'Profilo' : 'Accedi';
+    $('home-name').textContent = logged ? (this.api.username || 'Profilo') : 'Ospite';
+    this.drawHomeAvatar();
+  }
+  // avatar nella scheda del giocatore in alto: l'aspetto indossato (dal server), testa e spalle
+  drawHomeAvatar() {
+    const cv = $('home-avatar');
+    const user = this.api.loggedIn() ? this.api.username : null;
+    const lo = user && this.loadouts.get(user.toLowerCase());
+    drawAvatar(cv, lo && lo.lo ? lo.lo : { items: {}, number: 10, name: '' }, 'capelli');
+    if (user && !lo && !this.avatarLoading) {
+      this.avatarLoading = true;
+      this.loadoutOf(user).then(() => { this.avatarLoading = false; this.drawHomeAvatar(); }, () => { this.avatarLoading = false; });
+    }
   }
   msg(id, text, isErr) {
     const el = $(id);
@@ -76,8 +91,11 @@ class Economy {
     $('mc-watch').onclick = () => this.watch();
     // schedina
     $('slip-min').onclick = () => { this.slip.min = !this.slip.min; this.renderSlip(); };
-    $('slip-clear').onclick = () => { this.slip.items = []; this.slip.copiedFrom = null; this.slip.key = null; this.renderSlip(); this.renderMarkets(); };
-    $('slip-stake').oninput = () => { this.slip.key = null; this.renderSlipTotals(); };
+    $('slip-clear').onclick = () => { this.slip.items = []; this.slip.copiedFrom = null; this.slip.conflict = null; this.slipChanged(); };
+    $('slip-stake').oninput = () => {
+      this.slip.key = null; this.renderSlipTotals();
+      clearTimeout(this.quoteTimer); if (this.slip.items.length) this.quoteTimer = setTimeout(() => this.requote(), 400);
+    };
     $('slip-confirm').onclick = () => this.confirmBet();
     $('slip-public').onchange = () => { this.slip.key = null; };
     // scommesse
@@ -132,6 +150,55 @@ class Economy {
     if (name === 'character') this.loadCharacter();
     if (name === 'profile') this.loadProfile();
     if (slipScreens.includes(name) && this.slip.items.length) { this.requote(); this.every(20000, () => this.requote()); }
+  }
+
+  // ---------- comandi personalizzati sull'account ----------
+  // Con l'account i comandi seguono il giocatore su ogni computer; senza, restano solo su questo (localStorage).
+  // Vince la configurazione modificata per ultima.
+  controlsOf(s) { return { keys: s.keys, padKeys: s.padKeys, mouse: s.mouse, padLayout: s.padLayout, deadzone: s.deadzone, vibration: s.vibration, assistReceive: s.assistReceive }; }
+  prefsChanged(s) {
+    if (this.applyingPrefs) return;
+    const sig = JSON.stringify(this.controlsOf(s));
+    if (sig === this.lastControlsSig) return;
+    const first = this.lastControlsSig === undefined;
+    this.lastControlsSig = sig;
+    if (first) return;                         // primo salvataggio dopo l'avvio: niente di nuovo
+    s.controlsUpdatedAt = Date.now();
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) { /* */ }
+    if (!this.api.loggedIn()) return;
+    clearTimeout(this.prefsTimer);
+    this.prefsTimer = setTimeout(() => {
+      this.api.post('/api/me/prefs', { prefs: Object.assign(this.controlsOf(this.g.settings), { updatedAt: this.g.settings.controlsUpdatedAt }) }).catch(() => { /* al prossimo cambio */ });
+    }, 1500);
+  }
+  pullPrefs() {
+    const me = this.api.me, s = this.g.settings;
+    if (this.lastControlsSig === undefined) this.lastControlsSig = JSON.stringify(this.controlsOf(s));
+    if (!me) return;
+    if (!me.prefs) {
+      // account senza comandi salvati: si salvano quelli di questo computer, se sono stati personalizzati
+      if (s.controlsUpdatedAt && !this.prefsSent) { this.prefsSent = true; this.api.post('/api/me/prefs', { prefs: Object.assign(this.controlsOf(s), { updatedAt: s.controlsUpdatedAt }) }).catch(() => {}); }
+      return;
+    }
+    if (this.prefsSeen === me.prefs.updatedAt) return;
+    this.prefsSeen = me.prefs.updatedAt;
+    const local = s.controlsUpdatedAt || 0;
+    if ((me.prefs.updatedAt || 0) > local) {
+      // configurazione dell'account più recente: si applica qui
+      this.applyingPrefs = true;
+      const p = me.prefs;
+      if (p.keys) s.keys = Object.assign({}, s.keys, p.keys);
+      if (p.padKeys) s.padKeys = Object.assign({}, s.padKeys, p.padKeys);
+      for (const k of ['mouse', 'padLayout', 'deadzone', 'vibration', 'assistReceive']) if (p[k] !== undefined) s[k] = p[k];
+      s.controlsUpdatedAt = p.updatedAt;
+      this.g.input.setKeys(s.keys); this.g.input.setPadKeys(s.padKeys); this.g.input.mouseEnabled = s.mouse; this.g.applyPadSettings();
+      saveSettings(s);
+      this.lastControlsSig = JSON.stringify(this.controlsOf(s));
+      this.applyingPrefs = false;
+      if (this.g.screen === 'settings') this.g.renderSettings();
+    } else if (local > (me.prefs.updatedAt || 0)) {
+      this.api.post('/api/me/prefs', { prefs: Object.assign(this.controlsOf(s), { updatedAt: local }) }).catch(() => {});
+    }
   }
 
   // ---------- account ----------
@@ -320,9 +387,23 @@ class Economy {
     $('mc-markets').innerHTML = (!open ? '<p class="small">' + (f.phase === 'OPEN' || f.phase === 'CLOSED' ? 'Scommesse chiuse: la partita sta per iniziare.' : 'Scommesse chiuse.') + '</p>' : '') +
       (list.length ? list.map(m => '<div class="mkt"><h4>' + esc(m.label) + '</h4><div class="sels">' + m.sels.map(s => {
         const on = this.slip.items.some(i => i.fixture === f.code && i.market === m.id && i.selection === s.id);
-        return '<button class="sel' + (on ? ' on' : '') + '" data-m="' + esc(m.id) + '" data-s="' + esc(s.id) + '"' + (open ? '' : ' disabled') + '><span>' + esc(s.label) + '</span><b>' + fmtOdds(s.odds) + '</b></button>';
+        // smorzata se non può vincere insieme alle selezioni già in schedina (cliccandola si vede il motivo)
+        const blocked = !on && open && this.blockedSel(f.code, m.id, s.id);
+        return '<button class="sel' + (on ? ' on' : '') + (blocked ? ' blocked' : '') + '" data-m="' + esc(m.id) + '" data-s="' + esc(s.id) + '"' + (open ? '' : ' disabled') +
+          (blocked ? ' title="Incompatibile con la schedina"' : '') + '><span>' + esc(s.label) + '</span><b>' + fmtOdds(s.odds) + '</b></button>';
       }).join('') + '</div></div>').join('') : '<p class="empty">Nessun mercato in questa scheda.</p>');
     $('mc-markets').querySelectorAll('[data-m]').forEach(b => b.onclick = () => this.toggleSelection(b.dataset.m, b.dataset.s));
+  }
+
+  // selezioni incompatibili con la schedina, calcolate una volta per ogni stato della schedina (non a ogni disegno)
+  blockedSel(fixture, market, selection) {
+    const sl = this.slip;
+    if (!sl.items.some(i => i.fixture === fixture)) return false;
+    const sig = fixture + '#' + this.slipSig();
+    if (this.blockCache && this.blockCache.sig === sig && market + ':' + selection in this.blockCache.map) return this.blockCache.map[market + ':' + selection];
+    if (!this.blockCache || this.blockCache.sig !== sig) this.blockCache = { sig: sig, map: {} };
+    const r = BetLogic.checkAdd(sl.items, { fixture: fixture, market: market, selection: selection });
+    return (this.blockCache.map[market + ':' + selection] = !r.ok && r.code === 'INCOMPATIBLE');
   }
 
   async loadSocialStats() {
@@ -442,68 +523,148 @@ class Economy {
     catch (e) { this.g.toast(this.errText(e), true); }
   }
 
-  // ---------- schedina ----------
-  toggleSelection(market, selection) {
-    const f = this.fx;
+  // ---------- schedina ("La mia schedina") ----------
+  // Più selezioni anche della stessa partita, se possono vincere insieme: il controllo è BetLogic (lo stesso
+  // codice del server), immediato; quote, quota collegata, bonus e vincita li conferma il server a ogni cambio.
+  slipItem(f, market, selection) {
     const m = f.markets.find(x => x.id === market), s = m && m.sels.find(x => x.id === selection);
-    if (!s) return;
-    const i = this.slip.items.findIndex(x => x.fixture === f.code && x.market === market && x.selection === selection);
-    if (i >= 0) this.slip.items.splice(i, 1);
-    else {
-      // in una schedina ogni partita compare una volta sola: la nuova selezione sostituisce la vecchia
-      const j = this.slip.items.findIndex(x => x.fixture === f.code);
-      const item = { fixture: f.code, home: f.home.name, away: f.away.name, kickoffAt: f.kickoffAt, market: market, selection: selection, marketLabel: m.label, selectionLabel: s.label, odds: s.odds, available: true };
-      if (j >= 0) { this.slip.items[j] = item; this.g.toast('Una selezione per partita: sostituita'); } else this.slip.items.push(item);
-      if (this.slip.items.length > 10) { this.slip.items.pop(); this.g.toast('Al massimo 10 selezioni', true); }
-      this.slip.copiedFrom = null;
-    }
-    this.slip.key = null; this.slip.min = false;
-    $('slip-status').textContent = '';
-    this.renderSlip(); this.renderMarkets();
+    if (!s) return null;
+    return { fixture: f.code, home: f.home.name, away: f.away.name, kickoffAt: f.kickoffAt, market: market, selection: selection, marketLabel: m.label, selectionLabel: s.label, odds: s.odds, available: true };
   }
+  toggleSelection(market, selection) {
+    const f = this.fx, sl = this.slip;
+    const item = this.slipItem(f, market, selection);
+    if (!item) return;
+    const i = sl.items.findIndex(x => x.fixture === f.code && x.market === market && x.selection === selection);
+    if (i >= 0) { sl.items.splice(i, 1); sl.conflict = null; this.slipChanged(); return; }
+    const chk = BetLogic.checkAdd(sl.items, item);
+    if (chk.ok) { sl.items.push(item); sl.conflict = null; sl.copiedFrom = null; this.slipChanged(); return; }
+    if (chk.code === 'TOO_MANY') { this.g.toast('Al massimo ' + BetLogic.MAX_SELECTIONS + ' selezioni in una schedina', true); return; }
+    // incompatibile: non entra; si mostra il motivo e quale selezione lo causa, con la scelta di sostituirla
+    sl.conflict = { item: item, with: chk.conflicts };
+    sl.min = false;
+    this.renderSlip();
+  }
+  conflictText(c) {
+    const lab = x => '«' + x.marketLabel + ': ' + x.selectionLabel + '»';
+    const others = c.with.map(k => this.slip.items[k]).filter(Boolean);
+    return others.length === 1 ? lab(c.item) + ' non si può combinare con ' + lab(others[0]) + '.'
+      : lab(c.item) + ' non può vincere insieme a ' + others.map(lab).join(' e ') + '.';
+  }
+  resolveConflict(replace) {
+    const sl = this.slip, c = sl.conflict;
+    sl.conflict = null;
+    if (replace && c) {
+      sl.items = sl.items.filter((_, k) => !c.with.includes(k));
+      if (BetLogic.checkAdd(sl.items, c.item).ok) sl.items.push(c.item);
+      sl.copiedFrom = null;
+    }
+    this.slipChanged();
+  }
+  // ogni cambio della schedina: nuova chiave di invio, disegno subito (stima locale), quote dal server poco dopo
+  slipChanged() {
+    const sl = this.slip;
+    sl.key = null; sl.min = false; sl.quote = null;
+    $('slip-status').textContent = '';
+    this.renderSlip();
+    if (this.g.screen === 'center') this.renderMarkets();
+    clearTimeout(this.quoteTimer);
+    if (sl.items.length) this.quoteTimer = setTimeout(() => this.requote(), 250);
+  }
+  slipSig() { return this.slip.items.map(i => i.fixture + '|' + i.market + '|' + i.selection + '|' + i.odds).join(';'); }
+
   renderSlip() {
-    const s = this.slip, el = $('slip');
-    el.hidden = !this.slipVisible || !s.items.length;
-    document.body.classList.toggle('slip-open', !el.hidden && !s.min);
-    el.classList.toggle('min', s.min);
-    $('slip-min').textContent = s.min ? 'Apri' : 'Riduci';
-    $('slip-count').textContent = s.items.length ? '(' + s.items.length + ')' : '';
-    if (!s.items.length) return;
-    if (this.slip.publicDefault === undefined) { this.slip.publicDefault = true; $('slip-public').checked = this.api.me ? this.api.me.publicBets : true; }
-    $('slip-items').innerHTML = (s.copiedFrom ? '<p class="small" style="margin:0 0 6px">Copiata da ' + esc(s.copiedFrom) + ': controlla quote e puntata, poi conferma.</p>' : '') +
-      s.items.map((i, k) => '<div class="slip-it' + (i.available === false ? ' bad' : '') + '"><div class="row"><b>' + esc(i.selectionLabel) + '</b><span><b>' + fmtOdds(i.odds) + '</b><button class="x" data-rm="' + k + '" aria-label="Togli">×</button></span></div>' +
-        '<div class="small">' + esc(i.marketLabel) + ' · ' + esc(i.home) + ' – ' + esc(i.away) + '</div>' +
-        (i.origOdds && Math.abs(i.origOdds - i.odds) > 1e-9 ? '<div class="chg">Quota cambiata: originale ' + fmtOdds(i.origOdds) + ', ora ' + fmtOdds(i.odds) + '</div>' : '') +
-        (i.available === false ? '<div class="chg">' + (i.reason === 'CLOSED' ? 'Mercato chiuso: non si può più giocare' : 'Selezione non disponibile') + '</div>' : '') + '</div>').join('');
-    $('slip-items').querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { s.items.splice(Number(b.dataset.rm), 1); s.key = null; this.renderSlip(); this.renderMarkets(); });
+    const sl = this.slip, el = $('slip');
+    el.hidden = !this.slipVisible || (!sl.items.length && !sl.conflict);
+    document.body.classList.toggle('slip-open', !el.hidden && !sl.min);
+    el.classList.toggle('min', sl.min);
+    $('slip-min').textContent = sl.min ? 'Apri' : 'Riduci';
+    $('slip-count').textContent = sl.items.length ? sl.items.length + (sl.items.length === 1 ? ' selezione' : ' selezioni') : '';
+    if (el.hidden) return;
+    if (sl.publicDefault === undefined) { sl.publicDefault = true; $('slip-public').checked = this.api.me ? this.api.me.publicBets : true; }
+    const q = sl.quote && sl.quote.sig === this.slipSig() ? sl.quote : null;
+    const conflictIdx = sl.conflict ? sl.conflict.with : [];
+    // selezioni raggruppate per partita, nell'ordine in cui sono entrate
+    const groups = [];
+    sl.items.forEach((it, k) => {
+      let g = groups.find(x => x.fixture === it.fixture);
+      if (!g) groups.push(g = { fixture: it.fixture, home: it.home, away: it.away, kickoffAt: it.kickoffAt, idx: [] });
+      g.idx.push(k);
+    });
+    const item = (it, k) => {
+      const qi = q && q.items[k];
+      return '<div class="slip-it' + (it.available === false ? ' bad' : '') + (conflictIdx.includes(k) ? ' conflict' : '') + '">' +
+        '<div class="row"><span><b>' + esc(it.selectionLabel) + '</b> <span class="small">' + esc(it.marketLabel) + '</span></span>' +
+        '<span><b>' + fmtOdds(it.odds) + '</b><button class="x" data-rm="' + k + '" aria-label="Togli">×</button></span></div>' +
+        (qi && qi.redundant ? '<div class="small">Già compresa nelle altre selezioni: non cambia la quota e non conta per il bonus</div>' : '') +
+        (it.origOdds && Math.abs(it.origOdds - it.odds) > 1e-9 ? '<div class="chg">Quota cambiata: originale ' + fmtOdds(it.origOdds) + ', ora ' + fmtOdds(it.odds) + '</div>' : '') +
+        (it.available === false ? '<div class="chg">' + (it.reason === 'CLOSED' ? 'Mercato chiuso: non si può più giocare' : 'Selezione non disponibile') + '</div>' : '') + '</div>';
+    };
+    $('slip-items').innerHTML = (sl.copiedFrom ? '<p class="small" style="margin:0 0 6px">Copiata da ' + esc(sl.copiedFrom) + ': controlla quote e puntata, poi conferma.</p>' : '') +
+      groups.map(g => {
+        const qg = q && q.groups.find(x => x.fixture === g.fixture);
+        return '<div class="slip-match"><div class="slip-mh"><b>' + esc(g.home) + ' – ' + esc(g.away) + '</b><span class="small">' +
+          new Date(g.kickoffAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + '</span></div>' +
+          g.idx.map(k => item(sl.items[k], k)).join('') +
+          (qg && qg.correlated ? '<div class="slip-corr">Selezioni collegate della stessa partita: quota della partita <b>' + fmtOdds(qg.odds) + '</b> invece di ' + fmtOdds(qg.product) + '</div>' : '') + '</div>';
+      }).join('');
+    $('slip-items').querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { sl.items.splice(Number(b.dataset.rm), 1); sl.conflict = null; this.slipChanged(); });
+    // conflitto: la selezione nuova non è entrata
+    const cb = $('slip-conflict');
+    cb.hidden = !sl.conflict;
+    if (sl.conflict) {
+      $('slip-conflict-text').textContent = this.conflictText(sl.conflict);
+      $('slip-conflict-replace').onclick = () => this.resolveConflict(true);
+      $('slip-conflict-cancel').onclick = () => this.resolveConflict(false);
+    }
     this.renderSlipTotals();
   }
   renderSlipTotals() {
-    const s = this.slip;
-    const ok = s.items.length && s.items.every(i => i.available !== false && i.odds);
-    const tot = ok ? s.items.reduce((p, i) => p * i.odds, 1) : null;
+    const sl = this.slip;
+    const q = sl.quote && sl.quote.sig === this.slipSig() ? sl.quote : null;
+    const ok = sl.items.length && sl.items.every(i => i.available !== false && i.odds) && (!q || q.valid);
+    // stima immediata con le stesse regole del server (senza la quota collegata, che arriva dal server)
+    const local = sl.items.length ? BetLogic.slipTotals(sl.items) : null;
+    const base = q ? q.baseOdds : local && local.base, bonus = q ? q.bonusPct : local && local.bonus;
+    const total = q ? q.totalOdds : local && local.total, count = q ? q.bonusCount : local && local.bonusCount;
+    const next = q ? q.nextBonus : local && local.next;
     const stake = Math.floor(Number($('slip-stake').value));
-    $('slip-odds').textContent = tot ? fmtOdds(tot) : '—';
-    // stima: la vincita vera la calcola il server con le quote accettate
-    $('slip-win').textContent = tot && stake > 0 ? fmtCoins(Math.floor(Math.round(stake * tot * 1e6) / 1e6)) + ' 🪙' : '—';
-    $('slip-confirm').disabled = !ok || !(stake >= 1);
+    const pre = q ? '' : '≈ ';
+    $('slip-sel').textContent = sl.items.length;
+    $('slip-base').textContent = ok && base ? pre + fmtOdds(base) : '—';
+    $('slip-bonus').textContent = bonus ? '+' + Math.round(bonus * 100) + '%' : 'nessuno';
+    $('slip-bonus-note').textContent = (count !== null && count !== undefined ? count + (count === 1 ? ' selezione valida' : ' selezioni valide') + ' per il bonus' : '') +
+      (next ? ' · con ' + next.at + ' il bonus diventa +' + Math.round(next.bonus * 100) + '%' : '');
+    $('slip-odds').textContent = ok && total ? pre + fmtOdds(total) : '—';
+    $('slip-win').textContent = ok && total && stake > 0 ? pre + fmtCoins(BetLogic.payoutFor(stake, total)) + ' 🪙' : '—';
+    $('slip-confirm').disabled = !ok || !(stake >= 1) || !!sl.conflict;
   }
-  // quote attuali dal server per tutte le selezioni in schedina
+  // quote attuali, quota collegata, bonus e vincita dal server per tutta la schedina
   async requote() {
-    const s = this.slip;
-    if (!s.items.length) return;
+    const sl = this.slip;
+    if (!sl.items.length) return;
+    const stake = Math.floor(Number($('slip-stake').value));
     try {
-      const r = await this.api.post('/api/slip/quote', { items: s.items.map(i => ({ fixture: i.fixture, market: i.market, selection: i.selection })) });
+      const r = await this.api.post('/api/slip/quote', { items: sl.items.map(i => ({ fixture: i.fixture, market: i.market, selection: i.selection })), stake: stake > 0 ? stake : undefined });
       this.sync(r.serverTime);
+      let moved = false;
       r.items.forEach((q, k) => {
-        const it = s.items[k];
+        const it = sl.items[k];
         if (!it || it.fixture !== q.fixture || it.market !== q.market || it.selection !== q.selection) return;
-        if (q.odds && it.odds && Math.abs(q.odds - it.odds) > 1e-9 && !it.origOdds) it.origOdds = it.odds;
+        if (q.odds && it.odds && Math.abs(q.odds - it.odds) > 1e-9) { moved = true; if (!it.origOdds) it.origOdds = it.odds; }
         if (q.odds) it.odds = q.odds;
         it.available = q.available; it.reason = q.reason;
         it.marketLabel = q.marketLabel || it.marketLabel; it.selectionLabel = q.selectionLabel || it.selectionLabel;
         it.home = q.home || it.home; it.away = q.away || it.away;
       });
+      r.sig = this.slipSig();
+      sl.quote = r;
+      if (!r.valid && r.errors.length) { $('slip-status').className = 'status err'; $('slip-status').textContent = r.errors[0].message; }
+      else if (moved) {
+        // una quota è cambiata mentre la schedina era aperta: si conferma solo dopo averla vista
+        sl.oddsMovedAt = performance.now(); sl.key = null;
+        $('slip-status').className = 'status err'; $('slip-status').textContent = 'Quota cambiata: controlla le nuove quote e conferma di nuovo';
+      }
       this.renderSlip();
     } catch (e) { /* si riprova al prossimo giro o alla conferma */ }
   }
@@ -512,7 +673,7 @@ class Economy {
     try {
       const b = await this.api.get('/api/bets/' + code);
       this.slip.items = b.items.map(i => ({ fixture: i.fixture, home: i.home, away: i.away, kickoffAt: i.kickoffAt, market: i.market, selection: i.selection, marketLabel: i.marketLabel, selectionLabel: i.selectionLabel, odds: i.odds, origOdds: i.odds, available: true }));
-      this.slip.copiedFrom = b.code; this.slip.key = null; this.slip.min = false;
+      this.slip.copiedFrom = b.code; this.slip.key = null; this.slip.min = false; this.slip.conflict = null; this.slip.quote = null;
       this.slipVisible = true;
       $('slip-stake').value = Math.max(1, Math.min(b.stake, this.balance() || b.stake));
       this.renderSlip();
@@ -524,6 +685,8 @@ class Economy {
   async confirmBet() {
     if (this.needLogin()) return;
     const s = this.slip, st = $('slip-status');
+    // un clic arrivato un istante dopo un cambio di quota non vale: il giocatore deve vedere la quota nuova
+    if (s.oddsMovedAt && performance.now() - s.oddsMovedAt < 700) return;
     const stake = Math.floor(Number($('slip-stake').value));
     if (!(stake >= 1)) { st.className = 'status err'; st.textContent = 'Scrivi una puntata di almeno 1 moneta'; return; }
     // la chiave resta la stessa se si riprova dopo un errore di rete: il server non registra due volte
@@ -536,7 +699,7 @@ class Economy {
         stake: stake, clientKey: s.key, visibility: $('slip-public').checked ? 'public' : 'private', copiedFrom: s.copiedFrom || undefined,
       });
       this.g.toast('Scommessa ' + r.bet.code + ' giocata: ' + fmtCoins(r.bet.stake) + ' 🪙 @' + fmtOdds(r.bet.odds));
-      s.items = []; s.copiedFrom = null; s.key = null;
+      s.items = []; s.copiedFrom = null; s.key = null; s.quote = null; s.conflict = null;
       st.textContent = '';
       this.renderSlip();
       this.api.refreshBalance().catch(() => {});
@@ -549,10 +712,11 @@ class Economy {
           const it = s.items.find(i => i.fixture === c.fixture && i.market === c.market && i.selection === c.selection);
           if (it) { if (!it.origOdds) it.origOdds = c.old; it.odds = c.new; }
         }
-        s.key = null;
+        s.key = null; s.oddsMovedAt = performance.now();
         this.renderSlip();
         st.textContent = 'Quota cambiata: controlla le nuove quote e conferma di nuovo';
       } else if (e.code === 'BETTING_CLOSED') { s.key = null; await this.requote(); st.textContent = e.message; }
+      else if (e.code === 'INCOMPATIBLE' || e.code === 'DUPLICATE' || e.code === 'PAYOUT_TOO_HIGH' || e.code === 'ODDS_TOO_HIGH') { s.key = null; st.textContent = e.message; }
       else if (e.code === 'INSUFFICIENT_FUNDS') { s.key = null; st.textContent = 'Saldo insufficiente (' + fmtCoins(this.balance()) + ' 🪙)'; this.api.refreshBalance().catch(() => {}); }
       else if (e.code === 'OFFLINE') st.textContent = e.message + '. Puoi riprovare: la scommessa non verrà registrata due volte.';
       else { s.key = null; st.textContent = this.errText(e); }

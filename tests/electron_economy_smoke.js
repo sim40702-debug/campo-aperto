@@ -59,6 +59,19 @@ app.whenReady().then(async () => {
     fs.mkdirSync(path.join(__dirname, 'shots'), { recursive: true });
     fs.writeFileSync(path.join(__dirname, 'shots', '60_electron_economia.png'), (await win.webContents.capturePage()).toPNG());
     check('nessun errore nella console (CSP compresa)', errori.length === 0, errori.slice(0, 3));
+    // riavvio dell'app: finestra nuova sulla stessa partizione. Resta collegato (solo il token sul computer)
+    // e il saldo arriva di nuovo dal server
+    // (la finestra nuova si apre prima di chiudere la vecchia: senza finestre Electron inizierebbe a chiudersi)
+    const part = win.webContents.session;
+    const win2 = new BrowserWindow({ width: 1200, height: 760, show: true, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, session: part } });
+    win.destroy();
+    await win2.loadFile(file);
+    const js2 = s => win2.webContents.executeJavaScript(s);
+    const t0 = Date.now(); let dopo = false;
+    while (Date.now() - t0 < 30000) { if (await js2('!!(window.game && game.loaded && game.eco.api.me && game.eco.api.me.balance === 1025)')) { dopo = true; break; } await pausa(150); }
+    check('riavvio: ancora collegato, saldo 1025 dal server', dopo);
+    const sess = await js2("JSON.parse(localStorage.getItem('campoAperto.session.v1') || '{}')");
+    check('sul computer solo nome e token (niente saldo)', Object.keys(sess).sort().join() === 'token,username', Object.keys(sess));
   } catch (e) {
     console.error(e); fail++;
   } finally {

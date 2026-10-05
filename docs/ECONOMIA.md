@@ -23,6 +23,21 @@ aggiornarlo, fare i backup e tornare indietro. Il codice è in `cloud/`.
   (`cloud/scripts/calibra-quote.mjs` → `cloud/src/odds-model.json`), con un margine del 6%, e scendono un po' se una
   selezione è giocata molto più del suo peso. Il client manda la quota che ha visto: se nel frattempo è cambiata la
   giocata non parte (`409 ODDS_CHANGED`) e il giocatore deve confermare di nuovo.
+- **Multiple vere** (`cloud/src/betlogic.js`, lo stesso file nel server e nel gioco): fino a 20 selezioni, anche più
+  mercati della stessa partita se possono vincere insieme. Ogni selezione è una condizione sui fatti della partita;
+  una combinazione è valida se esiste almeno un esito che le soddisfa tutte (si provano gli esiti possibili, per gruppi
+  indipendenti: gol, corner, cartellini, rigore, tiri, possesso). Esempi: 1-0 + Over 1.5 no, 1-0 + Under 2.5 sì,
+  2-2 + BTTS Sì sì, 1 + X no. Se una selezione nuova non è compatibile non entra e il gioco dice quale selezione la
+  blocca, con "Sostituisci" o "Annulla".
+- **Quote delle multiple**: quota base = prodotto delle quote. Per più selezioni della stessa partita il server usa la
+  probabilità congiunta del modello (come un "bet builder"): la quota della partita è il minimo tra il prodotto e la
+  quota congiunta, così 1-0 + Under 2.5 non paga due volte lo stesso esito. Poi il **bonus multipla** a soglie
+  (`BONUS_TIERS` in betlogic.js): 5 selezioni +5%, 10 +10%, 15 +15%, 20 +25%. Contano le selezioni con quota da 1.20 in
+  su e non già implicate da altre della stessa partita. Quota finale = base × (1 + bonus); vincita = puntata × quota
+  finale, con un massimo di 1.000.000 di monete (`MAX_PAYOUT`).
+- **Liquidazione delle multiple**: persa appena una selezione perde; vinta quando tutte le altre sono vinte. Una
+  selezione annullata (partita VOID) esce dal prodotto e il bonus si ricalcola sulle selezioni rimaste, mai sopra
+  quello concesso alla giocata.
 - **Social**: scommesse dei giocatori (solo pubbliche e di profili pubblici), copia (riempie la schedina, non gioca),
   codici BET-XXXXX da condividere, reazioni 🔥👏💀👀, selezioni più giocate, statistiche, classifiche per profitto, ROI,
   percentuale di vittorie, numero di scommesse e serie (mai per saldo), con periodi giorno, settimana, mese, stagione.
@@ -32,6 +47,10 @@ aggiornarlo, fare i backup e tornare indietro. Il codice è in `cloud/`.
 - **Ricompense**: 1.000 monete alla registrazione, bonus giornaliero (100 + 10 per giorno di fila fino a +60, doppio nel
   fine settimana), premio spettatore (20 monete nel secondo tempo di una partita del server, massimo 3 al giorno),
   7 obiettivi, premi di stagione (trimestre) ai primi tre per profitto.
+
+- **Partite online**: lo stesso Worker fa da relay per giocare via internet: tutti a `wss://…workers.dev/relay`,
+  un Durable Object per ogni codice partita (più partite insieme). Il server inoltra soltanto i messaggi: la partita la
+  simula il computer di chi la crea.
 
 ## Architettura
 
@@ -174,7 +193,12 @@ Consumo stimato di questo server:
   20 secondi quando è tutto fermo, più le quote ogni 15 secondi: circa 400-800 richieste all'ora;
 - gli eventi delle partite vecchie senza scommesse si cancellano dopo 14 giorni.
 
-Con un gruppo di amici si sta largamente nei limiti. Se il gioco cresce, il piano Workers a pagamento alza tutti i limiti.
+- una partita online con 5 persone: l'host manda 30 aggiornamenti al secondo e ogni giocatore fino a 30 comandi al
+  secondo; Cloudflare conta i messaggi WebSocket in arrivo a gruppi di 20 come una richiesta, quindi nel caso peggiore
+  circa 27.000 richieste per ora di gioco (da verificare sulla pagina dei prezzi dei Durable Objects).
+
+Con un gruppo di amici si sta nei limiti; se giocate online molte ore al giorno, controllate il riquadro "Utilizzo"
+della dashboard. Se il gioco cresce, il piano Workers a pagamento alza tutti i limiti.
 
 ## Sicurezza: cosa controlla il server
 
@@ -216,6 +240,7 @@ Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'acc
 | `GET /me`, `GET /me/balance`, `GET /me/transactions?before=` | sì | profilo, saldo, movimenti (30 per pagina) |
 | `GET /me/bets?status=open\|settled&before=` | sì | le tue scommesse (20 per pagina) |
 | `POST /me/privacy` `{publicBets}`, `POST /me/avatar` `{number,name}`, `POST /me/daily` | sì | privacy, numero e nome, bonus |
+| `POST /me/prefs` `{prefs}` | sì | comandi personalizzati salvati sull'account (tasti, pulsanti, controller) |
 | `GET /players/:nome`, `GET /players/:nome/loadout` | — | profilo pubblico, aspetto del personaggio |
 | `GET /fixtures` | — | partite in corso, prossime, finite |
 | `GET /fixtures/:codice` | — | dettaglio, mercati con quote attuali, eventi già avvenuti |
@@ -223,7 +248,7 @@ Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'acc
 | `GET /fixtures/:codice/bets?before=\|after=` | — | scommesse dei giocatori (20 per pagina) |
 | `GET /fixtures/:codice/popular`, `GET /fixtures/:codice/stats` | — | più giocate, statistiche (in cache 10 s) |
 | `POST /fixtures/:codice/watch-reward` | sì | premio spettatore |
-| `POST /slip/quote` `{items}` | — | quote attuali e disponibilità della schedina |
+| `POST /slip/quote` `{items, stake}` | — | quote attuali, compatibilità, quota per partita, bonus, vincita |
 | `POST /bets` `{items, stake, clientKey, visibility, copiedFrom}` | sì | gioca una scommessa |
 | `GET /bets/:codice`, `POST /bets/status` `{codes}` | — | una scommessa (se visibile), esiti di più scommesse |
 | `POST /bets/:codice/share`, `POST /bets/:codice/visibility`, `POST /bets/:codice/react` | sì | condividi, pubblica/privata, reazione |
@@ -235,7 +260,7 @@ Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'acc
 
 ```bash
 cd cloud
-npm test                                 # mercati (21) e API (100) contro il server vero in locale
+npm test                                 # mercati, schedine (68), API (114) e relay (22) contro il server vero in locale
 cd ..
 npm run build:test
 python3 tests/economy_browser_test.py    # il gioco nel browser con due giocatori e il server locale

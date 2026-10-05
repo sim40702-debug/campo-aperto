@@ -44,17 +44,31 @@ def start_server(persist):
         time.sleep(0.5)
     raise RuntimeError('server non partito')
 
-async def newpage(b, w=1280, h=800):
-    ctx = await b.new_context(viewport={'width': w, 'height': h})
-    pg = await ctx.new_page()
+async def newpage(b, w=1280, h=800, profile=None):
+    # profile: cartella del profilo (Chromium su disco, come l'app desktop con la sua partizione persistente).
+    # Senza, contesto in memoria: per le pagine file:// Chromium può perdere il localStorage a un ricaricamento.
+    if profile:
+        ctx = await b.launch_persistent_context(profile, args=ARGS, viewport={'width': w, 'height': h})
+        pg = ctx.pages[0] if ctx.pages else await ctx.new_page()
+    else:
+        ctx = await b.new_context(viewport={'width': w, 'height': h})
+        pg = await ctx.new_page()
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
+    # diagnostica: richieste fuori dal server locale, risposte d'errore, chiavi tolte dal localStorage (con lo stack)
+    pg.net = []
+    pg.on('request', lambda r: pg.net.append('ALTRO SERVER ' + r.method + ' ' + r.url) if r.url.startswith('http') and not r.url.startswith(API) and 'cdnjs' not in r.url and 'fonts.' not in r.url else None)
+    pg.on('console', lambda m: pg.net.append(m.text) if m.text.startswith('[rm]') else None)
+    pg.on('response', lambda r: pg.net.append('HTTP %d %s %s' % (r.status, r.request.method, r.url)) if r.status >= 400 else None)
+    await pg.add_init_script('(() => { const rm = Storage.prototype.removeItem; Storage.prototype.removeItem = function (k) { console.warn("[rm] removeItem " + k + " " + new Error().stack.replace(/\\s+/g, " ").slice(0, 600)); return rm.call(this, k); }; })()')
     s = {'quality': 'bassa', 'dynamicRes': False, 'apiUrl': API}
     await pg.add_init_script('if (!localStorage.getItem("campoAperto.settings.v1")) localStorage.setItem("campoAperto.settings.v1", ' + json.dumps(json.dumps(s)) + ')')
     await pg.goto(URL)
-    await pg.wait_for_function('window.game && window.game.loaded', timeout=60000)
+    await pg.wait_for_function('window.game && window.game.loaded', timeout=60000, polling=250)
     return ctx, pg, errs
+
+def pg_net_dump(pg): return [x for x in pg.net if '/api/me/daily' not in x][-15:]
 
 async def text(pg, sel): return (await pg.text_content(sel) or '').strip()
 async def menu_balance(pg): return await pg.evaluate("document.querySelector('#eco-wallet [data-balance]').textContent")
@@ -81,7 +95,8 @@ async def run():
     async with async_playwright() as p:
         b = await p.chromium.launch(args=ARGS)
         ctxA, A, errA = await newpage(b)
-        ctxB, B, errB = await newpage(b)
+        # B su un profilo su disco: serve per controllare che il ricaricamento lasci collegati (sezione persistenza)
+        ctxB, B, errB = await newpage(p.chromium, profile=tempfile.mkdtemp(prefix='campo-e2e-profB-'))
         check('menu: saldo sconosciuto senza account (nessun valore inventato)', await menu_balance(A) == '—' and await text(A, '#eco-user') == 'Accedi')
         await A.screenshot(path=HERE + '/shots/40_menu_economia.png')
         await register(A, NA, 'password-a1')
@@ -141,10 +156,25 @@ async def run():
         http('POST', '/api/bets', {'items': [{'fixture': code, 'market': '1X2', 'selection': '1', 'odds': q['odds']}], 'stake': 800, 'clientKey': 'bigbet' + sfx}, tokA)
         await B.fill('#slip-stake', '10')
         await B.click('#slip-confirm')
-        await B.wait_for_function("document.getElementById('slip-status').textContent.includes('Quota cambiata')", timeout=15000)
+        # appena compare "Quota cambiata" un secondo clic immediato (stesso istante, nella pagina): non deve giocare
+        fast_ms = await B.evaluate("""() => new Promise((ok, ko) => {
+            const t0 = performance.now();
+            const tick = () => {
+                if (document.getElementById('slip-status').textContent.includes('Quota cambiata')) {
+                    document.getElementById('slip-confirm').click();
+                    return ok(Math.round(performance.now() - game.eco.slip.oddsMovedAt));
+                }
+                if (performance.now() - t0 > 15000) return ko(new Error('niente Quota cambiata'));
+                setTimeout(tick, 20);
+            };
+            tick();
+        })""")
         chg = await B.evaluate("document.getElementById('slip').innerText")
         check('quota ricontrollata alla conferma: "Quota cambiata", originale e attuale', 'Quota cambiata' in chg and ('originale %.2f' % home_odds) in chg, chg.replace('\n', ' | '))
         check('dopo "Quota cambiata" nessun addebito', http('GET', '/api/me/balance', token=tokB)[1]['balance'] == 1000)
+        await B.wait_for_timeout(300)
+        check('un clic subito dopo il cambio di quota non conferma niente (%d ms dopo)' % fast_ms, http('GET', '/api/me/bets', token=tokB)[1]['bets'] == [] and await B.evaluate("game.eco.slip.items.length") == 1)
+        await B.wait_for_timeout(800)   # il giocatore guarda la quota nuova
         await B.click('#slip-confirm')
         await B.wait_for_function("game.eco.slip.items.length===0", timeout=15000)
         bb = http('GET', '/api/me/bets', token=tokB)[1]['bets']
@@ -205,10 +235,14 @@ async def run():
 
         # ---- persistenza: refresh, altro browser, logout/login ----
         balA = http('GET', '/api/me/balance', token=tokA)[1]['balance']; balB = http('GET', '/api/me/balance', token=tokB)[1]['balance']
+        pre = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), tok: !!game.eco.api.token, url: location.href})")
         await B.reload()
-        try: await B.wait_for_function("window.game && game.loaded && game.eco.api.me", timeout=30000)
+        post = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), settingsFields: Object.keys(JSON.parse(localStorage.getItem('campoAperto.settings.v1') || '{}')).length, url: location.href})")
+        print('localStorage di B prima/dopo il ricaricamento:', pre, post, flush=True)
+        try: await B.wait_for_function("window.game && game.loaded && game.eco.api.me", timeout=30000, polling=250)
         except Exception:
-            print('errori B:', errB[-5:], await B.evaluate("({loaded: window.game && game.loaded, tok: !!(window.game && game.eco.api.token)})"), flush=True); raise
+            print('rete B:', pg_net_dump(B), flush=True)
+            print('errori B:', errB[-5:], await B.evaluate("({loaded: window.game && game.loaded, tok: !!(window.game && game.eco.api.token), me: !!(window.game && game.eco.api.me), screen: window.game && game.screen})"), flush=True); raise
         check('refresh di B: ancora collegato, saldo %d' % balB, await B.evaluate("game.eco.api.me.balance") == balB and await menu_balance(B) == format(balB, ',').replace(',', '.'))
         ctxA2, A2, errA2 = await newpage(b)
         await A2.click('#eco-user'); await A2.fill('#ac-user', NA); await A2.fill('#ac-pass', 'password-a1'); await A2.click('#ac-login')
@@ -219,17 +253,19 @@ async def run():
         await A2.click('[data-bt=top]'); await A2.wait_for_selector('#bt-list table, #bt-list .empty', timeout=15000)
         await A2.screenshot(path=HERE + '/shots/48_scommesse.png')
         check('classifica senza saldo', 'Saldo' not in await A2.evaluate("document.getElementById('bt-list').innerText"))
+        await ctxA2.close()
 
         # ---- multiplayer: ognuno vede l'aspetto dell'altro, letto dal server (non mandato dai giocatori) ----
-        relay = subprocess.Popen(['node', os.path.join(ROOT, 'server', 'relay.js'), '--port', str(PORT + 1)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(0.8)
+        # nessun server impostato: si usa il relay del Worker dell'economia (stesso indirizzo per tutti, /relay)
         try:
             for pg in (A, B):
-                await pg.evaluate("game.settings.server='ws://127.0.0.1:%d'; game.showScreen('menu')" % (PORT + 1))
+                await pg.evaluate("game.settings.server=''; game.showScreen('menu')")
             await A.click('#btn-online'); await A.wait_for_timeout(200)
+            check('online senza impostazioni: server predefinito = relay del Worker', await A.evaluate("game.onlineServer()") == 'ws://127.0.0.1:%d/relay' % PORT and await A.evaluate("document.getElementById('on-create').textContent") == 'Crea partita online')
             check('online con account: il nome è quello dell\'account', await A.evaluate("document.getElementById('on-name').value") == NA and await A.evaluate("document.getElementById('on-name').disabled"))
             await A.click('#on-create'); await A.wait_for_function("game.screen==='lobby'", timeout=15000)
             room = await A.evaluate("game.net.link.code")
+            check('partita creata sul Worker con il codice ' + room, len(room) == 6 and room[0] != 'L')
             await B.click('#btn-online'); await B.wait_for_timeout(200)
             await B.fill('#on-code', room); await B.click('#on-join')
             await B.wait_for_function("game.screen==='lobby' && game.net.client.lobby && game.net.client.lobby.members.length===2", timeout=15000)
@@ -246,7 +282,65 @@ async def run():
             await A.screenshot(path=HERE + '/shots/51_online_cosmetici.png')
             await A.evaluate("game.quitToMenu()"); await B.wait_for_function("game.screen==='menu'", timeout=15000)
         finally:
-            relay.terminate()
+            pass
+
+        # ---- transizioni: la schermata nasce al suo posto (nessuno spostamento laterale) ----
+        ctxC, C, errC = await newpage(b)
+        NC = 'carla_' + sfx
+        await register(C, NC, 'password-c1')
+        await C.evaluate("game.showScreen('menu')")
+        # posizione a ogni fotogramma dal clic in poi (24 fotogrammi, qualunque sia la velocità della macchina)
+        await C.evaluate("window.__xs=[]; window.__done=false; document.querySelector('[data-eco=fixtures]').click(); (function f(n){ window.__xs.push(document.querySelector('#fixtures .sheet').getBoundingClientRect().left); if (n < 24) requestAnimationFrame(()=>f(n+1)); else window.__done=true; })(0);")
+        await C.wait_for_function("window.__done", timeout=30000, polling=100)
+        xs = await C.evaluate("window.__xs.filter(x => x !== 0)")
+        final = await C.evaluate("document.querySelector('#fixtures .sheet').getBoundingClientRect().left")
+        check('transizione: la schermata entra al suo posto (spostamento massimo %.1f px, mai fuori schermo)' % (max(abs(x - final) for x in xs) if xs else 0), xs and min(xs) >= 0 and max(abs(x - final) for x in xs) <= 8, xs[:6])
+
+        # ---- multipla sulla stessa partita costruita dall'interfaccia, conflitti ----
+        await C.wait_for_selector('.fxrow[data-fx="%s"]' % code, timeout=20000)
+        await C.click('.fxrow[data-fx="%s"]' % code)
+        await C.wait_for_function("game.screen==='center' && document.querySelectorAll('#mc-markets .sel').length > 0", timeout=20000)
+        await C.click('#mc-markets [data-m="1X2"][data-s="1"]')
+        await C.click('#mc-tabs .tab:has-text("Gol")')
+        over = await C.evaluate("game.eco.fx.markets.find(m=>m.id==='TG').sels.find(s=>/^O/.test(s.id)).id")
+        await C.click('#mc-markets [data-m="TG"][data-s="%s"]' % over)
+        check('stessa partita: 1 + %s entrambe in schedina' % over, await C.evaluate("game.eco.slip.items.length===2 && !game.eco.slip.conflict"))
+        await C.click('#mc-markets [data-m="CS"][data-s="0-1"]')
+        await C.wait_for_function("!document.getElementById('slip-conflict').hidden", timeout=5000)
+        ctext = await C.evaluate("document.getElementById('slip-conflict-text').textContent")
+        check('selezione incompatibile: non entra, si vede il motivo e la selezione in conflitto', await C.evaluate("game.eco.slip.items.length===2 && document.querySelectorAll('#slip .slip-it.conflict').length>=1") and '0-1' in ctext and 'non' in ctext, ctext)
+        await C.click('#slip-conflict-cancel')
+        check('Annulla: la schedina resta com\'era', await C.evaluate("game.eco.slip.items.length===2 && document.getElementById('slip-conflict').hidden"))
+        await C.click('#mc-markets [data-m="CS"][data-s="0-1"]')
+        await C.click('#slip-conflict-replace')
+        sl = await C.evaluate("game.eco.slip.items.map(i=>i.market+':'+i.selection)")
+        check('Sostituisci: tolta la selezione in conflitto, aggiunta la nuova', 'CS:0-1' in sl and '1X2:1' not in sl, sl)
+        await C.click('#mc-tabs .tab:has-text("1X2")')
+        check('selezioni incompatibili smorzate (1X2 "1" con 0-1 in schedina)', await C.evaluate("document.querySelector('#mc-markets [data-m=\"1X2\"][data-s=\"1\"]').classList.contains('blocked') && !document.querySelector('#mc-markets [data-m=\"1X2\"][data-s=\"2\"]').classList.contains('blocked')"))
+        await C.wait_for_function("game.eco.slip.quote && game.eco.slip.quote.valid", timeout=10000)
+        st = await C.evaluate("({sel: document.getElementById('slip-sel').textContent, odds: document.getElementById('slip-odds').textContent, bonus: document.getElementById('slip-bonus').textContent, txt: document.getElementById('slip').innerText})")
+        check('La mia schedina: selezioni, quota totale, bonus, partita', st['sel'] == str(len(sl)) and st['odds'] != '—' and 'La mia schedina' in st['txt'], st)
+        await C.fill('#slip-stake', '10')
+        await C.click('#slip-confirm')
+        await C.wait_for_function("game.eco.slip.items.length===0", timeout=15000)
+        tokC = await C.evaluate('game.eco.api.token')
+        cb = http('GET', '/api/me/bets', token=tokC)[1]['bets']
+        check('multipla della stessa partita accettata dal server (%d selezioni)' % (len(cb[0]['items']) if cb else 0), len(cb) == 1 and len(cb[0]['items']) == len(sl) and all(i['fixture'] == code for i in cb[0]['items']))
+        await C.screenshot(path=HERE + '/shots/52_multipla_stessa_partita.png')
+
+        # ---- comandi personalizzati salvati sull'account: un altro browser li ritrova ----
+        await C.evaluate("game.settings.keys.sprint = ['KeyX', 'ShiftRight']; game.input.setKeys(game.settings.keys); saveSettings(game.settings)")
+        await C.wait_for_timeout(2500)
+        ctxC2, C2, errC2 = await newpage(b)
+        await C2.click('#eco-user'); await C2.fill('#ac-user', NC); await C2.fill('#ac-pass', 'password-c1'); await C2.click('#ac-login')
+        await C2.wait_for_function("game.screen==='menu' && game.eco.api.me", timeout=30000)
+        await C2.wait_for_function("game.settings.keys.sprint[0]==='KeyX'", timeout=10000)
+        check('comandi personalizzati: sull\'altro browser Scatto = X (dall\'account)', await C2.evaluate("game.input.keys.sprint[0]==='KeyX'"))
+        await C2.reload(); await C2.wait_for_function("window.game && game.loaded", timeout=60000, polling=250)
+        check('comandi personalizzati: restano dopo il refresh', await C2.evaluate("game.settings.keys.sprint[0]==='KeyX'"))
+        for nm, e in [('C', errC), ('C2', errC2)]:
+            check('nessun errore JavaScript (%s)' % nm, len(e) == 0, e[:3])
+        await ctxC2.close(); await ctxC.close()   # meno pagine 3D aperte insieme (rendering software nei test)
 
         # ---- guarda partita: sincronizzata con il server ----
         fx = http('GET', '/api/fixtures/' + code)[1]
@@ -286,6 +380,8 @@ async def run():
 
         for nm, e in [('A', errA), ('B', errB), ('A2', errA2)]:
             check('nessun errore JavaScript (%s)' % nm, len(e) == 0, e[:3])
+        await ctxB.close()
         await b.close()
 
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())
