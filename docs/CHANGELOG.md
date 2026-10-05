@@ -28,7 +28,7 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
   (la partita libera tra IA resta nella stessa schermata). Impostazioni → Online → Server dell'economia.
 - App desktop: la politica di sicurezza permette HTTPS verso il server dell'economia. Release: variabile CAMPO_API_URL.
 - Test: mercati (21), API contro il server vero in locale (100: sicurezza, 20 test social, saldi persistenti anche dopo il
-  riavvio del server, liquidazione), gioco nel browser con due giocatori (46).
+  riavvio del server, liquidazione), gioco nel browser con due giocatori (45), app desktop Electron con il server (6).
 
 ## 0.5.0 — 05/10/2026 (arbitro vero, fisica più credibile, grafica)
 - Arbitro (nuovo src/08_referee.js). Prima il fallo era un numero casuale: probabilità di base più scivolata più "da dietro",

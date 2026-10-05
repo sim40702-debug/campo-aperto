@@ -182,7 +182,13 @@ npm run build:desktop
 npx electron tests/electron_smoke.js
 ```
 
-Su Linux senza schermo anteponi `xvfb-run` all'ultimo comando.
+Con il server dell'economia in locale (serve `npm install` in `cloud/`):
+
+```bash
+npx electron tests/electron_economy_smoke.js
+```
+
+Su Linux senza schermo anteponi `xvfb-run` ai comandi Electron; se lavori come root aggiungi `--no-sandbox` dopo `electron`.
 
 ### Nota tecnica: Node.js 26
 

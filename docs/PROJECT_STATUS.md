@@ -31,8 +31,8 @@ generato da `node build.js engine` con gli stessi file 01..08 (impronta ENGINE_I
 Test: rules_test.js (31), referee_test.js (54), sim_test.js, net_test.js (83, relay e WebSocket veri), browser_test.py (28), controls_browser_test.py (27,
 controller simulato), online_browser_test.py (15, due giocatori), electron_smoke.js (16, app vera con tasti reali e due finestre online).
 
-Test dell'economia: cloud/test/markets_test.js (21), cloud/test/api_test.js (100, contro wrangler dev), economy_browser_test.py (46,
-due giocatori nel browser, server locale, multiplayer con cosmetici, visione sincronizzata).
+Test dell'economia: cloud/test/markets_test.js (21), cloud/test/api_test.js (100, contro wrangler dev), economy_browser_test.py (45,
+due giocatori nel browser, server locale, multiplayer con cosmetici, visione sincronizzata), electron_economy_smoke.js (6).
 
 ## Funzionalità completate (verificate)
 - Economia (0.6.0): account, portafoglio sul server, partite del server, 25 mercati, singole e multiple, liquidazione,
