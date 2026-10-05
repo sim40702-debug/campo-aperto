@@ -8,6 +8,8 @@ code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, NET, Net
 require('vm').runInThisContext(code);
 const A = globalThis.__api;
 const { createRelay } = require('../server/relay.js');
+const lan = require('../desktop/lan.js');
+const dgram = require('dgram');
 
 let ok = 0, fail = 0;
 function check(name, cond, extra) { if (cond) { ok++; console.log('OK  ', name); } else { fail++; console.log('FAIL', name, extra === undefined ? '' : extra); } }
@@ -166,6 +168,148 @@ function startLoops(host, clients, hostInput) {
   raw.close();
   const health = await fetch('http://127.0.0.1:' + relay.port + '/health').then(r => r.json());
   check('server ancora attivo dopo tutti i test', health.ok === true, JSON.stringify(health));
+
+  // --- rete locale: server integrato + ricerca con il solo codice (porte di prova, non quelle predefinite)
+  const crypto = require('crypto');
+  const hm = (k, d) => crypto.createHmac('sha256', k).update(d).digest('hex');
+  const query = (code, extra) => { const n = crypto.randomBytes(16).toString('hex'); return Buffer.from(JSON.stringify(Object.assign({ q: 'campo-aperto', v: 1, d: 2, n, h: hm(code, n) }, extra || {}))); };
+  const LP = { port: 0, discoveryPort: 38788 };
+  const lh = await lan.startHost(LP);
+  check('LAN: host avviato con porta valida', lh.port > 0 && Array.isArray(lh.addresses) && lh.discovery, JSON.stringify(lh));
+  check('LAN: avvio ripetuto idempotente', (await lan.startHost(LP)).port === lh.port);
+  const lhLink = new A.NetLink('ws://127.0.0.1:' + lh.port);
+  const lc = await lhLink.create('Simone');
+  check('LAN: il codice della rete locale inizia con L', lc.code[0] === 'L', lc.code);
+  const found = await lan.findGame(lc.code, { discoveryPort: LP.discoveryPort });
+  check('LAN: findGame trova l host dal solo codice (HMAC)', found && /^ws:\/\/\d+\.\d+\.\d+\.\d+:\d+$/.test(found.url) && found.url.endsWith(':' + lh.port), JSON.stringify(found));
+  const lcLink = new A.NetLink(found ? found.url : url);
+  let lerr = null;
+  try { await lcLink.join(lc.code, 'Luca'); } catch (e) { lerr = e; }
+  check('LAN: un client entra tramite l indirizzo trovato', !lerr && lcLink.code === lc.code, lerr && lerr.message);
+  // solo chi ospita (loopback) può creare: dall indirizzo di rete la create viene rifiutata
+  if (lh.addresses.length) {
+    let rej = null;
+    try { await new A.NetLink('ws://' + lh.addresses[0] + ':' + lh.port).create('Intruso'); } catch (e) { rej = e; }
+    check('LAN: create da un indirizzo non loopback rifiutata', rej && rej.code === 'LOCAL_ONLY', rej && rej.message);
+  } else check('LAN: create da indirizzo non loopback (nessuna rete, saltato)', true);
+  const t0 = Date.now();
+  check('LAN: codice sbagliato -> null', (await lan.findGame('LZZZZZ', { discoveryPort: LP.discoveryPort, timeout: 600 })) === null);
+  check('LAN: codice malformato -> null subito', (await lan.findGame('abc', { discoveryPort: LP.discoveryPort })) === null && Date.now() - t0 < 1500);
+  // datagrammi malformati o vecchi: ignorati, nessuna risposta, il responder resta vivo
+  await wait(1100);
+  const probe = dgram.createSocket('udp4'); let got = 0, last = null; probe.on('message', b => { got++; last = b; });
+  await new Promise(r => probe.bind(0, '127.0.0.1', r));
+  const dgBad = [Buffer.from('non json'), Buffer.alloc(5000, 65), Buffer.from('[1,2]'), Buffer.from('null'),
+    Buffer.from(JSON.stringify({ q: 'campo-aperto', v: 1, code: lc.code })),               // vecchio formato in chiaro
+    query(lc.code, { h: 'a'.repeat(64) }), query(lc.code, { n: 'xyz' }), query(lc.code, { d: 1 }), query(lc.code, { v: 99 }), query(lc.code, { q: 'altro' }),
+    query('LZZZZZ')];                                                                      // codice che non è una stanza viva
+  for (const b of dgBad) probe.send(b, LP.discoveryPort, '127.0.0.1');
+  await wait(300);
+  check('LAN: datagrammi non validi e query in chiaro senza risposta', got === 0, got);
+  await wait(1100);
+  const qb = query(lc.code), qn = JSON.parse(qb.toString());
+  probe.send(qb, LP.discoveryPort, '127.0.0.1');
+  await until(() => got > 0, 1000);
+  const rp = got ? JSON.parse(last.toString()) : {};
+  check('LAN: query HMAC valida -> risposta piccola con h2 corretto, senza codice', got === 1 && rp.port === lh.port && rp.h2 === hm(lc.code, qn.n + ':' + lh.port) && !('code' in rp) && last.length < 200, got);
+  // limite per indirizzo: 30 query valide in un colpo, ne vengono servite al massimo 10
+  await wait(1100); got = 0;
+  for (let i = 0; i < 30; i++) probe.send(query(lc.code), LP.discoveryPort, '127.0.0.1');
+  await wait(500);
+  check('LAN: limite di richieste per indirizzo (max 10 al secondo)', got > 0 && got <= 10, got);
+  probe.close();
+  await wait(1100);
+  // risposte false: findGame le scarta (h2 sbagliato, h2 di un altro codice, porta fuori intervallo, formato errato)
+  const fake = dgram.createSocket('udp4');
+  await new Promise(r => fake.bind(39999, '127.0.0.1', r));
+  fake.on('message', (b, ri) => {
+    let q; try { q = JSON.parse(b.toString()); } catch (e) { return; }
+    const base = { a: 'campo-aperto', v: 1, d: 2 };
+    for (const m of [{ port: 1234, h2: 'b'.repeat(64) }, { port: 1234, h2: hm('LZZZZZ', q.n + ':1234') }, { port: 99999, h2: hm('LABCDE', q.n + ':99999') }, { port: '80', h2: 'x' }])
+      fake.send(JSON.stringify(Object.assign({}, base, m)), ri.port, ri.address);
+    fake.send('xx', ri.port, ri.address);
+  });
+  check('LAN: risposte con h2 sbagliato o incoerenti scartate', (await lan.findGame('LABCDE', { discoveryPort: 39999, timeout: 800 })) === null);
+  fake.close();
+  lhLink.leave(); lcLink.leave();
+  await lan.stopHost();
+  check('LAN: stopHost libera le porte (riavvio possibile)', await lan.startHost(LP).then(() => true, () => false));
+  // avvio e arresto in fila: un arresto in coda non spegne un host avviato dopo
+  const pStop = lan.stopHost(), pStart = lan.startHost(LP);
+  await pStop; const again = await pStart;
+  check('LAN: stop poi start in fila -> host attivo', again.port > 0);
+  await lan.stopHost(); await lan.stopHost();
+  check('LAN: stopHost sicuro se non avviato', true);
+
+  // --- opzioni del relay per la rete locale
+  const relLan = await createRelay({ port: 0, quiet: true, lanCodes: true, maxRooms: 50 });
+  const relStd = await createRelay({ port: 0, quiet: true, maxRooms: 1000 });
+  const mk = async (rel, n) => { const out = []; for (let i = 0; i < n; i++) { const l = new A.NetLink('ws://127.0.0.1:' + rel.port); out.push((await l.create('x')).code); l.left = true; } return out; };
+  check('relay con lanCodes: tutti i codici iniziano con L', (await mk(relLan, 20)).every(c2 => c2[0] === 'L'));
+  const std = await mk(relStd, 200);
+  check('relay normale: nessun codice inizia con L (200 creazioni)', std.every(c2 => c2[0] !== 'L') && std.every(c2 => A.NET.CODE_RE.test(c2)));
+  await relLan.close(); await relStd.close();
+  const relIdle = await createRelay({ port: 0, quiet: true, unattachedMs: 300, maxConns: 2 });
+  const idle = await new A.NetLink('ws://127.0.0.1:' + relIdle.port).open();
+  let idleClosed = false; idle.onclose = () => { idleClosed = true; };
+  check('relay: socket senza stanza chiuso dopo unattachedMs', await until(() => idleClosed, 2000));
+  const keep = []; for (let i = 0; i < 3; i++) keep.push(await new A.NetLink('ws://127.0.0.1:' + relIdle.port).open().catch(() => null));
+  const full = await until(() => !keep[2] || keep[2].readyState === 3, 1500);
+  check('relay: oltre maxConns il socket viene chiuso', full);
+  keep.forEach(k => { try { if (k) k.close(); } catch (e) { /* */ } });
+  await relIdle.close();
+
+  // --- un server malevolo non può imporre un codice diverso o non valido
+  const { WebSocketServer } = require('ws');
+  const evil = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+  await new Promise(r => evil.on('listening', r));
+  evil.on('connection', ws2 => ws2.on('message', d => {
+    const m = JSON.parse(d.toString());
+    if (m.t === 'join') ws2.send(JSON.stringify({ t: 'joined', code: 'ZZZZZZ', id: 'a', token: 'b', hostId: 'c' }));
+    if (m.t === 'create') ws2.send(JSON.stringify({ t: 'created', code: '<img src=x onerror=alert(1)>', id: 'a', token: 'b' }));
+  }));
+  const evUrl = 'ws://127.0.0.1:' + evil.address().port;
+  let e1 = null, e2 = null;
+  try { await new A.NetLink(evUrl).join('LABCDE', 'x'); } catch (e) { e1 = e; }
+  try { await new A.NetLink(evUrl).create('x'); } catch (e) { e2 = e; }
+  check('join: codice diverso da quello richiesto -> rifiutato', e1 && /non valida/.test(e1.message), e1 && e1.message);
+  check('create: codice non valido -> rifiutato', e2 && /non valida/.test(e2.message), e2 && e2.message);
+  evil.close();
+
+  // --- lobby ostile: il client la ripulisce o la ignora
+  const stub = { on() { return this; }, toHost() {}, leave() {} };
+  const cs = new A.ClientSession(stub, db, 'x'); clearInterval(cs.pingTimer);
+  const okLobby = { t: 'lobby', code: 'LABCDE', hostId: 'h', phase: 'lobby', settings: { home: 0, away: 1, halfSeconds: 120, difficulty: 1 },
+    members: [{ id: 'a', name: 'N'.repeat(40), side: 7, connected: 1, ping: '<img src=x onerror=alert(1)>', isHost: 'si', extra: 1 }, null, { id: 'b', name: 5, side: 1, connected: true, ping: 123456, isHost: false }] };
+  cs.onMsg(okLobby);
+  const lbx = cs.lobby;
+  check('lobby ostile: ping HTML ripulito, nome accorciato, lato e booleani normalizzati', lbx && lbx.members.length === 2 && lbx.members[0].ping === 0 && lbx.members[0].name.length === 16 && lbx.members[0].side === -1 && lbx.members[0].connected === false && lbx.members[0].isHost === false && !('extra' in lbx.members[0]) && lbx.members[1].ping === 9999 && lbx.members[1].name === '', JSON.stringify(lbx));
+  cs.lobby = null;
+  cs.onMsg(Object.assign({}, okLobby, { settings: { home: 999, away: 1, halfSeconds: 120, difficulty: 1 } }));
+  check('lobby ostile: indice squadra fuori intervallo -> messaggio ignorato', cs.lobby === null);
+  cs.onMsg(Object.assign({}, okLobby, { settings: { home: 0, away: 1, halfSeconds: '<b>', difficulty: 1 } }));
+  check('lobby ostile: durata non numerica -> messaggio ignorato', cs.lobby === null);
+  cs.onMsg(Object.assign({}, okLobby, { members: 'x' }));
+  check('lobby ostile: members non array -> messaggio ignorato', cs.lobby === null);
+  cs.onMsg(Object.assign({}, okLobby, { code: '<x>', members: new Array(20).fill({ id: 'q', name: 'q', side: 0, connected: true, ping: 1, isHost: false }) }));
+  check('lobby ostile: codice non valido scartato, al massimo 8 membri', cs.lobby && cs.lobby.code === '' && cs.lobby.members.length === 8);
+
+  // --- il relay locale rifiuta le pagine web (Origin http/https), accetta chi non ha Origin
+  const { WebSocket: WsC } = require('ws');
+  const relOrig = await createRelay({ port: 0, quiet: true, createLocalOnly: true });
+  const oUrl = 'ws://127.0.0.1:' + relOrig.port;
+  const evilWs = new WsC(oUrl, { headers: { Origin: 'http://evil.example' } });
+  let evilGot = false, evilClosed = false;
+  evilWs.on('open', () => evilWs.send(JSON.stringify({ t: 'create', v: 1, name: 'x' })));
+  evilWs.on('message', () => { evilGot = true; }); evilWs.on('close', () => { evilClosed = true; }); evilWs.on('error', () => { evilClosed = true; });
+  await until(() => evilClosed, 2000);
+  check('relay locale: Origin http://evil.example rifiutato, nessuna stanza creata', evilClosed && !evilGot && relOrig.rooms.size === 0, relOrig.rooms.size);
+  const fileWs = new WsC(oUrl, { headers: { Origin: 'file://' } });
+  let fileOk = false; fileWs.on('open', () => fileWs.send(JSON.stringify({ t: 'create', v: 1, name: 'x' }))); fileWs.on('message', () => { fileOk = true; }); fileWs.on('error', () => {});
+  await until(() => fileOk, 2000); fileWs.close();
+  const noOrig = await new A.NetLink(oUrl).create('y').then(() => true, () => false);
+  check('relay locale: Origin file:// e client senza Origin accettati', fileOk && noOrig);
+  await relOrig.close();
 
   await relay.close();
   console.log('\nRisultato: ' + ok + ' superati, ' + fail + ' falliti');
