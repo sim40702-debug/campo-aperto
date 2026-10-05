@@ -29,11 +29,13 @@ cloud/: server dell'economia (Cloudflare Worker + D1 + Durable Object "Engine" e
 wss://…/relay), vedi docs/ECONOMIA.md. Regole delle schedine in cloud/src/betlogic.js, lo stesso file nel server e nel gioco. Il motore del server è
 generato da `node build.js engine` con gli stessi file 01..08 (impronta ENGINE_ID = SHA-256 dei file); RNG per partita
 (Match opts.rng) per rigiocare uguale una partita dal seme. Quote da cloud/src/odds-model.json (Monte Carlo col motore vero).
-Test: rules_test.js (31), referee_test.js (54), sim_test.js, net_test.js (83, relay e WebSocket veri), browser_test.py (28), controls_browser_test.py (27,
-controller simulato), online_browser_test.py (15, due giocatori), electron_smoke.js (16, app vera con tasti reali e due finestre online).
+Test: rules_test.js, referee_test.js, sim_test.js, net_test.js (83, relay e WebSocket veri), browser_test.py (28), controls_browser_test.py (27,
+controller simulato, Home nuova), online_browser_test.py (16, due giocatori), electron_smoke.js (16, app vera con tasti reali e due finestre online).
 
-Test dell'economia: cloud/test/markets_test.js (21), cloud/test/api_test.js (100, contro wrangler dev), economy_browser_test.py (45,
-due giocatori nel browser, server locale, multiplayer con cosmetici, visione sincronizzata), electron_economy_smoke.js (6).
+Test dell'economia: cloud/test/markets_test.js (22), cloud/test/betlogic_test.js (68, regole delle schedine),
+cloud/test/api_test.js (114, contro wrangler dev), cloud/test/relay_test.js (22), economy_browser_test.py (60, due giocatori nel
+browser, server locale, multipla della stessa partita, conflitti, transizioni, quota cambiata, multiplayer con cosmetici,
+visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio compreso).
 
 ## Funzionalità completate (verificate)
 - 0.7.0: multiple vere (più mercati della stessa partita se compatibili, motore unico validateBetCombination, quota

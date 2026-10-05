@@ -61,9 +61,10 @@ app.whenReady().then(async () => {
     check('nessun errore nella console (CSP compresa)', errori.length === 0, errori.slice(0, 3));
     // riavvio dell'app: finestra nuova sulla stessa partizione. Resta collegato (solo il token sul computer)
     // e il saldo arriva di nuovo dal server
+    // (la finestra nuova si apre prima di chiudere la vecchia: senza finestre Electron inizierebbe a chiudersi)
     const part = win.webContents.session;
-    win.destroy();
     const win2 = new BrowserWindow({ width: 1200, height: 760, show: true, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, session: part } });
+    win.destroy();
     await win2.loadFile(file);
     const js2 = s => win2.webContents.executeJavaScript(s);
     const t0 = Date.now(); let dopo = false;
