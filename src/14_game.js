@@ -129,6 +129,7 @@ class Game {
     $('on-back').onclick = () => this.showScreen('menu');
     $('on-server-edit').onclick = () => this.openSettings('online', 'online');
     $('lb-copy').onclick = () => this.copyCode();
+    $('lb-lan-copy').onclick = () => this.copyLanAddr();
     $('lb-leave').onclick = () => this.leaveOnline(true);
     $('lb-start').onclick = () => { if (this.net && this.net.host) { const m = this.net.host.start(); if (m) this.enterOnlineMatch(m); } };
     document.querySelectorAll('[data-side]').forEach(b => b.onclick = () => this.pickSide(Number(b.dataset.side)));
@@ -1138,6 +1139,7 @@ class Game {
       this.busy(null);
       this.mode = 'menu';
       this.showLobby();
+      if (lan && this.lanInfo) this.toast(this.lanInfo.addresses.length ? 'Server avviato su ' + this.lanInfo.addresses[0] + ':' + this.lanInfo.port : 'Server avviato, ma non trovo la rete');
     } catch (e) { if (lan) this.stopLan(); if (!cancelled) { if (lan) e.lan = true; this.onlineError(e); } }
   }
 
@@ -1243,7 +1245,13 @@ class Game {
     }
     const li = isHost && this.lanHosting && this.lanInfo;
     $('lb-lan').hidden = !li;
-    if (li) $('lb-lan').textContent = 'Rete locale: ' + (li.addresses.length ? li.addresses.map(a => a + ':' + li.port).join(' / ') : 'nessuna rete trovata') + ' — gli amici entrano con il codice. Se Windows chiede il permesso del firewall, consentilo.';
+    if (li) {
+      const ad = li.addresses;
+      $('lb-lan-addr').textContent = ad.length ? ad[0] + ':' + li.port : 'nessuna rete trovata';
+      $('lb-lan-copy').hidden = !ad.length;
+      $('lb-lan-more').hidden = ad.length < 2;
+      $('lb-lan-more').textContent = ad.length < 2 ? '' : 'Altri indirizzi: ' + ad.slice(1).map(a => a + ':' + li.port).join(' / ');
+    }
     $('lb-sub').textContent = isHost ? 'Sei l\'host: la partita gira sul tuo computer. Tieni aperto il gioco finché giocate.' : 'Sei collegato alla partita. Scegli una squadra e aspetta l\'avvio.';
     if (!L) { $('lb-list-0').innerHTML = '<li class="empty">Caricamento…</li>'; return; }
     const s = L.settings, myId = this.net.link.id;
@@ -1297,6 +1305,17 @@ class Game {
     const done = () => { $('lb-copied').textContent = 'Codice copiato: ' + code; };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, () => { $('lb-copied').textContent = 'Copia non riuscita: il codice è ' + code; });
     else $('lb-copied').textContent = 'Il codice è ' + code;
+  }
+
+  // copia l'indirizzo del server in rete locale (ws://IP:porta)
+  copyLanAddr() {
+    const li = this.lanInfo;
+    if (!li || !li.addresses.length) return;
+    const url = 'ws://' + li.addresses[0] + ':' + li.port;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(() => this.toast('Indirizzo copiato: ' + url), () => this.toast('Copia non riuscita: l\'indirizzo è ' + url, true));
+      else this.toast('L\'indirizzo è ' + url);
+    } catch (e) { this.toast('Copia non riuscita: l\'indirizzo è ' + url, true); }
   }
 
   enterOnlineMatch(m) {
