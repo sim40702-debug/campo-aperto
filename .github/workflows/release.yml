@@ -17,6 +17,11 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    # bash anche su Windows: PowerShell spezza "-c.publish.releaseType=draft" in "-c" e ".publish...",
+    # ed electron-builder prende il secondo pezzo per un file di configurazione (ENOENT)
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
