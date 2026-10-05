@@ -20,7 +20,8 @@ const crypto = require('crypto');
 // impronta del motore: SHA-256 dei file della simulazione (01..08). Uguale nel gioco e nel server se e solo se
 // la simulazione è la stessa: una partita del server si può rigiocare nel gioco solo con la stessa impronta
 const simFiles = fs.readdirSync(srcDir).filter(f => /^0[1-8]_.*\.js$/.test(f)).sort();
-const engineId = crypto.createHash('sha256').update(simFiles.map(f => f + '\n' + fs.readFileSync(path.join(srcDir, f), 'utf8')).join('\n')).digest('hex').slice(0, 12);
+// gli a capo si normalizzano: su Windows git può scrivere i file con CRLF, ma il codice (e la partita) è lo stesso
+const engineId = crypto.createHash('sha256').update(simFiles.map(f => f + '\n' + fs.readFileSync(path.join(srcDir, f), 'utf8').replace(/\r\n?/g, '\n')).join('\n')).digest('hex').slice(0, 12);
 
 // motore per il server (cloud/): gli stessi file della simulazione del gioco (01..08) in un modulo ES.
 // Il server non ha una seconda simulazione: calcola le partite con questo codice.
