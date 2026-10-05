@@ -10,8 +10,8 @@ crons = ["* * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "campo-aperto"
-# sostituire con l'id stampato da: npx wrangler d1 create campo-aperto
-database_id = "00000000-0000-0000-0000-000000000000"
+# id del database creato con: npx wrangler d1 create campo-aperto
+database_id = "8f877b1f-9087-47e6-a2c0-3e5d595bba02"
 migrations_dir = "migrations"
 
 [[durable_objects.bindings]]
