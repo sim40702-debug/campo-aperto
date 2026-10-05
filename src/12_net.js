@@ -63,11 +63,15 @@ class NetLink {
   on(type, fn) { (this.handlers[type] = this.handlers[type] || []).push(fn); return this; }
   emit(type, data) { for (const fn of this.handlers[type] || []) { try { fn(data); } catch (e) { console.error(e); } } }
 
+  // indirizzo con la stanza: il relay del Worker (un indirizzo per tutti) sceglie la stanza dal codice già
+  // all'apertura; i relay Node (rete locale, server/relay.js) ignorano questi parametri
+  roomUrl(query) { return query ? this.url + (this.url.indexOf('?') >= 0 ? '&' : '?') + query : this.url; }
+
   // apre il socket; rifiuta se il server non risponde entro "ms"
-  open(ms) {
+  open(ms, query) {
     return new Promise((resolve, reject) => {
       let ws;
-      try { ws = new WebSocket(this.url); } catch (e) { reject(netError('UNREACHABLE', 'Indirizzo del server non valido')); return; }
+      try { ws = new WebSocket(this.roomUrl(query)); } catch (e) { reject(netError('UNREACHABLE', 'Indirizzo del server non valido')); return; }
       ws.binaryType = 'arraybuffer';
       const timer = setTimeout(() => { try { ws.close(); } catch (e) { /* */ } reject(netError('TIMEOUT', 'Connessione scaduta: il server non risponde')); }, ms || 6000);
       ws.onopen = () => { clearTimeout(timer); resolve(ws); };
@@ -125,7 +129,7 @@ class NetLink {
 
   async create(name) {
     this.state = 'connecting';
-    const ws = await this.open();
+    const ws = await this.open(undefined, 'op=create');
     this.ws = ws;
     try {
       const r = await this.request({ t: 'create', v: NET.PROTOCOL, name: name }, ['created']);
@@ -140,7 +144,7 @@ class NetLink {
     code = normalizeCode(code);
     if (!NET.CODE_RE.test(code)) throw netError('BAD_CODE', 'Codice partita non valido: sono 6 caratteri, lettere e numeri');
     this.state = 'connecting';
-    const ws = await this.open(this.openMs || undefined);
+    const ws = await this.open(this.openMs || undefined, 'code=' + code);
     this.ws = ws;
     try {
       const r = await this.request({ t: 'join', v: NET.PROTOCOL, code: code, name: name }, ['joined']);
@@ -160,7 +164,7 @@ class NetLink {
       await new Promise(r => setTimeout(r, w));
       if (this.left) return;
       try {
-        const ws = await this.open(4000);
+        const ws = await this.open(4000, 'code=' + this.code);
         this.ws = ws;
         const r = await this.request({ t: 'resume', v: NET.PROTOCOL, code: this.code, token: this.token }, ['resumed']);
         this.hostId = r.hostId;

@@ -33,6 +33,10 @@ aggiornarlo, fare i backup e tornare indietro. Il codice è in `cloud/`.
   fine settimana), premio spettatore (20 monete nel secondo tempo di una partita del server, massimo 3 al giorno),
   7 obiettivi, premi di stagione (trimestre) ai primi tre per profitto.
 
+- **Partite online**: lo stesso Worker fa da relay per giocare via internet: tutti a `wss://…workers.dev/relay`,
+  un Durable Object per ogni codice partita (più partite insieme). Il server inoltra soltanto i messaggi: la partita la
+  simula il computer di chi la crea.
+
 ## Architettura
 
 ```
@@ -174,7 +178,12 @@ Consumo stimato di questo server:
   20 secondi quando è tutto fermo, più le quote ogni 15 secondi: circa 400-800 richieste all'ora;
 - gli eventi delle partite vecchie senza scommesse si cancellano dopo 14 giorni.
 
-Con un gruppo di amici si sta largamente nei limiti. Se il gioco cresce, il piano Workers a pagamento alza tutti i limiti.
+- una partita online con 5 persone: l'host manda 30 aggiornamenti al secondo e ogni giocatore fino a 30 comandi al
+  secondo; Cloudflare conta i messaggi WebSocket in arrivo a gruppi di 20 come una richiesta, quindi nel caso peggiore
+  circa 27.000 richieste per ora di gioco (da verificare sulla pagina dei prezzi dei Durable Objects).
+
+Con un gruppo di amici si sta nei limiti; se giocate online molte ore al giorno, controllate il riquadro "Utilizzo"
+della dashboard. Se il gioco cresce, il piano Workers a pagamento alza tutti i limiti.
 
 ## Sicurezza: cosa controlla il server
 

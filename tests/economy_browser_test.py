@@ -221,15 +221,16 @@ async def run():
         check('classifica senza saldo', 'Saldo' not in await A2.evaluate("document.getElementById('bt-list').innerText"))
 
         # ---- multiplayer: ognuno vede l'aspetto dell'altro, letto dal server (non mandato dai giocatori) ----
-        relay = subprocess.Popen(['node', os.path.join(ROOT, 'server', 'relay.js'), '--port', str(PORT + 1)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(0.8)
+        # nessun server impostato: si usa il relay del Worker dell'economia (stesso indirizzo per tutti, /relay)
         try:
             for pg in (A, B):
-                await pg.evaluate("game.settings.server='ws://127.0.0.1:%d'; game.showScreen('menu')" % (PORT + 1))
+                await pg.evaluate("game.settings.server=''; game.showScreen('menu')")
             await A.click('#btn-online'); await A.wait_for_timeout(200)
+            check('online senza impostazioni: server predefinito = relay del Worker', await A.evaluate("game.onlineServer()") == 'ws://127.0.0.1:%d/relay' % PORT and await A.evaluate("document.getElementById('on-create').textContent") == 'Crea partita online')
             check('online con account: il nome è quello dell\'account', await A.evaluate("document.getElementById('on-name').value") == NA and await A.evaluate("document.getElementById('on-name').disabled"))
             await A.click('#on-create'); await A.wait_for_function("game.screen==='lobby'", timeout=15000)
             room = await A.evaluate("game.net.link.code")
+            check('partita creata sul Worker con il codice ' + room, len(room) == 6 and room[0] != 'L')
             await B.click('#btn-online'); await B.wait_for_timeout(200)
             await B.fill('#on-code', room); await B.click('#on-join')
             await B.wait_for_function("game.screen==='lobby' && game.net.client.lobby && game.net.client.lobby.members.length===2", timeout=15000)
@@ -246,7 +247,7 @@ async def run():
             await A.screenshot(path=HERE + '/shots/51_online_cosmetici.png')
             await A.evaluate("game.quitToMenu()"); await B.wait_for_function("game.screen==='menu'", timeout=15000)
         finally:
-            relay.terminate()
+            pass
 
         # ---- guarda partita: sincronizzata con il server ----
         fx = http('GET', '/api/fixtures/' + code)[1]
