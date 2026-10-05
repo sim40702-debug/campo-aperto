@@ -712,7 +712,7 @@ class Economy {
           const it = s.items.find(i => i.fixture === c.fixture && i.market === c.market && i.selection === c.selection);
           if (it) { if (!it.origOdds) it.origOdds = c.old; it.odds = c.new; }
         }
-        s.key = null;
+        s.key = null; s.oddsMovedAt = performance.now();
         this.renderSlip();
         st.textContent = 'Quota cambiata: controlla le nuove quote e conferma di nuovo';
       } else if (e.code === 'BETTING_CLOSED') { s.key = null; await this.requote(); st.textContent = e.message; }

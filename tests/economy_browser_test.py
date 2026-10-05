@@ -56,11 +56,19 @@ async def newpage(b, w=1280, h=800, profile=None):
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
+    # diagnostica: richieste fuori dal server locale, risposte d'errore, chiavi tolte dal localStorage (con lo stack)
+    pg.net = []
+    pg.on('request', lambda r: pg.net.append('ALTRO SERVER ' + r.method + ' ' + r.url) if r.url.startswith('http') and not r.url.startswith(API) and 'cdnjs' not in r.url and 'fonts.' not in r.url else None)
+    pg.on('console', lambda m: pg.net.append(m.text) if m.text.startswith('[rm]') else None)
+    pg.on('response', lambda r: pg.net.append('HTTP %d %s %s' % (r.status, r.request.method, r.url)) if r.status >= 400 else None)
+    await pg.add_init_script('(() => { const rm = Storage.prototype.removeItem; Storage.prototype.removeItem = function (k) { console.warn("[rm] removeItem " + k + " " + new Error().stack.replace(/\\s+/g, " ").slice(0, 600)); return rm.call(this, k); }; })()')
     s = {'quality': 'bassa', 'dynamicRes': False, 'apiUrl': API}
     await pg.add_init_script('if (!localStorage.getItem("campoAperto.settings.v1")) localStorage.setItem("campoAperto.settings.v1", ' + json.dumps(json.dumps(s)) + ')')
     await pg.goto(URL)
-    await pg.wait_for_function('window.game && window.game.loaded', timeout=60000)
+    await pg.wait_for_function('window.game && window.game.loaded', timeout=60000, polling=250)
     return ctx, pg, errs
+
+def pg_net_dump(pg): return [x for x in pg.net if '/api/me/daily' not in x][-15:]
 
 async def text(pg, sel): return (await pg.text_content(sel) or '').strip()
 async def menu_balance(pg): return await pg.evaluate("document.querySelector('#eco-wallet [data-balance]').textContent")
@@ -148,13 +156,24 @@ async def run():
         http('POST', '/api/bets', {'items': [{'fixture': code, 'market': '1X2', 'selection': '1', 'odds': q['odds']}], 'stake': 800, 'clientKey': 'bigbet' + sfx}, tokA)
         await B.fill('#slip-stake', '10')
         await B.click('#slip-confirm')
-        await B.wait_for_function("document.getElementById('slip-status').textContent.includes('Quota cambiata')", timeout=15000)
+        # appena compare "Quota cambiata" un secondo clic immediato (stesso istante, nella pagina): non deve giocare
+        fast_ms = await B.evaluate("""() => new Promise((ok, ko) => {
+            const t0 = performance.now();
+            const tick = () => {
+                if (document.getElementById('slip-status').textContent.includes('Quota cambiata')) {
+                    document.getElementById('slip-confirm').click();
+                    return ok(Math.round(performance.now() - game.eco.slip.oddsMovedAt));
+                }
+                if (performance.now() - t0 > 15000) return ko(new Error('niente Quota cambiata'));
+                setTimeout(tick, 20);
+            };
+            tick();
+        })""")
         chg = await B.evaluate("document.getElementById('slip').innerText")
         check('quota ricontrollata alla conferma: "Quota cambiata", originale e attuale', 'Quota cambiata' in chg and ('originale %.2f' % home_odds) in chg, chg.replace('\n', ' | '))
         check('dopo "Quota cambiata" nessun addebito', http('GET', '/api/me/balance', token=tokB)[1]['balance'] == 1000)
-        clicked_fast = await B.evaluate("(() => { document.getElementById('slip-confirm').click(); return game.eco.slip.items.length; })()")
         await B.wait_for_timeout(300)
-        check('un clic subito dopo il cambio di quota non conferma niente', http('GET', '/api/me/bets', token=tokB)[1]['bets'] == [] or clicked_fast == 0)
+        check('un clic subito dopo il cambio di quota non conferma niente (%d ms dopo)' % fast_ms, http('GET', '/api/me/bets', token=tokB)[1]['bets'] == [] and await B.evaluate("game.eco.slip.items.length") == 1)
         await B.wait_for_timeout(800)   # il giocatore guarda la quota nuova
         await B.click('#slip-confirm')
         await B.wait_for_function("game.eco.slip.items.length===0", timeout=15000)
@@ -222,6 +241,7 @@ async def run():
         print('localStorage di B prima/dopo il ricaricamento:', pre, post, flush=True)
         try: await B.wait_for_function("window.game && game.loaded && game.eco.api.me", timeout=30000, polling=250)
         except Exception:
+            print('rete B:', pg_net_dump(B), flush=True)
             print('errori B:', errB[-5:], await B.evaluate("({loaded: window.game && game.loaded, tok: !!(window.game && game.eco.api.token), me: !!(window.game && game.eco.api.me), screen: window.game && game.screen})"), flush=True); raise
         check('refresh di B: ancora collegato, saldo %d' % balB, await B.evaluate("game.eco.api.me.balance") == balB and await menu_balance(B) == format(balB, ',').replace(',', '.'))
         ctxA2, A2, errA2 = await newpage(b)
@@ -233,6 +253,7 @@ async def run():
         await A2.click('[data-bt=top]'); await A2.wait_for_selector('#bt-list table, #bt-list .empty', timeout=15000)
         await A2.screenshot(path=HERE + '/shots/48_scommesse.png')
         check('classifica senza saldo', 'Saldo' not in await A2.evaluate("document.getElementById('bt-list').innerText"))
+        await ctxA2.close()
 
         # ---- multiplayer: ognuno vede l'aspetto dell'altro, letto dal server (non mandato dai giocatori) ----
         # nessun server impostato: si usa il relay del Worker dell'economia (stesso indirizzo per tutti, /relay)
@@ -268,8 +289,9 @@ async def run():
         NC = 'carla_' + sfx
         await register(C, NC, 'password-c1')
         await C.evaluate("game.showScreen('menu')")
-        await C.evaluate("window.__xs=[]; (function f(t0){ const r=document.querySelector('#fixtures .sheet').getBoundingClientRect(); window.__xs.push(r.left); if (performance.now()-t0<400) requestAnimationFrame(()=>f(t0)); })(performance.now()); document.querySelector('[data-eco=fixtures]').click();")
-        await C.wait_for_timeout(600)
+        # posizione a ogni fotogramma dal clic in poi (24 fotogrammi, qualunque sia la velocità della macchina)
+        await C.evaluate("window.__xs=[]; window.__done=false; document.querySelector('[data-eco=fixtures]').click(); (function f(n){ window.__xs.push(document.querySelector('#fixtures .sheet').getBoundingClientRect().left); if (n < 24) requestAnimationFrame(()=>f(n+1)); else window.__done=true; })(0);")
+        await C.wait_for_function("window.__done", timeout=30000, polling=100)
         xs = await C.evaluate("window.__xs.filter(x => x !== 0)")
         final = await C.evaluate("document.querySelector('#fixtures .sheet').getBoundingClientRect().left")
         check('transizione: la schermata entra al suo posto (spostamento massimo %.1f px, mai fuori schermo)' % (max(abs(x - final) for x in xs) if xs else 0), xs and min(xs) >= 0 and max(abs(x - final) for x in xs) <= 8, xs[:6])
@@ -314,10 +336,11 @@ async def run():
         await C2.wait_for_function("game.screen==='menu' && game.eco.api.me", timeout=30000)
         await C2.wait_for_function("game.settings.keys.sprint[0]==='KeyX'", timeout=10000)
         check('comandi personalizzati: sull\'altro browser Scatto = X (dall\'account)', await C2.evaluate("game.input.keys.sprint[0]==='KeyX'"))
-        await C2.reload(); await C2.wait_for_function("window.game && game.loaded", timeout=30000)
+        await C2.reload(); await C2.wait_for_function("window.game && game.loaded", timeout=60000, polling=250)
         check('comandi personalizzati: restano dopo il refresh', await C2.evaluate("game.settings.keys.sprint[0]==='KeyX'"))
         for nm, e in [('C', errC), ('C2', errC2)]:
             check('nessun errore JavaScript (%s)' % nm, len(e) == 0, e[:3])
+        await ctxC2.close(); await ctxC.close()   # meno pagine 3D aperte insieme (rendering software nei test)
 
         # ---- guarda partita: sincronizzata con il server ----
         fx = http('GET', '/api/fixtures/' + code)[1]
