@@ -161,3 +161,4 @@ Opzioni del server: `--port`, `--host` (o le variabili PORT e HOST).
 - `risorse/icon.png` icona (da qui vengono generate .ico e .icns)
 - `tests/` test automatici
 - `docs/` stato del progetto, roadmap, changelog
+
