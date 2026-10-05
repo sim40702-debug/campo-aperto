@@ -227,8 +227,10 @@ function createRelay(opts) {
     ws.on('error', () => {});
   });
 
-  // controllo periodico: chiude i socket che non rispondono più
+  // controllo periodico: chiude i socket che non rispondono più e dimentica i tentativi di codice vecchi
   const beat = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, f] of failedJoins) if (now - f.t > 60000) failedJoins.delete(ip);
     for (const ws of wss.clients) {
       if (!ws.isAlive) { ws.terminate(); continue; }
       ws.isAlive = false;
@@ -247,6 +249,7 @@ function createRelay(opts) {
       resolve({
         port,
         rooms,
+        conns: () => wss.clients.size,
         close: () => new Promise(r => {
           clearInterval(beat);
           for (const room of [...rooms.values()]) closeRoom(room, 'server-stop');

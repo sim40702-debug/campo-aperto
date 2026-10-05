@@ -35,6 +35,7 @@ class Game {
     window.addEventListener('mousemove', () => document.body.classList.remove('pad-nav'));
     this.mode = 'menu'; this.screen = 'menu';
     this.match = null; this.demo = null; this.net = null;
+    this.netLog = []; this.netLastError = ''; this.lanStatus = null;
     this.paused = false; this.replay = null; this.replayPending = null;
     this.setup = { home: 0, away: 4, side: 0, difficulty: 1, halfSeconds: 180, formation: null, mentality: 1 };
     this.restoreSetup();
@@ -50,6 +51,8 @@ class Game {
       if (this.mode === 'host' && performance.now() - this.lastFrameAt > 120) this.tickHost(Math.min(0.25, (performance.now() - this.lastFrameAt) / 1000), true);
     }, 50);
     window.addEventListener('beforeunload', () => { if (this.net) this.net.link.leave(); });
+    $('netdiag').hidden = !this.settings.netDebug;
+    setInterval(() => this.refreshNetDiag(), 1000);
   }
 
   // ---------- SCHERMATE ----------
@@ -124,10 +127,12 @@ class Game {
     $('on-code').oninput = () => { const v = normalizeCode($('on-code').value); if ($('on-code').value !== v) $('on-code').value = v; };
     $('on-code').onkeydown = e => { if (e.key === 'Enter') this.joinOnline(); };
     $('on-create').onclick = () => this.createOnline();
-    $('on-create-lan').onclick = () => this.createOnline(true);
+    $('on-create-server').onclick = () => this.createOnline(true);
     $('on-join').onclick = () => this.joinOnline();
     $('on-back').onclick = () => this.showScreen('menu');
     $('on-server-edit').onclick = () => this.openSettings('online', 'online');
+    // diagnostica di rete: Ctrl+Maiusc+D o la casella nelle impostazioni
+    window.addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') { e.preventDefault(); this.toggleNetDiag(); } });
     $('lb-copy').onclick = () => this.copyCode();
     $('lb-lan-copy').onclick = () => this.copyLanAddr();
     $('lb-leave').onclick = () => this.leaveOnline(true);
@@ -608,8 +613,10 @@ class Game {
     $('st-pad-status').textContent = !s.padEnabled ? 'Controller disattivato.' : pc ? 'Controller collegato' + (this.input.padId ? ': ' + this.input.padId.replace(/\s*\(.*$/, '').slice(0, 48) : '') + '.' : 'Nessun controller collegato. Collegalo (USB o Bluetooth) e premi un pulsante.';
     // online
     $('st-server').value = s.server;
-    $('st-server').onchange = () => { s.server = $('st-server').value.trim(); save(); };
+    $('st-server').onchange = () => { s.server = $('st-server').value.trim(); save(); $('st-server-status').textContent = ''; };
     $('st-server-test').onclick = () => this.testServer();
+    $('st-netdebug').checked = s.netDebug;
+    $('st-netdebug').onchange = () => this.toggleNetDiag($('st-netdebug').checked);
   }
 
   updateDrawInfo() {
@@ -686,13 +693,18 @@ class Game {
 
   async testServer() {
     const st = $('st-server-status');
-    this.settings.server = $('st-server').value.trim(); saveSettings(this.settings);
+    const url = $('st-server').value.trim();
+    this.settings.server = url; saveSettings(this.settings);
+    if (!url) { st.className = 'status'; st.textContent = 'Nessun server: si gioca in rete locale'; return; }
+    if (!/^wss?:\/\/[^\s/]+/i.test(url)) { st.className = 'status err'; st.textContent = 'L\'indirizzo deve iniziare con ws:// oppure wss://'; return; }
     st.className = 'status'; st.textContent = 'Provo…';
     try {
-      const ws = await new NetLink(this.settings.server).open(4000);
+      const ws = await new NetLink(url).open(4000);
       ws.close();
-      st.className = 'status ok'; st.textContent = 'Server raggiungibile';
-    } catch (e) { st.className = 'status err'; st.textContent = e.message; }
+      st.className = 'status ok';
+      // un server su localhost risponde solo su questo computer: per gli altri giocatori "localhost" è il loro computer
+      st.textContent = /^wss?:\/\/(localhost|127\.|\[::1\])/i.test(url) ? 'Server raggiungibile, ma è su questo computer: gli altri giocatori non lo vedono' : 'Server raggiungibile';
+    } catch (e) { st.className = 'status err'; st.textContent = this.serverErrorText(e, url); }
   }
 
   // ---------- CICLO PRINCIPALE ----------
@@ -1088,16 +1100,22 @@ class Game {
   }
 
   // ---------- ONLINE ----------
+  // Rete locale (app desktop, window.campoLan): chi crea avvia il server sul proprio computer, il codice inizia con L
+  // e chi entra trova l'host con una ricerca UDP. Server online (facoltativo, Impostazioni): codici senza L, sul server impostato.
   renderOnline() {
-    $('on-name').value = this.settings.name;
-    $('on-server').textContent = this.settings.server;
+    const lan = !!window.campoLan, server = this.settings.server;
     const blocked = BUILD_TARGET === 'web';
+    $('on-name').value = this.settings.name;
     $('online-webonly').hidden = !blocked;
-    $('on-create').disabled = blocked; $('on-join').disabled = blocked;
-    $('on-lan').hidden = !window.campoLan;
-    $('on-host-row').hidden = !window.campoLan;
+    $('on-create').disabled = blocked || (!lan && !server);
+    $('on-join').disabled = blocked;
+    $('on-create-server').hidden = !lan || !server;
+    $('on-create-info').textContent = lan
+      ? 'La partita gira su questo computer, che fa anche da server: gli amici sulla stessa rete (Wi-Fi o cavo) entrano con il codice, senza indirizzi IP. Se Windows chiede il permesso del firewall, consentilo.'
+      : 'Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.';
+    $('on-host-row').hidden = !lan;
     $('on-host').value = this.settings.lanHost || '';
-    $('on-create-lan').disabled = blocked;
+    $('on-server').textContent = server || (lan ? 'nessuno, si gioca in rete locale' : 'nessuno');
     $('on-status').textContent = ''; $('on-status').className = 'status';
   }
   onlineName() {
@@ -1105,11 +1123,32 @@ class Game {
     if (n) { this.settings.name = n; saveSettings(this.settings); }
     return this.settings.name;
   }
-  onlineError(e) {
+  onlineError(msg) {
     this.busy(null);
+    this.netNote(msg, true);
     const st = $('on-status');
     st.className = 'status err';
-    st.textContent = e.message + (e.code || e.lan ? '' : '. Controlla l\'indirizzo del server nelle impostazioni (' + this.settings.server + ').');
+    st.textContent = msg;
+  }
+  // errori della stanza, uguali per server online e rete locale
+  roomErrorText(e) {
+    switch (e.code) {
+      case 'FULL': return 'La partita è al completo';
+      case 'VERSION': return 'Versione del gioco diversa da quella dell\'host: aggiornate tutti alla stessa versione (la tua è ' + GAME_VERSION + ')';
+      case 'RATE': return 'Troppi tentativi con codici sbagliati: aspetta un minuto e riprova';
+      case 'BAD_REPLY': return 'Risposta non valida: all\'indirizzo indicato non c\'è un server di Campo Aperto';
+    }
+    return e.message;
+  }
+  // errori verso il server online
+  serverErrorText(e, url) {
+    switch (e.code) {
+      case 'TIMEOUT': return 'Connessione scaduta: il server multiplayer ' + url + ' non risponde. Controlla la connessione e l\'indirizzo in Impostazioni → Online';
+      case 'UNREACHABLE': return 'Server multiplayer non disponibile (' + url + '): è spento, l\'indirizzo è sbagliato oppure la rete lo blocca. Controlla l\'indirizzo in Impostazioni → Online';
+      case 'NO_REPLY': return 'Connessione scaduta: il server ' + url + ' accetta il collegamento ma non risponde';
+      case 'NOT_FOUND': return 'Nessuna partita con questo codice sul server ' + url + ': controlla il codice, o la partita è già stata chiusa';
+    }
+    return this.roomErrorText(e);
   }
 
   // ferma il server in rete locale (se questa sessione lo aveva avviato)
@@ -1119,145 +1158,239 @@ class Game {
     try { window.campoLan.hostStop().catch(() => {}); } catch (e) { /* ignora */ }
   }
 
-  async createOnline(lan) {
+  // nell'app desktop la partita si ospita su questo computer; useServer: sul server online impostato
+  async createOnline(useServer) {
     const name = this.onlineName();
-    let url = this.settings.server, cancelled = false, link = null;
-    this.busy(lan ? 'Avvio il server in rete locale…' : 'Creo la partita…', () => { cancelled = true; if (link) link.leave(); this.stopLan(); });
+    const lan = !!window.campoLan && !useServer;
+    const server = this.settings.server;
+    this.netLog = []; this.netLastError = '';
+    if (!lan && !server) { this.onlineError('Nessun server online impostato: aggiungilo in Impostazioni → Online'); return; }
+    let url = server, cancelled = false, link = null;
+    this.busy(lan ? 'Avvio la partita su questo computer…' : 'Creo la partita su ' + server + '…', () => { cancelled = true; if (link) link.leave(); this.stopLan(); this.netNote('Annullato'); });
     try {
       if (lan) {
         const r = await window.campoLan.hostStart();
         if (cancelled) { try { window.campoLan.hostStop(); } catch (e) { /* ignora */ } return; }
-        if (!r || r.error) { const er = new Error(r && r.error || 'Non riesco ad avviare il server in rete locale'); er.lan = true; throw er; }
+        if (!r || r.error) throw new Error(r && r.error || 'Non riesco ad avviare il server della partita su questo computer');
         this.lanHosting = true; this.lanInfo = r;
+        this.netNote('Server avviato: TCP ' + r.port + ' su tutte le schede di rete, ricerca UDP ' + (r.discovery ? 'attiva' : 'NON attiva (porta occupata)') + ', indirizzi ' + (r.addresses.join(', ') || 'nessuno'));
         url = 'ws://127.0.0.1:' + r.port;
       }
       link = new NetLink(url);
       await link.create(name);
       if (cancelled) return;
+      this.netNote('Partita creata, codice ' + link.code);
       const host = new HostSession(link, this.db, name);
-      this.net = { link: link, host: host };
+      this.net = { link: link, host: host, lan: lan };
       host.onChange = () => { if (this.screen === 'lobby') this.renderLobby(); };
       this.bindLinkEvents(link);
       this.busy(null);
       this.mode = 'menu';
       this.showLobby();
-      if (lan && this.lanInfo) this.toast(this.lanInfo.addresses.length ? 'Server avviato su ' + this.lanInfo.addresses[0] + ':' + this.lanInfo.port : 'Server avviato, ma non trovo la rete');
-    } catch (e) { if (lan) this.stopLan(); if (!cancelled) { if (lan) e.lan = true; this.onlineError(e); } }
+      if (lan) {
+        const li = this.lanInfo;
+        if (!li.addresses.length) this.toast('Partita creata, ma questo computer non è collegato a nessuna rete', true);
+        else if (!li.discovery) this.toast('La ricerca automatica non è attiva (porta UDP 8788 occupata): gli amici devono scrivere l\'indirizzo ' + li.addresses[0] + ':' + li.port, true);
+        else this.toast('Partita pronta su ' + li.addresses[0] + ':' + li.port);
+      }
+    } catch (e) {
+      if (lan) this.stopLan();
+      if (cancelled) return;
+      this.onlineError(lan ? (e.code ? 'Il server della partita su questo computer non risponde (' + e.code + '): riprova' : e.message) : this.serverErrorText(e, url));
+    }
   }
 
   async joinOnline() {
     const name = this.onlineName();
     const code = normalizeCode($('on-code').value);
-    if (!NET.CODE_RE.test(code)) { this.onlineError(new Error('Il codice è di 6 caratteri, lettere e numeri')); return; }
-    let link = null, cancelled = false, viaLan = false;
-    const tryLan = !!window.campoLan && code[0] === 'L'; // i codici della rete locale iniziano con L: gli altri non vengono mai cercati in rete
-    // indirizzo dell'host scritto a mano (facoltativo, solo desktop)
+    this.netLog = []; this.netLastError = '';
+    if (!NET.CODE_RE.test(code)) { this.onlineError('Codice partita non valido: sono 6 caratteri, lettere e numeri (senza 0, 1, I e O)'); return; }
+    const lan = code[0] === 'L'; // le partite in rete locale hanno sempre codici con L, quelle dei server mai
+    if (lan && !window.campoLan) { this.onlineError('Questo è il codice di una partita in rete locale: per entrare serve l\'app desktop di Campo Aperto'); return; }
+    if (!lan && !this.settings.server) { this.onlineError('Codice non valido per la rete locale: i codici delle partite in rete locale iniziano con L. Se la partita è su un server online, impostalo in Impostazioni → Online'); return; }
+    // indirizzo dell'host scritto a mano (facoltativo): destinatario in più per la ricerca e ripiego se nessuno risponde
     let addr = null, addrFromSaved = false;
-    if (tryLan && $('on-host').value.trim()) {
+    if (lan && $('on-host').value.trim()) {
       addr = parseHostAddress($('on-host').value);
+      if (!addr) { this.onlineError('Indirizzo dell\'host non valido: scrivi quattro numeri da 0 a 255, per esempio 192.168.1.23 oppure 192.168.1.23:8787'); return; }
       const saved = parseHostAddress(this.settings.lanHost || '');
-      addrFromSaved = !!addr && !!saved && addr.text === saved.text; // indirizzo ricordato e non modificato
-      if (!addr) { this.onlineError(Object.assign(new Error("Indirizzo dell'host non valido: scrivi quattro numeri da 0 a 255, per esempio 172.20.10.9 oppure 172.20.10.9:8787"), { lan: true })); return; }
+      addrFromSaved = !!saved && addr.text === saved.text;
     }
-    this.busy((tryLan ? 'Cerco la partita ' : 'Entro nella partita ') + code + '…', () => { cancelled = true; if (link) link.leave(); });
-    let f = null, target = null; // target: { ip, port } dell'host cercato con WebSocket, per spiegare un eventuale errore
+    let link = null, cancelled = false, f = null, target = null, url = this.settings.server;
+    this.busy((lan ? 'Cerco la partita ' : 'Entro nella partita ') + code + '…', () => { cancelled = true; if (link) link.leave(); this.netNote('Annullato'); });
     try {
-      let url = this.settings.server;
-      if (tryLan) {
-        // prima cerco l'host nella rete locale (anche con l'indirizzo dato), poi ripiego sull'indirizzo dato e infine sul server impostato
+      if (lan) {
+        this.netNote('Ricerca in rete locale: UDP broadcast e scansione della sottorete' + (addr ? ', più ' + addr.ip : ''));
+        const t0 = performance.now();
         try { f = await window.campoLan.find(code, addr ? [addr.ip] : []); } catch (e) { f = null; }
         if (cancelled) return;
-        if (f && typeof f.url === 'string' && /^ws:\/\/[0-9.]+:\d+$/.test(f.url)) { url = f.url; viaLan = true; }
-        else if (addr) { url = addr.url; viaLan = true; $('busy-text').textContent = 'Provo l\'indirizzo ' + addr.text + '…'; }
-        if (viaLan) { const m = /^ws:\/\/([0-9.]+):(\d+)$/.exec(url); target = { ip: m[1], port: +m[2] }; }
+        if (f && typeof f.url === 'string' && /^ws:\/\/[0-9.]+:\d+$/.test(f.url)) {
+          url = f.url;
+          this.netNote('Host trovato: ' + url + ' in ' + Math.round(performance.now() - t0) + ' ms');
+        } else if (addr) {
+          url = addr.url;
+          this.netNote('Nessuna risposta alla ricerca (' + ((f && f.why) || 'errore') + '): provo l\'indirizzo ' + addr.text, true);
+        } else { this.onlineError(this.lanFindMessage(f)); return; }
+        const m = /^ws:\/\/([0-9.]+):(\d+)$/.exec(url);
+        target = { ip: m[1], port: +m[2] };
+        $('busy-text').textContent = 'Entro nella partita ' + code + ' su ' + target.ip + '…';
       }
-      link = new NetLink(url, viaLan ? 3000 : 0); // indirizzo di rete locale: se non risponde in 3 secondi, inutile aspettare
-      if (tryLan && !(viaLan && !(f && f.url))) $('busy-text').textContent = 'Entro nella partita ' + code + '…';
+      link = new NetLink(url, lan ? 3000 : 0); // in rete locale l'host risponde subito: 3 secondi bastano
+      this.netNote('Collegamento WebSocket a ' + url);
       await link.join(code, name);
       if (cancelled) return;
-      if (viaLan && target) { this.settings.lanHost = target.ip + (target.port === 8787 ? '' : ':' + target.port); saveSettings(this.settings); }
+      this.netNote('Entrato nella partita ' + code);
+      if (lan) { this.settings.lanHost = target.ip + (target.port === 8787 ? '' : ':' + target.port); saveSettings(this.settings); }
       const client = new ClientSession(link, this.db, name);
-      this.net = { link: link, client: client };
+      this.net = { link: link, client: client, lan: lan };
       client.onLobby = () => { if (this.screen === 'lobby') this.renderLobby(); };
-      client.onStart = m => this.enterOnlineMatch(m);
+      client.onStart = m => {
+        // la prima istantanea arriva prima di qualunque lobby: la partita era già in corso
+        const late = !(client.lobby && client.lobby.phase === 'lobby');
+        this.enterOnlineMatch(m);
+        if (late && !m.humanById(link.id)) this.toast('Partita già iniziata: la guardi come spettatore');
+      };
       client.onLobbyReturn = () => { this.mode = 'menu'; this.match = null; this.startDemo(); this.showLobby(); };
-      client.onReject = reason => { this.leaveOnline(false); this.backToMenuWith(reason, true); };
+      client.onReject = reason => { this.netNote(reason, true); this.leaveOnline(false); this.backToMenuWith(reason, true); };
       this.bindLinkEvents(link);
       client.hello();
       this.busy(null);
       this.showLobby();
     } catch (e) {
       if (cancelled) return;
-      if (tryLan && !viaLan && (!e.code || e.code === 'NOT_FOUND')) {
-        // codice di rete locale non trovato né sul server: dico quale passo è fallito
-        e = new Error(this.lanFindMessage(f)); e.lan = true;
-      } else if (viaLan && target) {
-        if (!e.code) {
-          let msg = null;
-          try { msg = await this.lanConnectMessage(target, !!(f && f.url), addrFromSaved && !(f && f.url)); } catch (er) { /* resta l'errore originale */ }
-          if (cancelled) return;
-          if (msg) e = new Error(msg);
-        }
-        else if (e.code === 'NOT_FOUND') e = new Error('Ho trovato il computer ' + target.ip + ':' + target.port + ", ma lì non c'è nessuna partita con questo codice. Controlla il codice e che l'host sia ancora nella lobby");
-        e.lan = true;
-      } else if (viaLan) e.lan = true;
-      this.onlineError(e);
+      let msg;
+      if (!lan) msg = this.serverErrorText(e, url);
+      else if (e.code === 'TIMEOUT' || e.code === 'UNREACHABLE') {
+        msg = await this.lanConnectMessage(target, !!(f && f.url), addrFromSaved && !(f && f.url));
+        if (cancelled) return;
+      } else if (e.code === 'NOT_FOUND') msg = 'L\'host ' + target.ip + ':' + target.port + ' è raggiungibile, ma non ha nessuna partita con questo codice: controlla il codice e che l\'host sia ancora nella lobby';
+      else if (e.code === 'NO_REPLY') msg = 'Connessione scaduta: l\'host ' + target.ip + ':' + target.port + ' accetta il collegamento ma non risponde';
+      else msg = this.roomErrorText(e);
+      this.onlineError(msg);
     }
   }
 
   isMac() { return /Mac/i.test((navigator.platform || '') + ' ' + (navigator.userAgent || '')); }
-  macLocalNet() { return 'macOS sta bloccando l\'accesso alla rete locale. Apri Impostazioni di Sistema → Privacy e sicurezza → Rete locale e attiva il Terminale (o l\'app con cui avvii il gioco), poi riavvia il gioco.'; }
+  macLocalNet() { return 'macOS sta bloccando l\'accesso alla rete locale. Apri Impostazioni di Sistema → Privacy e sicurezza → Rete locale e attiva Campo Aperto (o il Terminale, se avvii il gioco da lì), poi riavvia il gioco.'; }
   // la ricerca nella rete locale non ha trovato l'host: messaggio secondo il passo fallito
   lanFindMessage(f) {
     const why = f && f.why, det = f && f.detail ? ' (' + f.detail + ')' : '';
     if (why === 'no-network') return 'Non sei collegato a nessuna rete: collegati al Wi-Fi o al cavo della stessa rete dell\'host' + det;
     if (why === 'blocked') {
       if (this.isMac() && /^(EHOSTUNREACH|EPERM)$/.test(f.detail)) return this.macLocalNet() + det;
-      return 'Questo computer non riesce a inviare messaggi nella rete locale: controlla firewall e antivirus, che devono consentire il gioco' + det;
+      return 'Questo computer non riesce a inviare messaggi nella rete locale: firewall o antivirus devono consentire Campo Aperto' + det;
     }
-    return 'Nessuno ha risposto alla ricerca. Siete sulla stessa rete? L\'host è ancora nella lobby? Se sì, scrivi l\'indirizzo mostrato sul suo schermo nel campo "Indirizzo dell\'host"' + det;
+    return 'Partita non trovata nella rete locale: nessun host ha risposto alla ricerca. Controlla che siate sulla stessa rete (non la rete ospiti, nessuna VPN attiva), che l\'host sia ancora nella lobby e che sul suo computer il firewall consenta Campo Aperto (su Windows anche per le reti pubbliche). Se ancora non va, scrivi l\'indirizzo mostrato nella lobby dell\'host in «La partita non viene trovata?»' + det;
   }
   // il collegamento WebSocket all'host è fallito: una prova TCP diretta ne distingue la causa
   async lanConnectMessage(t, found, stale) {
-    const at = (found ? 'Ho trovato l\'host a ' + t.ip + ':' + t.port : stale ? 'Ho provato l\'ultimo indirizzo usato (' + t.ip + ':' + t.port + ')' : 'Ho provato l\'indirizzo ' + t.ip + ':' + t.port) + ', ma ';
     let r = null;
     try { r = await window.campoLan.check(t.ip, t.port); } catch (e) { r = null; }
     const c = r && r.code !== 'EINVAL' ? r.code : null; // EINVAL: indirizzo non di rete locale, non provato
+    const at = (found ? 'Partita trovata a ' + t.ip + ':' + t.port + ', ma impossibile raggiungere l\'host: ' : 'Host non raggiungibile a ' + t.ip + ':' + t.port + ': ');
+    const tag = c ? ' (' + c + ')' : '';
     // indirizzo vecchio: non do la colpa al firewall, l'host può aver cambiato indirizzo
-    if (stale && c !== 'EHOSTUNREACH' && c !== 'EPERM') return at + (c === 'ECONNREFUSED' ? 'rifiuta la connessione' : 'non risponde') + (c ? ' (' + c + ')' : '') + '. Controlla l\'indirizzo mostrato ora sullo schermo dell\'host: potrebbe essere cambiato';
-    if (c === 'ECONNREFUSED') return at + 'rifiuta la connessione: non sta più ospitando oppure la porta è diversa (ECONNREFUSED)';
-    if (c === 'ETIMEDOUT') return at + 'non risponde (tempo scaduto): di solito il firewall del computer dell\'host blocca il gioco (ETIMEDOUT)';
-    if (c === 'EHOSTUNREACH' || c === 'EPERM') return this.isMac() ? this.macLocalNet() + ' (' + c + ')' : at + 'non è raggiungibile: controlla di essere sulla stessa rete e il firewall (' + c + ')';
-    if (c) return at + 'la connessione fallisce (' + c + ')';
-    return at + 'il collegamento al gioco non riesce. Riprova tra poco';
+    if (stale && c !== 'EHOSTUNREACH' && c !== 'EPERM') return at + 'è l\'ultimo indirizzo usato e potrebbe essere cambiato. Controlla quello mostrato ora nella lobby dell\'host' + tag;
+    if (c === 'ECONNREFUSED') return at + 'il computer c\'è ma rifiuta la connessione, quindi non sta più ospitando oppure la porta è diversa' + tag;
+    if (c === 'ETIMEDOUT') return at + 'non risponde. Di solito è il firewall del computer dell\'host: deve consentire Campo Aperto (su Windows anche per le reti pubbliche)' + tag;
+    if (c === 'EHOSTUNREACH' || c === 'EPERM') return this.isMac() ? this.macLocalNet() + tag : at + 'la rete non lo raggiunge. Siete sulla stessa rete? Alcuni Wi-Fi (ospiti, pubblici) isolano i dispositivi tra loro' + tag;
+    if (r && r.ok) return at + 'la porta risponde ma il gioco no. Controlla che l\'host usi la stessa versione del gioco (' + GAME_VERSION + ')';
+    if (c) return at + 'la connessione non riesce' + tag;
+    return at + 'il collegamento non riesce. Riprova tra poco';
   }
 
   bindLinkEvents(link) {
-    link.on('reconnecting', () => this.updateNetIndicator());
-    link.on('reconnected', () => { this.toast('Connessione ripristinata'); this.updateNetIndicator(); });
-    link.on('host-lost', () => { this.toast('L\'host ha perso la connessione: lo aspetto qualche secondo…', true); this.updateNetIndicator(); });
-    link.on('host-back', () => { this.toast('L\'host è tornato'); this.updateNetIndicator(); });
+    const mine = () => this.net && this.net.link === link;
+    link.on('reconnecting', () => { this.netNote('Connessione persa: provo a rientrare…', true); this.updateNetIndicator(); });
+    link.on('reconnected', () => { this.netNote('Connessione ripristinata'); this.toast('Connessione ripristinata'); this.updateNetIndicator(); });
+    link.on('host-lost', () => { this.netNote('Host disconnesso: lo aspetto qualche secondo', true); this.toast('Host disconnesso: lo aspetto qualche secondo…', true); this.updateNetIndicator(); });
+    link.on('host-back', () => { this.netNote('L\'host è tornato'); this.toast('L\'host è tornato'); this.updateNetIndicator(); });
+    link.on('peer', e => this.netNote('Giocatore ' + e.name + ': ' + ({ join: 'entrato', leave: 'uscito', drop: 'connessione persa', back: 'rientrato' }[e.ev] || e.ev), e.ev === 'drop'));
     link.on('closed', e => {
-      if (!this.net || this.net.link !== link) return;
-      const why = { 'host-left': 'L\'host ha chiuso la partita', kicked: 'Sei stato tolto dalla partita', 'server-stop': 'Il server è stato spento' }[e.reason] || 'La partita è stata chiusa';
+      if (!mine()) return;
+      const lanClient = this.net.lan && !this.net.host;
+      const why = { 'host-left': 'L\'host ha chiuso la partita', kicked: 'Sei stato tolto dalla partita', 'server-stop': lanClient ? 'Host disconnesso: ha chiuso il gioco' : 'Il server è stato spento' }[e.reason] || 'La partita è stata chiusa';
+      this.netNote(why + ' (' + e.reason + ')', true);
       this.net = null; this.stopLan();
       this.backToMenuWith(why, true);
     });
     link.on('lost', () => {
-      if (!this.net || this.net.link !== link) return;
+      if (!mine()) return;
       this.stopLan();
       if (this.net.host && this.net.host.match && this.mode === 'host') {
         // l'host perde il server: la partita continua offline contro l'IA
         const m = this.net.host.match;
         for (const h of m.humans.slice()) if (h.id !== link.id) m.removeHuman(h.id);
+        this.netNote('Server perso: la partita continua offline', true);
         this.net = null; this.mode = 'offline';
         $('netind').hidden = true;
         this.toast('Connessione al server persa: la partita continua offline', true);
       } else {
+        const why = this.net.lan && !this.net.host ? 'Host disconnesso: non è più raggiungibile in rete e la connessione non si è ripristinata' : 'Connessione al server persa e non ripristinata';
+        this.netNote(why, true);
         this.net = null;
-        this.backToMenuWith('Connessione persa e non ripristinata', true);
+        this.backToMenuWith(why, true);
       }
     });
+  }
+
+  // ---------- DIAGNOSTICA DI RETE ----------
+  netNote(text, isErr) {
+    const d = new Date();
+    const ts = d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    this.netLog.push({ ts: ts, text: text, err: !!isErr });
+    if (this.netLog.length > 40) this.netLog.shift();
+    if (isErr) this.netLastError = text;
+    console.info('[rete] ' + ts + ' ' + text);
+    this.renderNetDiag();
+  }
+  toggleNetDiag(on) {
+    this.settings.netDebug = on === undefined ? !this.settings.netDebug : !!on;
+    saveSettings(this.settings);
+    $('netdiag').hidden = !this.settings.netDebug;
+    if (this.screen === 'settings') $('st-netdebug').checked = this.settings.netDebug;
+    this.refreshNetDiag();
+  }
+  // nell'app desktop chiede al processo principale indirizzi locali e dati del server della partita
+  refreshNetDiag() {
+    if ($('netdiag').hidden) return;
+    if (window.campoLan && window.campoLan.status) window.campoLan.status().then(s => { this.lanStatus = s; this.renderNetDiag(); }, () => this.renderNetDiag());
+    else this.renderNetDiag();
+  }
+  renderNetDiag() {
+    if ($('netdiag').hidden) return;
+    const n = this.net, link = n && n.link, s = this.lanStatus || {};
+    const ago = t => t ? Math.round((Date.now() - t) / 1000) + ' s fa' : '';
+    const rows = [
+      ['Ruolo', !n ? 'nessuno' : n.host ? 'HOST' : 'CLIENT'],
+      ['Modalità', !n ? (window.campoLan ? 'rete locale disponibile' : 'solo server online') : n.lan ? 'rete locale' : 'server online'],
+      ['Trasporto', 'WebSocket su TCP' + (window.campoLan ? ', ricerca UDP ' + (s.discoveryPort || '') : '')],
+      ['IP locali', s.addresses ? (s.addresses.join(', ') || 'nessuna rete') : (window.campoLan ? '…' : 'non disponibili nel browser')],
+      ['Server', link ? link.url + (n.host && n.lan && s.addresses && s.addresses.length ? ' (per gli altri ' + s.addresses[0] + ':' + s.port + ')' : '') : '—'],
+    ];
+    if (s.hosting) {
+      rows.push(['Porta', 'TCP ' + s.port + ', UDP ' + (s.discovery ? s.discoveryPort : 'non attiva') + ', ' + s.conns + ' collegamenti']);
+      rows.push(['Ricerche', s.queries + ' ricevute, ' + s.answered + ' con questo codice' + (s.lastFrom ? ', ultima da ' + s.lastFrom + ' ' + ago(s.lastAt) : '')]);
+    }
+    rows.push(['Codice', link && link.code || '—']);
+    rows.push(['Stato', link ? link.state : 'non collegato']);
+    rows.push(['Ping', !link ? '—' : n.client ? 'host ' + n.client.rtt + ' ms, server ' + link.rtt + ' ms' : 'server ' + link.rtt + ' ms']);
+    rows.push(['Errore', this.netLastError || 'nessuno']);
+    const dl = $('nd-info');
+    dl.textContent = '';
+    for (const [k, v] of rows) {
+      const dt = document.createElement('dt'), dd = document.createElement('dd');
+      dt.textContent = k; dd.textContent = v;
+      dl.appendChild(dt); dl.appendChild(dd);
+    }
+    const ol = $('nd-log');
+    ol.textContent = '';
+    for (const e of this.netLog.slice(-12).reverse()) {
+      const li = document.createElement('li');
+      li.textContent = e.ts + '  ' + e.text;
+      if (e.err) li.className = 'err';
+      ol.appendChild(li);
+    }
   }
 
   backToMenuWith(text, isErr) {

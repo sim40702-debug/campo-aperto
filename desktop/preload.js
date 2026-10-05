@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('campoLan', {
   hostStop: () => ipcRenderer.invoke('lan:host-stop'),
   find: (code, hosts) => ipcRenderer.invoke('lan:find', String(code), Array.isArray(hosts) ? hosts.map(String) : []),
   check: (ip, port) => ipcRenderer.invoke('lan:check', String(ip), Number(port)),
+  status: () => ipcRenderer.invoke('lan:status'),
 });
