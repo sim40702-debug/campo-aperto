@@ -1,7 +1,9 @@
 # Compila l'app per Windows, Mac e Linux e la pubblica in una release (tag v<versione di package.json>).
 # Parte con un tag di versione (es. v0.5.0) o a mano dalla scheda Actions.
-# I tre sistemi compilano senza pubblicare; solo quando hanno finito tutti, l'ultimo passo crea (o completa)
-# la release con tutti i file e la pubblica. Così nessuno scarica una release a metà.
+# I tre sistemi compilano senza pubblicare; quando hanno finito, l'ultimo passo crea (o completa) la release con i
+# file pronti e la pubblica. Se un sistema non parte (GitHub senza macchine libere per quel sistema) la release esce con
+# gli altri; rilanciando il flusso più tardi i file mancanti si aggiungono alla stessa release. Un errore vero di
+# compilazione o dei test, invece, ferma tutto.
 name: Rilascio app desktop
 
 on:
@@ -16,6 +18,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
@@ -51,7 +54,13 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-24.04
+    # pubblica anche se un sistema è stato annullato (mai partito), non se uno è fallito davvero
+    if: ${{ always() && !contains(needs.*.result, 'failure') }}
+    # su Windows (bash di Git e gh preinstallati): non dipende dalle macchine Linux
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -66,7 +75,9 @@ jobs:
           tag="v$v"
           # note: la sezione della versione nel CHANGELOG
           awk -v h="## $v " 'index($0, h) == 1 { f = 1; next } /^## / { if (f) exit } f' docs/CHANGELOG.md > notes.md
-          mapfile -t list < <(find files -type f | sort)
+          shopt -s globstar nullglob
+          list=(); for f in files/**/*; do [ -f "$f" ] && list+=("$f"); done
+          [ ${#list[@]} -gt 0 ] || { echo "nessun file da pubblicare"; exit 1; }
           printf '%s\n' "${list[@]}"
           if gh release view "$tag" > /dev/null 2>&1; then
             gh release upload "$tag" "${list[@]}" --clobber
