@@ -93,6 +93,11 @@ function creaFinestra() {
     },
   });
   win.loadFile(INDEX);
+  // impostazioni e accesso stanno nel localStorage: alla chiusura si scrivono subito su disco, così anche una
+  // modifica fatta un istante prima di chiudere (o un arresto subito dopo) non va persa
+  const salva = () => { try { win.webContents.session.flushStorageData(); } catch (e) { /* finestra già chiusa */ } };
+  win.on('close', salva);
+  win.webContents.on('did-start-navigation', (e, url, isInPlace, isMainFrame) => { if (isMainFrame) salva(); });
   // chiudendo la finestra si ferma anche il server in rete locale
   win.on('closed', () => { lan.stopHost().catch(() => {}); });
   // anche ricaricando/navigando la pagina o se il processo di pagina muore
@@ -125,4 +130,5 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => app.quit());
+app.on('before-quit', () => { for (const w of BrowserWindow.getAllWindows()) { try { w.webContents.session.flushStorageData(); } catch (e) { /* */ } } });
 app.on('will-quit', () => { lan.stopHost().catch(() => {}); });

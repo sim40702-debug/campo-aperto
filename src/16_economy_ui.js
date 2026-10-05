@@ -43,7 +43,7 @@ class Economy {
     document.querySelectorAll('[data-balance]').forEach(el => { el.textContent = fmtCoins(b); });
     const logged = this.api.loggedIn();
     $('eco-user').textContent = logged ? 'Profilo' : 'Accedi';
-    $('home-name').textContent = logged ? (this.api.username || 'Profilo') : 'Ospite';
+    $('home-user-name').textContent = logged ? (this.api.username || 'Profilo') : 'Ospite';
     this.drawHomeAvatar();
   }
   // avatar nella scheda del giocatore in alto: l'aspetto indossato (dal server), testa e spalle

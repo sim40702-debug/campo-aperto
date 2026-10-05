@@ -257,6 +257,25 @@ function matchEventForNet(m, e) {
 }
 
 // evento ricevuto dall'host: solo tipi conosciuti, numeri finiti, testi corti
+// nomi personalizzati delle squadre: testo semplice (mai HTML), al massimo 24 caratteri. Vuoto = nome originale.
+const TEAM_NAME_MAX = 24;
+function cleanTeamName(v) {
+  if (typeof v !== 'string') return '';
+  return v.replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, TEAM_NAME_MAX);
+}
+// sigla del tabellone (3 caratteri) presa dal nome: solo lettere e cifre
+function teamShortOf(name) {
+  const l = name.normalize('NFD').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return (l + 'XXX').slice(0, 3);
+}
+// copia della squadra con il nome scelto (la squadra del database non cambia)
+function namedTeam(t, name) {
+  const n = cleanTeamName(name);
+  if (!n || n === t.name) return t;
+  return Object.assign({}, t, { name: n, short: teamShortOf(n) });
+}
+function cleanTeamNames(v) { return Array.isArray(v) ? [cleanTeamName(v[0]), cleanTeamName(v[1])] : ['', '']; }
+
 function cleanNetEvent(e) {
   if (!e || typeof e !== 'object' || NET.EV_TYPES.indexOf(e.type) < 0) return null;
   const num = (v, d) => (Number.isFinite(v) ? v : d);
@@ -292,7 +311,7 @@ class HostSession {
     this.link = link; this.db = db;
     this.members = new Map();     // id -> { id, name, side, connected, ping, gv }
     this.members.set(link.id, { id: link.id, name: myName, side: 0, connected: true, ping: 0, isHost: true });
-    this.settings = { home: 0, away: 4, halfSeconds: 180, difficulty: 1 };
+    this.settings = { home: 0, away: 4, halfSeconds: 180, difficulty: 1, names: ['', ''] };
     this.match = null; this.phase = 'lobby';
     this.inputs = new Map();      // id -> ultimo comando ricevuto
     this.slots = [];              // slot -> id
@@ -369,7 +388,7 @@ class HostSession {
     this.broadcastLobby();
     return true;
   }
-  setSettings(s) { Object.assign(this.settings, s); this.broadcastLobby(); }
+  setSettings(s) { Object.assign(this.settings, s); this.settings.names = cleanTeamNames(this.settings.names); this.broadcastLobby(); }
 
   lobbyState() {
     return {
@@ -395,7 +414,8 @@ class HostSession {
     this.slots = [...this.members.values()].filter(m => m.side >= 0 && m.connected).slice(0, NET.MAX_SLOTS).map(m => m.id);
     const humans = this.slots.map(id => ({ id: id, team: this.members.get(id).side }));
     this.mid = Math.random().toString(36).slice(2, 10);
-    this.match = new Match(this.db[s.home], this.db[s.away], { humans: humans, difficulty: s.difficulty, halfSeconds: s.halfSeconds });
+    const nm = cleanTeamNames(s.names);
+    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: humans, difficulty: s.difficulty, halfSeconds: s.halfSeconds });
     this.phase = 'playing';
     this.acc = 0; this.steps = 0; this.simTime = 0; this.seq = 0; this.inputs.clear();
     this.link.toAll(this.startPayload());
@@ -541,7 +561,7 @@ class ClientSession {
     }));
     return {
       t: 'lobby', code: typeof d.code === 'string' && NET.CODE_RE.test(d.code) ? d.code : '', hostId: str(d.hostId), phase: str(d.phase),
-      settings: { home: d.settings.home, away: d.settings.away, halfSeconds: d.settings.halfSeconds, difficulty: d.settings.difficulty },
+      settings: { home: d.settings.home, away: d.settings.away, halfSeconds: d.settings.halfSeconds, difficulty: d.settings.difficulty, names: cleanTeamNames(d.settings.names) },
       members: members,
     };
   }
@@ -554,7 +574,8 @@ class ClientSession {
     this.slots = hs.map(h => h.id);
     this.names = {}; hs.forEach(h => { this.names[h.id] = h.name; });
     // la partita del client è un "manichino": non viene simulata, riceve solo le posizioni
-    this.match = new Match(this.db[s.home], this.db[s.away], { humans: hs.map(h => ({ id: h.id, team: h.team })), difficulty: s.difficulty, halfSeconds: s.halfSeconds });
+    const nm = cleanTeamNames(s.names);
+    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: hs.map(h => ({ id: h.id, team: h.team })), difficulty: s.difficulty, halfSeconds: s.halfSeconds });
     this.match.events.length = 0;
     this.match.timeline.length = 0;   // il registro degli eventi arriva solo dall'host
     this.mid = d.mid; this.snaps = []; this.delay = undefined; this.events = []; this.replayAcc = 0;

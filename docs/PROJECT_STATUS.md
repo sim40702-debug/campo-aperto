@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 05/10/2026, sessione 9, versione 0.7.0
+Aggiornato: 05/10/2026, sessione 9, versione 0.7.1
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -29,8 +29,8 @@ cloud/: server dell'economia (Cloudflare Worker + D1 + Durable Object "Engine" e
 wss://…/relay), vedi docs/ECONOMIA.md. Regole delle schedine in cloud/src/betlogic.js, lo stesso file nel server e nel gioco. Il motore del server è
 generato da `node build.js engine` con gli stessi file 01..08 (impronta ENGINE_ID = SHA-256 dei file); RNG per partita
 (Match opts.rng) per rigiocare uguale una partita dal seme. Quote da cloud/src/odds-model.json (Monte Carlo col motore vero).
-Test: rules_test.js, referee_test.js, sim_test.js, net_test.js (83, relay e WebSocket veri), browser_test.py (28), controls_browser_test.py (27,
-controller simulato, Home nuova), online_browser_test.py (16, due giocatori), electron_smoke.js (16, app vera con tasti reali e due finestre online).
+Test: rules_test.js, referee_test.js, sim_test.js, net_test.js (87, relay e WebSocket veri), browser_test.py (31), controls_browser_test.py (27,
+controller simulato, Home nuova), online_browser_test.py (18, due giocatori), electron_smoke.js (16, app vera con tasti reali e due finestre online).
 
 Test dell'economia: cloud/test/markets_test.js (22), cloud/test/betlogic_test.js (68, regole delle schedine),
 cloud/test/api_test.js (114, contro wrangler dev), cloud/test/relay_test.js (22), economy_browser_test.py (60, due giocatori nel
@@ -38,6 +38,7 @@ browser, server locale, multipla della stessa partita, conflitti, transizioni, q
 visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio compreso).
 
 ## Funzionalità completate (verificate)
+- 0.7.1: nomi delle squadre personalizzabili (anche online, scelti dall'host) e nome della squadra di casa di nuovo visibile.
 - 0.7.0: multiple vere (più mercati della stessa partita se compatibili, motore unico validateBetCombination, quota
   collegata, bonus a soglie, VOID), "La mia schedina" con conflitti spiegati, Home da videogioco, transizioni senza salti,
   giocatori più realistici con inerzia, risoluzione e finestra, comandi salvati sull'account. Solo PC (desktop).
