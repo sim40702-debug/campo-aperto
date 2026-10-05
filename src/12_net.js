@@ -501,6 +501,16 @@ class HostSession {
 }
 
 // ---------- CLIENT ----------
+// ---------- predizione del proprio calciatore sul client ----------
+// Il client mostra la partita un po' nel passato (interpolazione tra le istantanee dell'host). Il proprio calciatore
+// invece si muove subito con i propri comandi, con la stessa fisica del motore; ogni istantanea nuova confronta la
+// posizione dell'host con quella prevista allo stesso istante e corregge l'errore un po' alla volta (tutto se è grande).
+// L'host resta l'arbitro: la predizione cambia solo cosa si vede su questo computer.
+class NetPredictor extends Player {
+  constructor(src) { super(src.data, src.team, src.slotIndex); this.slot = src.slot; this.dribble = false; }
+  hasBall() { return this.dribble; }
+}
+
 class ClientSession {
   constructor(link, db, myName) {
     this.link = link; this.db = db; this.myName = myName;
@@ -511,6 +521,7 @@ class ClientSession {
     this.meta = null;
     this.rtt = 0;                 // ping verso l'host (ms)
     this.lastSend = 0; this.lastInputKey = ''; this.pendingActs = [];
+    this.pr = null; this.lastInput = null; this.kickFx = 0; this.prevShoot = false;
     this.replayAcc = 0;
     this.onLobby = null; this.onStart = null; this.onLobbyReturn = null; this.onReject = null;
     link.on('msg', e => this.onMsg(e.d || {}));
@@ -625,6 +636,7 @@ class ClientSession {
     }
     const t = b.T > a.T ? clamp((rt - a.T) / (b.T - a.T), 0, 1) : 1;
     this.apply(a.f, b.f, t);
+    this.predict(frameDt);
     this.renderT = rt;
     // replay: un fotogramma ogni 1/60 s come sull'host
     this.replayAcc += frameDt;
@@ -678,9 +690,64 @@ class ClientSession {
     }
   }
 
+  predict(dt) {
+    const m = this.match, h = m.humanById(this.link.id), P = h && h.player, inp = this.lastInput;
+    // niente predizione quando il movimento non dipende dai comandi (piazzati, pressing assistito, a terra)
+    const can = P && inp && m.state === 'PLAY' && !inp.press && !(P.anim.fall > 0) && !(P.anim.tackle > 0.05) && !(P.anim.dive > 0) && this.snaps.length;
+    if (!can) { this.pr = null; this.kickFx = 0; return; }
+    const last = this.snaps[this.snaps.length - 1], idx = m.allSlots().indexOf(P), k = NET.HEADER + idx * NET.PSTRIDE;
+    const A = { x: last.f[k], z: last.f[k + 1], vx: last.f[k + 2], vz: last.f[k + 3] };
+    const now = netNow();
+    if (!this.pr || this.pr.src !== P) {
+      const q = new NetPredictor(P);
+      q.x = A.x; q.z = A.z; q.vx = A.vx; q.vz = A.vz; q.facing = P.facing;
+      this.pr = { q: q, src: P, hist: [], lastT: last.T, acc: 0 };
+    }
+    const pr = this.pr, q = pr.q;
+    if (last.T !== pr.lastT) {
+      pr.lastT = last.T;
+      // istante locale in cui l'host aveva già i nostri comandi fino a questa istantanea
+      const tq = last.T + this.delay - this.rtt / 1000;
+      const s = this.predAt(tq);
+      if (s) {
+        const ex = A.x - s.x, ez = A.z - s.z;
+        if (Math.hypot(ex, ez) > 2.5) { q.x = A.x; q.z = A.z; q.vx = A.vx; q.vz = A.vz; pr.hist = []; }
+        else { q.x += ex * 0.3; q.z += ez * 0.3; q.vx += (A.vx - s.vx) * 0.2; q.vz += (A.vz - s.vz) * 0.2; for (const e of pr.hist) { e.x += ex * 0.3; e.z += ez * 0.3; } }
+      }
+    }
+    // conduzione: il pallone (mostrato nel passato) è ai piedi del calciatore
+    q.dribble = dist2(m.ball.x, m.ball.z, P.x, P.z) < 1.3 && m.ball.y < 0.6;
+    q.energy = P.energy; q.stunned = 0;
+    pr.acc = Math.min(pr.acc + dt, 0.1);
+    while (pr.acc >= CONFIG.DT) { pr.acc -= CONFIG.DT; q.moveDir(inp.mx, inp.mz, inp.sprint, CONFIG.DT); q.update(CONFIG.DT); }
+    pr.hist.push({ t: now, x: q.x, z: q.z, vx: q.vx, vz: q.vz });
+    while (pr.hist.length && pr.hist[0].t < now - 1.5) pr.hist.shift();
+    if (q.dribble) { m.ball.x += q.x - P.x; m.ball.z += q.z - P.z; }
+    P.x = q.x; P.z = q.z; P.vx = q.vx; P.vz = q.vz; P.facing = q.facing; P.anim.phase = q.anim.phase;
+    // gesto del calcio subito, senza aspettare l'host
+    if (this.kickFx > 0) { this.kickFx -= dt; P.anim.kick = Math.max(P.anim.kick, this.kickFx); }
+  }
+  // posizione prevista all'istante t (interpolata nella storia recente)
+  predAt(t) {
+    const H = this.pr.hist;
+    if (!H.length || t < H[0].t) return null;
+    for (let i = H.length - 1; i > 0; i--) {
+      if (H[i - 1].t <= t) {
+        const a = H[i - 1], b = H[i], u = b.t > a.t ? clamp((t - a.t) / (b.t - a.t), 0, 1) : 1;
+        return { x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, vx: a.vx + (b.vx - a.vx) * u, vz: a.vz + (b.vz - a.vz) * u };
+      }
+    }
+    return H[H.length - 1];
+  }
+
   // invia i comandi: subito se c'è un'azione, altrimenti al massimo 30 volte al secondo
   sendInput(input) {
     if (!this.match) return;
+    this.lastInput = input;
+    // calcio del proprio calciatore che ha la palla: il gesto parte subito sullo schermo
+    const released = this.prevShoot && !input.shoot;
+    this.prevShoot = !!input.shoot;
+    if (this.pr && this.pr.q.dribble && (input.pressed.pass || input.pressed.long || input.pressed.through || released)) this.kickFx = 0.3;
     for (const a of NET.ACTIONS) if (input.pressed[a]) this.pendingActs.push(a);
     if (input.switchDir) this.pendingSw = input.switchDir;
     const urgent = this.pendingActs.length || this.pendingSw;

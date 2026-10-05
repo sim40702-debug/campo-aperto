@@ -687,6 +687,14 @@ class Renderer {
       pm.arms[0].sh.rotation.x = -0.75; pm.arms[1].sh.rotation.x = 0.55;
       body.rotation.z = u > 0.4 ? 0.12 * Math.sin((u - 0.4) / 0.6 * Math.PI) : -0.08;
     }
+    if (extra && extra.charge > 0 && !(kick > 0)) {
+      // carica del tiro: gamba indietro e braccia aperte in proporzione alla potenza
+      const c = Math.min(1, 0.35 + extra.charge * 0.65);
+      pm.legs[1].hip.rotation.z = -0.7 * c; pm.legs[1].knee.rotation.z = -1.2 * c;
+      pm.legs[0].hip.rotation.z = 0.12 * c; pm.legs[0].knee.rotation.z = -0.25 * c;
+      pm.arms[0].sh.rotation.x = -0.35 - 0.5 * c; pm.arms[1].sh.rotation.x = 0.35 + 0.4 * c;
+      body.rotation.z = -0.1 * c;
+    }
     if (diveDir) { // tuffo del portiere
       body.rotation.x = -diveDir * 1.25; body.position.y = 0.3;
       pm.arms[0].sh.rotation.x = -2.6; pm.arms[1].sh.rotation.x = 2.6;
@@ -736,6 +744,9 @@ class Renderer {
     const sp3 = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
     if (!b.owner && sp3 > 21 && by > 0.25) this.burst('trail', bx, bz, { y: by, amount: Math.min(1.5, (sp3 - 18) / 10) });
     const scorers = match.state === 'GOAL' && match.lastGoal ? match.lastGoal.team : null;
+    // tiro in carica dei calciatori guidati da persone: la preparazione si vede dal primo istante
+    let charges = null;
+    for (const h of (match.humans || [])) if (h.player && h.shootCharge > 0) (charges || (charges = new Map())).set(h.player, h.shootCharge);
     let ns = 0;
     for (const pm of this.playerMeshes) {
       const p = pm.player;
@@ -745,8 +756,9 @@ class Renderer {
       p.rx = mix(p.px, p.x, 2.5); p.rz = mix(p.pz, p.z, 2.5);
       const f = useA && p.pf !== undefined ? p.pf + angleDiff(p.pf, p.facing) * a : p.facing;
       const ph = mix(p.pph, p.anim.phase, 1.5);
+      const hc = charges && charges.get(p);
       this.poseMesh(pm, p.rx, p.rz, f, ph, p.speed(), p.anim.kick, p.anim.dive > 0 ? p.anim.diveDir : 0,
-        { tackle: p.anim.tackle, header: p.anim.header, fall: p.anim.fall, celebrate: scorers === p.team && match.stateTime > 0.4 });
+        { tackle: p.anim.tackle, header: p.anim.header, fall: p.anim.fall, celebrate: scorers === p.team && match.stateTime > 0.4, charge: hc || 0 });
       // ombra di contatto: allungata quando è a terra (caduta, scivolata, tuffo)
       const lying = p.anim.fall > 0 || p.anim.tackle > 0.3 || p.anim.dive > 0;
       if (ns < 22) this.setFootShadow(ns++, p.rx + (lying ? Math.cos(f) * 0.7 : 0), p.rz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0);
@@ -818,13 +830,13 @@ class Renderer {
       look.set(f.x + dir * 8, 0, f.z * 0.8);
     }
     // inseguimento esponenziale: stessa morbidezza a 30, 60 o 144 fps
-    this.camera.position.lerp(want, 1 - Math.exp(-3 * dt));
-    this.camTarget.lerp(look, 1 - Math.exp(-4 * dt));
+    this.camera.position.lerp(want, 1 - Math.exp(-3.6 * dt));
+    this.camTarget.lerp(look, 1 - Math.exp(-5 * dt));
     this.camera.lookAt(this.camTarget);
     // piccolo tremolio della telecamera dopo un gol
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt);
-      const a = this.shake * 0.35;
+      const a = Math.min(this.shake, 0.6) * 0.35;
       this.camera.position.x += (Math.random() - 0.5) * a; this.camera.position.y += (Math.random() - 0.5) * a;
     }
   }
@@ -973,6 +985,11 @@ class Renderer {
       if (!p) return;
       const px = p.rx !== undefined ? p.rx : p.x, pz = p.rz !== undefined ? p.rz : p.z;
       mk.ring.position.x = px; mk.ring.position.z = pz;
+      // cambio di giocatore: l'anello si allarga e torna subito (si vede chi controlli adesso)
+      if (mk.lastP !== p) { mk.lastP = p; mk.pop = 0.22; }
+      mk.pop = Math.max(0, (mk.pop || 0) - (this.frameDt || 1 / 60));
+      const sc = 1 + mk.pop / 0.22 * 0.7;
+      mk.ring.scale.set(sc, sc, sc);
       if (isMe) mk.ring.material.color.set(h.shootCharge > 0 ? (h.shootCharge > 0.9 ? '#ff5a36' : '#ffae3d') : '#ffd84a');
       if (mk.label) mk.label.position.set(px, 2.9 * p.data.look.height / 1.8, pz);
     });

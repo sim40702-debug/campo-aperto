@@ -484,6 +484,14 @@ table.stand tr.q td:first-child { box-shadow: inset 3px 0 0 var(--turf-light); }
 @media (max-width: 1000px) { .srv-league { grid-template-columns: 1fr; } }
 select.sel { font: inherit; color: var(--chalk); background: var(--night-2); border: 1px solid rgba(243,245,238,0.25); padding: 9px 10px; max-width: 420px; }
 select.sel:focus { outline: none; border-color: var(--flood); }
+
+/* ---------- risposta immediata al tocco: ogni pulsante si "abbassa" appena lo si preme (non al rilascio) ---------- */
+.seg, .ghost, .tab, .fxrow, .arrow, .home-menu button, .sel-btn, .comp-card button { transition: transform 0.06s ease-out, background 0.12s, border-color 0.12s, color 0.12s; }
+.seg:active:not(:disabled), .ghost:active:not(:disabled), .tab:active:not(:disabled), .arrow:active:not(:disabled), .home-menu button:active { transform: scale(0.96); }
+.fxrow:active, .home-tile:active { transform: scale(0.985); transition-duration: 0.04s; }
+.primary:active:not(:disabled) { transform: translateY(1px) scale(0.97); filter: brightness(0.95); transition-duration: 0.04s; }
+.seg:active:not(:disabled) { background: rgba(255,216,74,0.25); }
+.tab:hover:not(.on) { color: var(--chalk); }
 </style>
 </head>
 <body>

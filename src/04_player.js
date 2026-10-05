@@ -27,6 +27,8 @@ class Player {
   // massa in kg (fisico e altezza): decide chi sposta chi negli scontri
   mass() { return 68 + this.data.attr.physical * 0.16 + (this.data.look.height - 1.8) * 45; }
   speed() { return len(this.vx, this.vz); }
+  // ha la palla (la predizione del client lo decide da sé: vedi NetPredictor)
+  hasBall() { return !!(this.team.match && this.team.match.ball.owner === this); }
 
   // velocità massima in base ad attributi, energia e possesso palla
   maxSpeed(sprint) {
@@ -35,7 +37,7 @@ class Player {
     if (this.data.ability === 'Velocista') top += 0.4;
     let s = sprint ? top : top * 0.64;
     if (this.energy < 45) s *= 0.82 + 0.18 * (this.energy / 45);
-    if (this.team.match && this.team.match.ball.owner === this) s *= 0.9;
+    if (this.hasBall()) s *= 0.9;
     return s;
   }
   accel() { return 5 + this.data.attr.accel * 0.045; }
@@ -73,7 +75,7 @@ class Player {
   // Fermarsi è rapido ma non istantaneo; in scatto le curve sono più larghe; con la palla un po' più pesante.
   steerHuman(desiredX, desiredZ, dt) {
     const stun = this.stunned > 0 ? 0.25 : 1;
-    const ball = this.team.match && this.team.match.ball.owner === this ? 0.88 : 1;
+    const ball = this.hasBall() ? 0.88 : 1;
     const want = len(desiredX, desiredZ);
     const top = this.maxSpeed(true);
     if (want < 0.1) {

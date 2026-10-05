@@ -103,7 +103,10 @@ class Game {
     window.addEventListener('pointerdown', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
     // suono di conferma per ogni pulsante
-    document.addEventListener('click', e => { if (e.target.closest && e.target.closest('button')) this.audio.ui(); });
+    // suono del pulsante appena lo si preme (non al rilascio); da tastiera o controller al clic
+    const uiSound = e => { const b = e.target.closest && e.target.closest('button'); if (b && !b.disabled) { this.audio.init(); this.audio.ui(); } };
+    document.addEventListener('pointerdown', e => { if (e.button === 0) uiSound(e); });
+    document.addEventListener('click', e => { if (e.detail === 0) uiSound(e); });
     $('btn-quick').onclick = () => { this.setup.side = this.setup.side === -1 ? 0 : this.setup.side; this.showScreen('setup'); };
     $('btn-watch').onclick = () => this.eco.open('fixtures');
     $('btn-online').onclick = () => this.showScreen('online');
@@ -1056,14 +1059,18 @@ class Game {
         this.audio.kick(e.power || 10); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });
         // calcio del tuo calciatore: piccolo colpo nelle mani
         const me = this.localPlayer();
-        if (me && dist2(me.x, me.z, e.x, e.z) < 1.6) this.rumble(e.power > 20 ? 110 : 60, e.power > 20 ? 0.45 : 0.15, 0.5);
+        if (me && dist2(me.x, me.z, e.x, e.z) < 1.6) {
+          this.rumble(e.power > 20 ? 110 : 60, e.power > 20 ? 0.45 : 0.15, 0.5);
+          // tiro potente del tuo calciatore: un piccolissimo colpo di telecamera
+          if (e.power > 24) R.shake = Math.max(R.shake, 0.12);
+        }
         break;
       }
       case 'tackle': {
         // contrasto: polvere ed erba proporzionate alla durezza, una striscia d'erba per la scivolata
         R.burst('dust', e.x, e.z, { amount: 0.8 + (e.sev || 0) });
         if (e.slide) R.burst('grass', e.x, e.z, { amount: 1.4 });
-        const me = this.localPlayer(); if (me && dist2(me.x, me.z, e.x, e.z) < 3) this.rumble(140, 0.7, 0.3);
+        const me = this.localPlayer(); if (me && dist2(me.x, me.z, e.x, e.z) < 3) { this.rumble(140, 0.7, 0.3); if ((e.sev || 0) > 0.5) R.shake = Math.max(R.shake, 0.1); }
         break;
       }
       case 'ref': this.refereeFeedback(e.r); break;
