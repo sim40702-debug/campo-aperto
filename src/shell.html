@@ -111,6 +111,14 @@ body.pad-nav .home-tile:focus { border-left-color: var(--flood); outline: 2px so
 .teamcard .side { color: var(--slate); font-size: 14px; }
 .teamrow { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .teamrow .tn { flex: 1; font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1.05; }
+/* nome della squadra modificabile: sembra un titolo, la riga sotto dice che si può scrivere */
+input.tn { min-width: 0; width: 100%; color: var(--chalk); background: transparent; border: 0; border-bottom: 2px dashed rgba(243,245,238,0.22); padding: 2px 2px 3px; text-overflow: ellipsis; cursor: text; transition: border-color 0.12s, background 0.12s; }
+input.tn:hover { border-bottom-color: rgba(243,245,238,0.5); }
+input.tn:focus { outline: none; border-bottom: 2px solid var(--flood); background: rgba(243,245,238,0.05); }
+input.tn::placeholder { color: rgba(243,245,238,0.45); }
+input.tn-seg { font: inherit; font-size: 15px; color: var(--chalk); width: 210px; min-width: 0; text-align: center; cursor: text; }
+input.tn-seg:focus { outline: none; border-color: var(--flood); }
+input.tn-seg::placeholder { color: rgba(243,245,238,0.6); }
 .arrow { background: rgba(243,245,238,0.08); border: 0; width: 38px; height: 38px; font-size: 20px; }
 .arrow:hover { background: rgba(243,245,238,0.18); }
 .kit { display: flex; gap: 4px; margin: 8px 0; }
@@ -436,7 +444,7 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
   <div class="home-user">
     <canvas id="home-avatar" width="112" height="112" aria-hidden="true"></canvas>
     <div class="home-who">
-      <b id="home-name">Ospite</b>
+      <b id="home-user-name">Ospite</b>
       <button class="wallet" id="eco-wallet" title="Saldo (dal server)">🪙 <span data-balance>—</span></button>
     </div>
     <button class="ghost" id="eco-user">Accedi</button>
@@ -449,13 +457,13 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
     <div class="teams">
       <div class="teamcard">
         <div class="side">Casa</div>
-        <div class="teamrow"><button class="arrow" data-cycle="home:-1" aria-label="Squadra di casa precedente">‹</button><div class="tn" id="home-name"></div><button class="arrow" data-cycle="home:1" aria-label="Squadra di casa successiva">›</button></div>
+        <div class="teamrow"><button class="arrow" data-cycle="home:-1" aria-label="Squadra di casa precedente">‹</button><input class="tn" id="home-name" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Nome della squadra di casa (scrivi per cambiarlo)" title="Scrivi per cambiare il nome; vuoto = nome originale"><button class="arrow" data-cycle="home:1" aria-label="Squadra di casa successiva">›</button></div>
         <div class="kit" id="home-kit"></div>
         <p id="home-meta"></p><p id="home-stars"></p>
       </div>
       <div class="teamcard">
         <div class="side">Ospiti</div>
-        <div class="teamrow"><button class="arrow" data-cycle="away:-1" aria-label="Squadra ospite precedente">‹</button><div class="tn" id="away-name"></div><button class="arrow" data-cycle="away:1" aria-label="Squadra ospite successiva">›</button></div>
+        <div class="teamrow"><button class="arrow" data-cycle="away:-1" aria-label="Squadra ospite precedente">‹</button><input class="tn" id="away-name" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Nome della squadra ospite (scrivi per cambiarlo)" title="Scrivi per cambiare il nome; vuoto = nome originale"><button class="arrow" data-cycle="away:1" aria-label="Squadra ospite successiva">›</button></div>
         <div class="kit" id="away-kit"></div>
         <p id="away-meta"></p><p id="away-stars"></p>
       </div>
@@ -528,8 +536,8 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
       <div class="col" id="lb-col--1"><h3>Spettatori</h3><ul id="lb-list--1"></ul><button class="seg" data-side="-1">Guarda</button></div>
     </div>
     <div id="lb-host-opts" class="opts">
-      <span class="lbl">Squadra di casa</span><div class="segs"><button class="arrow" data-lcycle="home:-1" aria-label="Squadra di casa precedente">‹</button><button class="seg" id="lb-home-name" disabled style="opacity:1;cursor:default"></button><button class="arrow" data-lcycle="home:1" aria-label="Squadra di casa successiva">›</button></div>
-      <span class="lbl">Squadra ospite</span><div class="segs"><button class="arrow" data-lcycle="away:-1" aria-label="Squadra ospite precedente">‹</button><button class="seg" id="lb-away-name" disabled style="opacity:1;cursor:default"></button><button class="arrow" data-lcycle="away:1" aria-label="Squadra ospite successiva">›</button></div>
+      <span class="lbl">Squadra di casa</span><div class="segs"><button class="arrow" data-lcycle="home:-1" aria-label="Squadra di casa precedente">‹</button><input class="seg tn-seg" id="lb-home-name" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Nome della squadra di casa (scrivi per cambiarlo)" title="Scrivi per cambiare il nome; vuoto = nome originale"><button class="arrow" data-lcycle="home:1" aria-label="Squadra di casa successiva">›</button></div>
+      <span class="lbl">Squadra ospite</span><div class="segs"><button class="arrow" data-lcycle="away:-1" aria-label="Squadra ospite precedente">‹</button><input class="seg tn-seg" id="lb-away-name" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Nome della squadra ospite (scrivi per cambiarlo)" title="Scrivi per cambiare il nome; vuoto = nome originale"><button class="arrow" data-lcycle="away:1" aria-label="Squadra ospite successiva">›</button></div>
       <span class="lbl">Durata di un tempo</span><div class="segs" id="lb-len"></div>
       <span class="lbl">Difficoltà IA</span><div class="segs" id="lb-diff"></div>
     </div>

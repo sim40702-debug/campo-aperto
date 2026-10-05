@@ -55,6 +55,7 @@ async def newpage(b, w=1280, h=800, profile=None):
         pg = await ctx.new_page()
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
+    pg.on('crash', lambda: errs.append('PAGINA CRASHATA'))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
     # diagnostica: richieste fuori dal server locale, risposte d'errore, chiavi tolte dal localStorage (con lo stack)
     pg.net = []
@@ -236,6 +237,13 @@ async def run():
         # ---- persistenza: refresh, altro browser, logout/login ----
         balA = http('GET', '/api/me/balance', token=tokA)[1]['balance']; balB = http('GET', '/api/me/balance', token=tokB)[1]['balance']
         pre = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), tok: !!game.eco.api.token, url: location.href})")
+        # diagnostica: cosa ha il browser (non la pagina) nell'archivio di B, subito prima del ricaricamento
+        try:
+            cdp = await ctxB.new_cdp_session(B)
+            await cdp.send('DOMStorage.enable')
+            items = await cdp.send('DOMStorage.getDOMStorageItems', {'storageId': {'securityOrigin': 'file://', 'isLocalStorage': True}})
+            print('archivio di B visto dal browser:', [k for k, _ in items['entries']], flush=True)
+        except Exception as e: print('archivio di B non leggibile:', e, flush=True)
         await B.reload()
         post = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), settingsFields: Object.keys(JSON.parse(localStorage.getItem('campoAperto.settings.v1') || '{}')).length, url: location.href})")
         print('localStorage di B prima/dopo il ricaricamento:', pre, post, flush=True)
@@ -331,7 +339,7 @@ async def run():
         # ---- comandi personalizzati salvati sull'account: un altro browser li ritrova ----
         await C.evaluate("game.settings.keys.sprint = ['KeyX', 'ShiftRight']; game.input.setKeys(game.settings.keys); saveSettings(game.settings)")
         await C.wait_for_timeout(2500)
-        ctxC2, C2, errC2 = await newpage(b)
+        ctxC2, C2, errC2 = await newpage(p.chromium, profile=tempfile.mkdtemp(prefix='campo-e2e-profC2-'))   # si ricarica: profilo su disco
         await C2.click('#eco-user'); await C2.fill('#ac-user', NC); await C2.fill('#ac-pass', 'password-c1'); await C2.click('#ac-login')
         await C2.wait_for_function("game.screen==='menu' && game.eco.api.me", timeout=30000)
         await C2.wait_for_function("game.settings.keys.sprint[0]==='KeyX'", timeout=10000)

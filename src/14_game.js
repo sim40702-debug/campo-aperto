@@ -114,6 +114,13 @@ class Game {
     if (IS_DESKTOP) { $('li-quit').hidden = false; $('btn-quit').onclick = () => window.close(); }
     $('setup-back').onclick = () => { if (this.setup.side === -1) this.setup.side = 0; this.showScreen('menu'); };
     $('setup-start').onclick = () => this.startMatch();
+    // nome della squadra: si scrive direttamente nella scheda; vuoto = nome originale. Resta salvato per quella squadra
+    ['home', 'away'].forEach(which => {
+      const inp = $(which + '-name');
+      inp.addEventListener('input', () => this.setTeamName(this.setup[which], inp.value));
+      inp.addEventListener('change', () => { inp.value = this.teamName(this.setup[which]); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') { e.stopPropagation(); inp.blur(); } });
+    });
     document.querySelectorAll('[data-cycle]').forEach(b => b.onclick = () => {
       const [which, delta] = b.dataset.cycle.split(':');
       this.cycleTeam(this.setup, which, Number(delta));
@@ -152,7 +159,23 @@ class Game {
       const [which, delta] = b.dataset.lcycle.split(':');
       const s = Object.assign({}, this.net.host.settings);
       this.cycleTeam(s, which, Number(delta));
+      s.names = [this.settings.teamNames[s.home] || '', this.settings.teamNames[s.away] || ''];
       this.net.host.setSettings(s);
+    });
+    ['home', 'away'].forEach((which, i) => {
+      const inp = $('lb-' + which + '-name');
+      let t = null;
+      const send = () => {
+        clearTimeout(t);
+        const h = this.net && this.net.host; if (!h) return;
+        const v = cleanTeamName(inp.value), idx = h.settings[which];
+        this.setTeamName(idx, v);
+        const names = cleanTeamNames(h.settings.names); names[i] = v;
+        h.setSettings({ names: names });
+      };
+      inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(send, 300); });
+      inp.addEventListener('change', send);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') { e.stopPropagation(); inp.blur(); } });
     });
     // impostazioni
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { this.settingsTab = b.dataset.tab; this.renderSettings(); });
@@ -183,10 +206,20 @@ class Game {
     });
   }
 
+  // nome scelto per una squadra (o quello originale)
+  teamName(idx) { return this.settings.teamNames[idx] || this.db[idx].name; }
+  setTeamName(idx, v) {
+    const n = cleanTeamName(v);
+    if (n && n !== this.db[idx].name) this.settings.teamNames[idx] = n; else delete this.settings.teamNames[idx];
+    saveSettings(this.settings);
+  }
+
   renderSetup() {
     const s = this.setup;
     const fill = (prefix, t, kitName) => {
-      $(prefix + '-name').textContent = t.name;
+      const inp = $(prefix + '-name');
+      inp.placeholder = t.name;
+      if (document.activeElement !== inp) inp.value = this.teamName(s[prefix]);
       $(prefix + '-meta').textContent = 'Forza ' + t.rating + ', allenatore ' + t.coach;
       const k = t.kits[kitName];
       $(prefix + '-kit').innerHTML = k.map(c => '<span style="background:' + c + '"></span>').join('');
@@ -207,7 +240,7 @@ class Game {
 
   teamForMatch(idx, isMine) {
     const t = this.db[idx];
-    const copy = Object.assign({}, t);
+    const copy = Object.assign({}, namedTeam(t, this.settings.teamNames[idx]));
     copy.tactics = Object.assign({}, t.tactics);
     if (isMine) { copy.formation = this.setup.formation || t.formation; copy.tactics.mentality = this.setup.mentality; }
     return copy;
@@ -1299,6 +1332,7 @@ class Game {
       if (cancelled) return;
       this.netNote('Partita creata, codice ' + link.code);
       const host = new HostSession(link, this.db, name);
+      host.settings.names = [this.settings.teamNames[host.settings.home] || '', this.settings.teamNames[host.settings.away] || ''];
       this.net = { link: link, host: host, lan: lan };
       host.onChange = () => { if (this.screen === 'lobby') this.renderLobby(); };
       this.bindLinkEvents(link);
@@ -1557,7 +1591,8 @@ class Game {
     $('lb-sub').textContent = (isHost ? 'Sei l\'host: la partita gira sul tuo computer. Tieni aperto il gioco finché giocate.' : 'Sei collegato alla partita. Scegli una squadra e aspetta l\'avvio.') + teamsHint;
     if (!L) { $('lb-list-0').innerHTML = '<li class="empty">Caricamento…</li>'; return; }
     const s = L.settings, myId = this.net.link.id;
-    const teams = [this.db[s.home], this.db[s.away]];
+    const names = cleanTeamNames(s.names);
+    const teams = [namedTeam(this.db[s.home], names[0]), namedTeam(this.db[s.away], names[1])];
     [0, 1].forEach(i => {
       $('lb-team-' + i).textContent = teams[i].name;
       $('lb-kit-' + i).style.background = teams[i].kits[i === 0 ? 'home' : 'away'][0];
@@ -1581,7 +1616,11 @@ class Game {
     }
     $('lb-host-opts').hidden = !isHost;
     if (isHost) {
-      $('lb-home-name').textContent = teams[0].name; $('lb-away-name').textContent = teams[1].name;
+      ['home', 'away'].forEach((which, i) => {
+        const inp = $('lb-' + which + '-name');
+        inp.placeholder = this.db[i === 0 ? s.home : s.away].name;
+        if (document.activeElement !== inp) inp.value = teams[i].name;
+      });
       const h = this.net.host;
       this.segmented('lb-len', [{ label: '2 min', value: 120 }, { label: '3 min', value: 180 }, { label: '5 min', value: 300 }], s.halfSeconds, v => h.setSettings({ halfSeconds: v }));
       this.segmented('lb-diff', [{ label: 'Facile', value: 0 }, { label: 'Normale', value: 1 }, { label: 'Difficile', value: 2 }], s.difficulty, v => h.setSettings({ difficulty: v }));
