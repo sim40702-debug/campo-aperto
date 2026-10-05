@@ -25,6 +25,7 @@ function defaultSettings() {
     camera: 0,
     name: '',
     server: '',               // server online (wss://...), facoltativo: senza, le partite si ospitano in rete locale
+    apiUrl: '',               // server dell'economia (https://...): vuoto = quello incluso nella versione (DEFAULT_API_URL)
     lanHost: '',              // ultimo indirizzo dell'host in rete locale con cui sei entrato (IP o IP:porta)
     netDebug: false,          // pannello di diagnostica della rete
   };

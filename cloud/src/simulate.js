@@ -1,12 +1,14 @@
 // Calcolo delle partite del server con il motore del gioco (stesso codice di src/01..08, vedi build.js engine).
 // Usato solo dal Durable Object: una partita costa circa un secondo di CPU, troppo per una richiesta Worker gratuita.
-import { Match, buildDatabase, makeRng, GAME_VERSION } from './engine.gen.js';
+import { Match, buildDatabase, makeRng, GAME_VERSION, ENGINE_ID } from './engine.gen.js';
 import { factsFromMatch } from './markets.js';
 
 export const TEAM_DB_SEED = 2026;   // lo stesso seme del database squadre del gioco (Game: buildDatabase(2026))
 let db = null;
 export const teamDb = () => db || (db = buildDatabase(TEAM_DB_SEED));
-export const engineVersion = GAME_VERSION;
+// impronta della simulazione (vedi build.js): il gioco rigioca una partita solo se ha la stessa
+export const engineVersion = ENGINE_ID;
+export const gameVersion = GAME_VERSION;
 
 export function teamInfo(i) {
   const t = teamDb()[i];
@@ -33,6 +35,6 @@ export function simulateFixture(home, away, seed, halfSeconds) {
       team: e.team, player: e.player ? e.player.name : '', detail: (e.reason || '').slice(0, 80),
     })),
     durationMs: Math.round(m.realTime * 1000),
-    engine: GAME_VERSION,
+    engine: ENGINE_ID,
   };
 }

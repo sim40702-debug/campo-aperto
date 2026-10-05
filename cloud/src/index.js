@@ -8,7 +8,7 @@ import { fixtureFeed, betStatuses, globalFeed, popular, fixtureStats, todayStats
 import { catalog, inventory, buy, equip, unequip, setAvatar, loadout } from './shop.js';
 import { me, balance, transactions, setPrivacy, publicProfile } from './profile.js';
 import { claimDaily, claimWatch } from './rewards.js';
-import { engineVersion } from './simulate.js';
+import { engineVersion, gameVersion } from './simulate.js';
 export { Engine } from './engine-do.js';
 
 const API_VERSION = 1;
@@ -58,7 +58,7 @@ async function route(request, env, ctx) {
   const viewer = () => authenticate(env, request, t);
 
   // ---- informazioni ----
-  if (is('GET', 'status')) return json({ api: API_VERSION, engine: engineVersion, serverTime: t });
+  if (is('GET', 'status')) return json({ api: API_VERSION, engine: engineVersion, game: gameVersion, serverTime: t });
 
   // ---- account ----
   if (is('POST', 'auth', 'register')) { await signupLimit(env, request, t); return json(await register(env, body, t), 201); }
