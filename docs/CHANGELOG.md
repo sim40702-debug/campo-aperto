@@ -13,6 +13,8 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
 - Liquidazione: VOID tolta dal prodotto e bonus ricalcolato; liquidazione con le stesse regole del controllo.
   Migrazione 0003 (quota base, bonus, quota effettiva delle selezioni, preferenze).
 - "La mia schedina": selezioni raggruppate per partita, quota collegata, bonus e soglia successiva, vincita possibile.
+  Se una quota cambia (alla conferma o mentre la schedina è aperta) si vede "Quota cambiata" con la quota originale e
+  la nuova, e un clic arrivato subito dopo non gioca: si conferma solo dopo aver visto la quota nuova.
 - Home ridisegnata: GIOCA in primo piano, sezioni (Guarda partita, Multiplayer, Scommesse, Shop, Personalizzazione),
   scheda del giocatore con avatar, nome e coin, menu (Impostazioni, Controlli, Audio, Grafica, Account).
 - Transizioni: due @keyframes con lo stesso nome ("slidein") si sovrascrivevano e i pannelli partivano spostati di
