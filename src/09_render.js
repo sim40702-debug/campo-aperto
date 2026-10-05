@@ -490,10 +490,9 @@ class Renderer {
   }
 
   // costruisce un giocatore con primitive: il modello guarda verso +x (altezza di riferimento 1,80 m).
-  // Proporzioni da calciatore: testa ovale con collo, spalle arrotondate, busto più largo che profondo,
-  // maniche corte e braccia, mani, pantaloncini che coprono metà coscia, calzettoni fino al ginocchio,
-  // scarpe con la punta. Busto, testa e capelli sono un'unica geometria colorata; gambe e braccia restano
-  // snodate. Un solo materiale per tutti (i colori stanno nei vertici).
+  // Scheletro: bacino (anca a 0,92 m, gambe lunghe come in un atleta) con cosce, ginocchia e tibie; busto con
+  // perno in vita (si piega e ruota contro il bacino nella corsa), spalle, gomiti; collo con la testa, che resta
+  // dritta mentre il corpo si inclina. Ogni pezzo è una geometria unica colorata nei vertici, un solo materiale.
   makePlayerMesh(p) {
     const cos = this.cosmetics.get(p) || null, it = (cos && cos.items) || {};
     const look0 = p.data.look;
@@ -504,108 +503,116 @@ class Renderer {
     });
     const kit0 = p.isGK ? (p.team.index === 0 ? ['#2bd18c', '#1a1a1a', '#2bd18c'] : ['#ff7ac8', '#1a1a1a', '#ff7ac8']) : p.team.kit;
     const kit = [kit0[0], it.pantaloncini ? it.pantaloncini.color : kit0[1], it.calzettoni ? it.calzettoni.color : kit0[2]];
+    const trim = kit0[1] === kit0[0] ? '#ffffff' : kit0[1];   // colletto e bordi delle maniche
     const pat = it.maglia || null, acc = it.accessori || null, gloves = it.guanti ? it.guanti.color : (p.isGK ? '#f2f2f2' : null);
     if (!this.playerMat) this.playerMat = new THREE.MeshLambertMaterial({ vertexColors: true });
     const mat = this.playerMat;
+    const mesh = (parts, shadow) => { const m = new THREE.Mesh(this.mergeColored(parts), mat); m.castShadow = shadow !== false; return m; };
     const root = new THREE.Group();
     const body = new THREE.Group(); root.add(body);
     const w = look.build;
     const D = this.Q.detail, seg = n => Math.max(5, Math.round(n * D));
-    const skinDark = '#' + new THREE.Color(look.skin).multiplyScalar(0.82).getHexString();
-    const HY = 1.665;   // centro della testa
-    const parts = [
-      // busto: profilo di rotazione (vita, petto, spalle, attacco del collo), poco profondo (x) e largo (z)
-      { geo: this.lathe(TORSO_PROFILE, w, seg(16)), color: kit[0], pos: [0, 0, 0], scale: [0.74, 1, 1.4] },
-      // spalle arrotondate (deltoidi)
-      { geo: new THREE.SphereGeometry(0.074, seg(9), seg(7)), color: kit[0], pos: [0, 1.44, 0.262 * w], scale: [1, 0.9, 1] },
-      { geo: new THREE.SphereGeometry(0.074, seg(9), seg(7)), color: kit[0], pos: [0, 1.44, -0.262 * w], scale: [1, 0.9, 1] },
-      // pantaloncini (bacino), leggermente svasati
-      { geo: this.lathe(SHORTS_PROFILE, w, seg(14)), color: kit[1], pos: [0, 0, 0], scale: [0.82, 1, 1.36] },
-      // collo e testa ovale, mento, orecchie, naso, occhi
-      { geo: new THREE.CylinderGeometry(0.052, 0.06, 0.12, seg(8)), color: look.skin, pos: [0, 1.545, 0] },
-      { geo: new THREE.SphereGeometry(0.112, seg(14), seg(12)), color: look.skin, pos: [0, HY, 0], scale: [1.02, 1.16, 0.94] },
-      { geo: new THREE.SphereGeometry(0.07, seg(8), seg(6)), color: look.skin, pos: [0.045, HY - 0.075, 0], scale: [1, 0.75, 1.1] },
-      { geo: new THREE.SphereGeometry(0.025, 6, 5), color: skinDark, pos: [-0.005, HY, 0.103], scale: [0.7, 1.2, 0.6] },
-      { geo: new THREE.SphereGeometry(0.025, 6, 5), color: skinDark, pos: [-0.005, HY, -0.103], scale: [0.7, 1.2, 0.6] },
-      { geo: new THREE.ConeGeometry(0.018, 0.045, 5), color: skinDark, pos: [0.115, HY - 0.012, 0], rot: [0, 0, -Math.PI / 2] },
-      { geo: new THREE.SphereGeometry(0.011, 5, 4), color: '#1b1410', pos: [0.104, HY + 0.018, 0.036] },
-      { geo: new THREE.SphereGeometry(0.011, 5, 4), color: '#1b1410', pos: [0.104, HY + 0.018, -0.036] },
+    const cyl = (r1, r2, l, n) => new THREE.CylinderGeometry(r1, r2, l, seg(n || 9));
+    const skinDark = '#' + new THREE.Color(look.skin).multiplyScalar(0.8).getHexString();
+    const HIP = 0.92, WAIST = 0.98, NECK = 1.5, HY = 1.665;
+    // ---- bacino: pantaloncini (profilo spostato al perno dell'anca)
+    const pelvis = new THREE.Group(); pelvis.position.y = HIP; body.add(pelvis);
+    pelvis.add(mesh([{ geo: this.lathe(SHORTS_PROFILE, w, seg(14)), color: kit[1], pos: [0, -HIP, 0], scale: [0.8, 1, 1.2] }]));
+    // ---- busto con perno in vita
+    const chest = new THREE.Group(); chest.position.y = WAIST; body.add(chest);
+    const torsoParts = [
+      // spalle larghe circa 46 cm, busto meno profondo che largo (proporzioni da atleta, non da manichino)
+      { geo: this.lathe(TORSO_PROFILE, w, seg(16)), color: kit[0], pos: [0, -WAIST, 0], scale: [0.7, 1, 1.18] },
+      { geo: new THREE.SphereGeometry(0.07, seg(9), seg(7)), color: kit[0], pos: [0, 1.435 - WAIST, 0.222 * w], scale: [1, 0.86, 1] },
+      { geo: new THREE.SphereGeometry(0.07, seg(9), seg(7)), color: kit[0], pos: [0, 1.435 - WAIST, -0.222 * w], scale: [1, 0.86, 1] },
+      // colletto
+      { geo: cyl(0.068, 0.086, 0.04, 12), color: pat && (pat.pattern === 'colletto' || pat.pattern === 'bordi') ? pat.color : trim, pos: [0, 1.515 - WAIST, 0] },
     ];
-    // capelli: calotta che segue la testa ovale, diversa per stile
-    const hair = (scale, thetaLen, dy) => parts.push({ geo: new THREE.SphereGeometry(0.118, seg(12), seg(8), 0, Math.PI * 2, 0, thetaLen), color: look.hair, pos: [-0.008, HY + (dy || 0.012), 0], rot: [0, 0, 0.32], scale: scale });
-    if (look.hairStyle === 'ricci') hair([1.1, 1.18, 1.04], 1.55, 0.02);
-    else if (look.hairStyle === 'cresta') { hair([1.0, 1.05, 0.96], 1.1, 0.0); parts.push({ geo: new THREE.BoxGeometry(0.17, 0.06, 0.05), color: look.hair, pos: [0.0, HY + 0.13, 0], rot: [0, 0, 0.15] }); }
+    if (pat) {
+      const fx = 0.148 * w;   // superficie davanti (+x) e dietro (-x) del busto
+      if (pat.pattern === 'bordi') torsoParts.push({ geo: cyl(0.16 * w, 0.16 * w, 0.04, 10), color: pat.color, pos: [0, 0.955 - WAIST, 0], scale: [0.75, 1, 1.2] });
+      if (pat.pattern === 'righe') for (const z of [-0.14, -0.048, 0.048, 0.14]) for (const sx of [1, -1]) torsoParts.push({ geo: new THREE.BoxGeometry(0.02, 0.54, 0.045), color: pat.color, pos: [sx * (fx - Math.abs(z) * 0.16), 1.22 - WAIST, z * w] });
+      if (pat.pattern === 'fascia') for (const sx of [1, -1]) torsoParts.push({ geo: new THREE.BoxGeometry(0.02, 0.09, 0.5 * w), color: pat.color, pos: [sx * (fx + 0.006), 1.24 - WAIST, 0], rot: [sx * 0.75, 0, 0] });
+    }
+    chest.add(mesh(torsoParts));
+    // numero sulla schiena: a 1,26 m il profilo del busto ha raggio 0,18 (profondità × 0,7)
+    const numColor = kit0[1] === kit0[0] ? '#ffffff' : kit0[1];
+    const numMat = new THREE.MeshBasicMaterial({ map: cos ? this.numberTexture(cos.number || p.data.number, numColor, kit0[0], cos.name) : this.numberTexture(p.data.number, numColor, kit0[0]) });
+    const num = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), numMat);
+    num.position.set(-0.18 * 0.7 * w - 0.006, 1.27 - WAIST, 0); num.rotation.y = -Math.PI / 2; chest.add(num);
+    // ---- collo e testa (perno alla base del collo)
+    const neck = new THREE.Group(); neck.position.y = NECK - WAIST; chest.add(neck);
+    const H = HY - NECK;
+    const headParts = [
+      { geo: cyl(0.054, 0.062, 0.12, 9), color: look.skin, pos: [0, 0.045, 0] },
+      { geo: new THREE.SphereGeometry(0.112, seg(14), seg(12)), color: look.skin, pos: [0, H, 0], scale: [1.02, 1.16, 0.94] },
+      { geo: new THREE.SphereGeometry(0.07, seg(8), seg(6)), color: look.skin, pos: [0.045, H - 0.075, 0], scale: [1, 0.75, 1.1] },
+      { geo: new THREE.SphereGeometry(0.025, 6, 5), color: skinDark, pos: [-0.005, H, 0.103], scale: [0.7, 1.2, 0.6] },
+      { geo: new THREE.SphereGeometry(0.025, 6, 5), color: skinDark, pos: [-0.005, H, -0.103], scale: [0.7, 1.2, 0.6] },
+      { geo: new THREE.ConeGeometry(0.018, 0.045, 5), color: skinDark, pos: [0.115, H - 0.012, 0], rot: [0, 0, -Math.PI / 2] },
+      { geo: new THREE.SphereGeometry(0.011, 5, 4), color: '#1b1410', pos: [0.104, H + 0.018, 0.036] },
+      { geo: new THREE.SphereGeometry(0.011, 5, 4), color: '#1b1410', pos: [0.104, H + 0.018, -0.036] },
+      // sopracciglia
+      { geo: new THREE.BoxGeometry(0.012, 0.01, 0.036), color: look.hair, pos: [0.108, H + 0.043, 0.036], rot: [0.15, 0, 0] },
+      { geo: new THREE.BoxGeometry(0.012, 0.01, 0.036), color: look.hair, pos: [0.108, H + 0.043, -0.036], rot: [-0.15, 0, 0] },
+    ];
+    const hair = (scale, thetaLen, dy) => headParts.push({ geo: new THREE.SphereGeometry(0.118, seg(12), seg(8), 0, Math.PI * 2, 0, thetaLen), color: look.hair, pos: [-0.008, H + (dy || 0.012), 0], rot: [0, 0, 0.32], scale: scale });
+    if (look.hairStyle === 'ricci') hair([1.12, 1.2, 1.06], 1.55, 0.024);
+    else if (look.hairStyle === 'cresta') { hair([1.0, 1.05, 0.96], 1.1, 0.0); headParts.push({ geo: new THREE.BoxGeometry(0.17, 0.06, 0.05), color: look.hair, pos: [0.0, H + 0.13, 0], rot: [0, 0, 0.15] }); }
     else if (look.hairStyle === 'medi') hair([1.06, 1.16, 1.0], 1.95, 0.0);
     else if (look.hairStyle === 'rasati') hair([1.0, 1.15, 0.95], 1.25, 0.004);
     else hair([1.03, 1.15, 0.97], 1.4, 0.01);
-    if (look.beard) parts.push({ geo: new THREE.SphereGeometry(0.098, 10, 6, 0, Math.PI * 2, 1.75, 1.25), color: look.hair, pos: [0.018, HY - 0.012, 0], scale: [1.02, 1.12, 0.95] });
-    // motivo della maglia (negozio): pezzi sottili appoggiati sul busto, nella stessa geometria
-    if (pat) {
-      const fx = 0.155 * w;   // superficie davanti (+x) e dietro (-x) del busto
-      if (pat.pattern === 'colletto' || pat.pattern === 'bordi') parts.push({ geo: new THREE.CylinderGeometry(0.066, 0.09, 0.045, seg(10)), color: pat.color, pos: [0, 1.52, 0] });
-      if (pat.pattern === 'bordi') parts.push({ geo: new THREE.CylinderGeometry(0.16 * w, 0.16 * w, 0.04, seg(10)), color: pat.color, pos: [0, 0.955, 0], scale: [0.8, 1, 1.42] });
-      if (pat.pattern === 'righe') for (const z of [-0.16, -0.055, 0.055, 0.16]) for (const sx of [1, -1]) parts.push({ geo: new THREE.BoxGeometry(0.02, 0.54, 0.045), color: pat.color, pos: [sx * (fx - Math.abs(z) * 0.16), 1.22, z * w] });
-      if (pat.pattern === 'fascia') for (const sx of [1, -1]) parts.push({ geo: new THREE.BoxGeometry(0.02, 0.09, 0.6 * w), color: pat.color, pos: [sx * (fx + 0.006), 1.24, 0], rot: [sx * 0.75, 0, 0] });
-    }
-    if (acc && acc.kind === 'fascia') parts.push({ geo: new THREE.CylinderGeometry(0.118, 0.118, 0.032, seg(12)), color: acc.color, pos: [-0.005, HY + 0.06, 0], scale: [1.02, 1, 0.95] });
-    const torso = new THREE.Mesh(this.mergeColored(parts), mat);
-    torso.castShadow = true; body.add(torso);
-    // numero sulla schiena
-    const numColor = kit0[1] === kit0[0] ? '#ffffff' : kit0[1];
-    const numMat = new THREE.MeshBasicMaterial({ map: cos ? this.numberTexture(cos.number || p.data.number, numColor, kit0[0], cos.name) : this.numberTexture(p.data.number, numColor, kit0[0]) });
-    // appoggiato sulla schiena: a 1,26 m il profilo del busto ha raggio 0,18 (profondità × 0,74)
-    const num = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), numMat);
-    num.position.set(-0.18 * 0.74 * w - 0.006, 1.27, 0); num.rotation.y = -Math.PI / 2; body.add(num);
-    const cyl = (r1, r2, l) => new THREE.CylinderGeometry(r1, r2, l, seg(8));
+    if (look.beard) headParts.push({ geo: new THREE.SphereGeometry(0.098, 10, 6, 0, Math.PI * 2, 1.75, 1.25), color: look.hair, pos: [0.018, H - 0.012, 0], scale: [1.02, 1.12, 0.95] });
+    if (acc && acc.kind === 'fascia') headParts.push({ geo: cyl(0.118, 0.118, 0.032, 12), color: acc.color, pos: [-0.005, H + 0.06, 0], scale: [1.02, 1, 0.95] });
+    const head = mesh(headParts); neck.add(head);
     const legs = [], arms = [];
     for (const side of [-1, 1]) {
-      // gamba: coscia (con il bordo dei pantaloncini) e, dal ginocchio, calzettone e scarpa con la punta
-      const hip = new THREE.Group(); hip.position.set(0, 0.84, side * 0.095 * w); body.add(hip);
-      const thigh = new THREE.Mesh(this.mergeColored([
-        { geo: cyl(0.088, 0.074, 0.42), color: look.skin, pos: [0, -0.21, 0], scale: [1.05, 1, 0.95] },
-        { geo: cyl(0.092, 0.088, 0.14), color: kit[1], pos: [0, -0.04, 0] },
-      ]), mat);
-      thigh.castShadow = true; hip.add(thigh);
-      const knee = new THREE.Group(); knee.position.y = -0.42; hip.add(knee);
+      // ---- gamba: coscia muscolosa con il bordo dei pantaloncini, ginocchio, polpaccio nel calzettone, scarpa
+      const hip = new THREE.Group(); hip.position.set(0, -0.03, side * 0.09 * w); pelvis.add(hip);
+      hip.add(mesh([
+        { geo: cyl(0.092, 0.07, 0.45), color: look.skin, pos: [0, -0.225, 0], scale: [1.06, 1, 0.95] },
+        { geo: cyl(0.096, 0.09, 0.15), color: kit[1], pos: [0, -0.05, 0] },
+      ]));
+      const knee = new THREE.Group(); knee.position.y = -0.45; hip.add(knee);
       const shinParts = [
-        { geo: new THREE.SphereGeometry(0.066, seg(7), seg(5)), color: look.skin, pos: [0.006, 0, 0] },
-        { geo: cyl(0.064, 0.044, 0.38), color: kit[2], pos: [0, -0.2, 0] },
-        { geo: cyl(0.068, 0.064, 0.06), color: kit[2], pos: [0, -0.04, 0] },
-        { geo: new THREE.BoxGeometry(0.2, 0.07, 0.09), color: look.boots, pos: [0.04, -0.405, 0] },
-        { geo: new THREE.SphereGeometry(0.048, seg(7), seg(5)), color: look.boots, pos: [0.13, -0.41, 0], scale: [1.05, 0.66, 0.95] },
-        { geo: new THREE.BoxGeometry(0.21, 0.016, 0.092), color: '#141414', pos: [0.05, -0.443, 0] },
+        { geo: new THREE.SphereGeometry(0.064, seg(7), seg(5)), color: look.skin, pos: [0.008, 0, 0] },
+        { geo: cyl(0.068, 0.052, 0.2), color: kit[2], pos: [-0.006, -0.12, 0] },          // polpaccio
+        { geo: cyl(0.052, 0.042, 0.2), color: kit[2], pos: [0, -0.3, 0] },
+        { geo: cyl(0.07, 0.066, 0.05), color: kit[2], pos: [0, -0.035, 0] },               // risvolto del calzettone
+        // scarpa: tomaia, punta arrotondata, tallone e suola
+        { geo: new THREE.BoxGeometry(0.19, 0.07, 0.088), color: look.boots, pos: [0.045, -0.41, 0] },
+        { geo: new THREE.SphereGeometry(0.047, seg(7), seg(5)), color: look.boots, pos: [0.14, -0.418, 0], scale: [1.2, 0.68, 0.94] },
+        { geo: new THREE.SphereGeometry(0.044, seg(6), seg(4)), color: look.boots, pos: [-0.045, -0.405, 0], scale: [0.8, 0.85, 0.95] },
+        { geo: new THREE.BoxGeometry(0.24, 0.016, 0.09), color: '#141414', pos: [0.055, -0.452, 0] },
       ];
-      if (it.calzettoni && it.calzettoni.stripe) shinParts.push({ geo: cyl(0.066, 0.062, 0.05), color: it.calzettoni.stripe, pos: [0, -0.1, 0] });
-      const shin = new THREE.Mesh(this.mergeColored(shinParts), mat);
-      shin.castShadow = true; knee.add(shin);
+      if (it.calzettoni && it.calzettoni.stripe) shinParts.push({ geo: cyl(0.068, 0.064, 0.05, 9), color: it.calzettoni.stripe, pos: [-0.004, -0.09, 0] });
+      knee.add(mesh(shinParts));
       legs.push({ hip, knee });
-      // braccio: manica corta, poi pelle fino al gomito; avambraccio e mano (o guanto)
-      const sh = new THREE.Group(); sh.position.set(0, 1.44, side * 0.262 * w); body.add(sh);
+      // ---- braccio: manica (con bordo), pelle fino al gomito; avambraccio e mano (o guanto)
+      const sh = new THREE.Group(); sh.position.set(0, 1.43 - WAIST, side * 0.228 * w); chest.add(sh);
       const sleeve = pat && pat.pattern === 'maniche' ? pat.color : kit[0];
       const longSleeve = p.isGK;
       const upperParts = [
-        { geo: cyl(0.062, 0.057, 0.16), color: sleeve, pos: [0, -0.07, 0] },
-        { geo: cyl(0.05, 0.044, longSleeve ? 0.0001 : 0.16), color: look.skin, pos: [0, -0.21, 0] },
+        { geo: cyl(0.063, 0.058, 0.16), color: sleeve, pos: [0, -0.07, 0] },
+        { geo: cyl(0.06, 0.06, 0.025), color: pat && pat.pattern === 'bordi' ? pat.color : trim, pos: [0, -0.145, 0] },
+        { geo: cyl(0.05, 0.044, longSleeve ? 0.0001 : 0.15), color: look.skin, pos: [0, -0.215, 0] },
       ];
       if (longSleeve) upperParts.push({ geo: cyl(0.054, 0.048, 0.16), color: sleeve, pos: [0, -0.21, 0] });
-      if (pat && pat.pattern === 'bordi') upperParts.push({ geo: cyl(0.063, 0.063, 0.035), color: pat.color, pos: [0, -0.145, 0] });
-      if (acc && acc.kind === 'capitano' && side === 1) upperParts.push({ geo: cyl(0.065, 0.062, 0.06), color: acc.color, pos: [0, -0.09, 0] });
-      const upper = new THREE.Mesh(this.mergeColored(upperParts), mat);
-      sh.add(upper);
+      if (acc && acc.kind === 'capitano' && side === 1) upperParts.push({ geo: cyl(0.066, 0.063, 0.06), color: acc.color, pos: [0, -0.09, 0] });
+      sh.add(mesh(upperParts));
       const elbow = new THREE.Group(); elbow.position.y = -0.29; sh.add(elbow);
       const foreParts = [
         { geo: cyl(0.045, 0.034, 0.25), color: longSleeve ? sleeve : look.skin, pos: [0, -0.125, 0] },
         { geo: new THREE.SphereGeometry(gloves ? 0.05 : 0.042, seg(7), seg(5)), color: gloves || look.skin, pos: [0.005, -0.285, 0], scale: [0.75, 1.25, 0.6] },
       ];
       if (acc && acc.kind === 'polsini') foreParts.push({ geo: cyl(0.044, 0.044, 0.05), color: acc.color, pos: [0, -0.215, 0] });
-      const fore = new THREE.Mesh(this.mergeColored(foreParts), mat);
-      elbow.add(fore);
+      elbow.add(mesh(foreParts));
       arms.push({ sh, elbow });
     }
     const scale = look.height / 1.8;
     root.scale.set(scale, scale, scale);
     this.scene.add(root);
-    return { root, body, legs, arms, player: p };
+    return { root, body, pelvis, chest, neck, legs, arms, player: p, celebration: (p.slotIndex || 0) % 4 };
   }
 
   // libera la memoria della scheda grafica di un giocatore (geometrie e numero; il materiale è condiviso)
@@ -641,84 +648,147 @@ class Renderer {
     this.match = null;
   }
 
-  // anima un giocatore partendo dai dati (partita o replay). Oltre al passo della corsa, il corpo ha inerzia:
-  // si inclina in avanti quando accelera e indietro quando frena, si piega verso l'interno della curva, i gomiti
-  // si chiudono nello scatto; da fermo respira. Gli stati dipendono solo da posizione, direzione e velocità.
+  // anima un giocatore partendo dai dati (partita o replay). Gli stati dipendono solo da posizione, direzione,
+  // velocità e animazioni del motore. Corsa: passo più ampio e ginocchio alto in scatto, spalle che ruotano contro le
+  // anche, rimbalzo del passo; il busto si inclina con l'accelerazione e in curva, in frenata ci si abbassa sulle
+  // ginocchia; la testa resta dritta. Da fermo respiro, peso che si sposta, sguardo che si muove.
   poseMesh(pm, x, z, facing, phase, speed, kick, diveDir, extra) {
-    const root = pm.root, body = pm.body;
+    const root = pm.root, body = pm.body, pelvis = pm.pelvis, chest = pm.chest, neck = pm.neck;
+    const L0 = pm.legs[0], L1 = pm.legs[1], A0 = pm.arms[0], A1 = pm.arms[1];
     const dt = clamp(this.frameDt || 1 / 60, 1 / 240, 0.1);
     root.position.set(x, 0, z);
     root.rotation.y = -facing;
-    if (pm.prevSp === undefined) { pm.prevSp = speed; pm.prevF = facing; pm.lean = 0; pm.bank = 0; pm.t = (pm.player.slotIndex || 0) * 0.7; }
+    if (pm.prevSp === undefined) { pm.prevSp = speed; pm.prevF = facing; pm.lean = 0; pm.bank = 0; pm.crouch = 0; pm.t = (pm.player.slotIndex || 0) * 0.7; pm.tk0 = 0; pm.prevTk = 0; }
     const acc = (speed - pm.prevSp) / dt, turn = angleDiff(pm.prevF, facing) / dt;
     pm.prevSp = speed; pm.prevF = facing; pm.t += dt;
     const k1 = Math.min(1, dt * 7);
     pm.lean += (clamp(acc * 0.022, -0.16, 0.2) - pm.lean) * k1;
     pm.bank += (clamp(turn * speed * 0.01, -0.22, 0.22) - pm.bank) * k1;
+    pm.crouch += (clamp(-acc * 0.012, 0, 0.12) - pm.crouch) * Math.min(1, dt * 10);
     const amt = Math.min(speed / 7, 1), sprint = clamp((speed - 5.5) / 2.5, 0, 1);
     const s = Math.sin(phase), c = Math.cos(phase);
-    // gambe: oscillazione più ampia con la velocità; il ginocchio si piega nel ritorno della gamba
-    const sw = s * (0.5 + 0.45 * amt) * amt;
-    const bend = (0.85 + 0.65 * sprint) * amt;
-    pm.legs[0].hip.rotation.z = sw; pm.legs[1].hip.rotation.z = -sw;
-    pm.legs[0].knee.rotation.z = -(Math.max(0, -s) * bend + 0.05 + 0.08 * amt * Math.max(0, c));
-    pm.legs[1].knee.rotation.z = -(Math.max(0, s) * bend + 0.05 + 0.08 * amt * Math.max(0, -c));
-    // braccia: opposte alle gambe, gomiti più chiusi quando scatta, leggermente staccate dal corpo
-    pm.arms[0].sh.rotation.z = -sw * (0.75 + 0.35 * sprint); pm.arms[1].sh.rotation.z = sw * (0.75 + 0.35 * sprint);
-    pm.arms[0].elbow.rotation.z = pm.arms[1].elbow.rotation.z = 0.25 + 0.65 * amt + 0.55 * sprint;
-    pm.arms[0].sh.rotation.x = -0.1 - 0.05 * amt; pm.arms[1].sh.rotation.x = 0.1 + 0.05 * amt;
-    // busto: inclinato in avanti con la velocità e l'accelerazione, verso l'interno nelle curve
-    body.rotation.set(pm.bank, 0, -(amt * 0.09 + sprint * 0.07 + pm.lean));
-    body.position.set(0, Math.abs(s) * 0.045 * amt - sprint * 0.02, 0);
+    body.position.set(0, 0, 0); body.rotation.set(0, 0, 0);
+    pelvis.position.set(0, 0.92, 0); pelvis.rotation.set(0, 0, 0);
+    chest.position.set(0, 0.98, 0); chest.rotation.set(0, 0, 0);
+    neck.rotation.set(0, 0, 0);
+    for (const A of pm.arms) { A.sh.rotation.set(0, 0, 0); A.elbow.rotation.set(0, 0, 0); }
+    for (const L of pm.legs) { L.hip.rotation.set(0, 0, 0); L.knee.rotation.set(0, 0, 0); }
+    // ---- corsa
+    const sw = s * (0.5 + 0.45 * amt + 0.16 * sprint) * amt;
+    const lift = (0.85 + 0.9 * sprint) * amt;
+    const cr = pm.crouch;
+    L0.hip.rotation.z = sw + cr * 0.9; L1.hip.rotation.z = -sw + cr * 0.9;
+    L0.knee.rotation.z = -(Math.max(0, -s) * lift + 0.06 + 0.1 * amt * Math.max(0, c) + cr * 1.8);
+    L1.knee.rotation.z = -(Math.max(0, s) * lift + 0.06 + 0.1 * amt * Math.max(0, -c) + cr * 1.8);
+    pelvis.rotation.y = s * 0.12 * amt;
+    chest.rotation.y = -s * 0.2 * amt;
+    A0.sh.rotation.z = -sw * (0.8 + 0.4 * sprint); A1.sh.rotation.z = sw * (0.8 + 0.4 * sprint);
+    A0.elbow.rotation.z = A1.elbow.rotation.z = 0.3 + 0.7 * amt + 0.5 * sprint;
+    A0.sh.rotation.x = -0.1 - 0.06 * amt; A1.sh.rotation.x = 0.1 + 0.06 * amt;
+    body.rotation.x = pm.bank;
+    chest.rotation.z = -(amt * 0.1 + sprint * 0.08 + pm.lean + cr * 0.4);
+    pelvis.rotation.z = -(amt * 0.04 + pm.lean * 0.3);
+    body.position.y = Math.abs(s) * 0.045 * amt - sprint * 0.02 - cr * 0.35;
     if (amt < 0.08) {
-      // fermo: respiro e piccolo spostamento del peso
-      body.position.y += Math.sin(pm.t * 2.1) * 0.006;
-      body.rotation.x += Math.sin(pm.t * 0.7) * 0.015;
-      pm.arms[0].sh.rotation.x = -0.14; pm.arms[1].sh.rotation.x = 0.14;
+      // fermo: respiro, peso che passa da una gamba all'altra, braccia sciolte, sguardo che si muove
+      chest.rotation.z += Math.sin(pm.t * 2.1) * 0.014;
+      body.position.y += Math.sin(pm.t * 2.1) * 0.004;
+      pelvis.position.z = Math.sin(pm.t * 0.6) * 0.014;
+      L0.knee.rotation.z -= Math.max(0, Math.sin(pm.t * 0.6)) * 0.08; L1.knee.rotation.z -= Math.max(0, -Math.sin(pm.t * 0.6)) * 0.08;
+      A0.sh.rotation.x = -0.14; A1.sh.rotation.x = 0.14; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.22;
+      neck.rotation.y = Math.sin(pm.t * 0.37 + (pm.player.slotIndex || 0)) * 0.3;
     }
+    // la testa resta dritta: compensa in parte inclinazione e rotazione del busto
+    neck.rotation.z -= chest.rotation.z * 0.6;
+    neck.rotation.y -= chest.rotation.y * 0.7;
     if (kick > 0) {
-      // calcio in tre tempi: caricamento (gamba indietro, ginocchio piegato), impatto, accompagnamento
+      // calcio in tre tempi: caricamento (gamba indietro, busto che ruota), impatto, accompagnamento
       const u = clamp(1 - kick / 0.3, 0, 1);
-      const L = pm.legs[1], other = pm.legs[0];
-      if (u < 0.35) { const v = u / 0.35; L.hip.rotation.z = -0.65 * v; L.knee.rotation.z = -1.25 * v; }
-      else if (u < 0.6) { const v = (u - 0.35) / 0.25; L.hip.rotation.z = -0.65 + 1.95 * v; L.knee.rotation.z = -1.25 + 1.15 * v; }
-      else { const v = (u - 0.6) / 0.4; L.hip.rotation.z = 1.3 - 0.9 * v; L.knee.rotation.z = -0.1 - 0.25 * v; }
-      other.hip.rotation.z = -0.15; other.knee.rotation.z = -0.25;
-      pm.arms[0].sh.rotation.x = -0.75; pm.arms[1].sh.rotation.x = 0.55;
-      body.rotation.z = u > 0.4 ? 0.12 * Math.sin((u - 0.4) / 0.6 * Math.PI) : -0.08;
+      let hp, kn, tw;
+      if (u < 0.35) { const v = u / 0.35; hp = -0.7 * v; kn = -1.3 * v; tw = 0.35 * v; }
+      else if (u < 0.6) { const v = (u - 0.35) / 0.25; hp = -0.7 + 2.05 * v; kn = -1.3 + 1.2 * v; tw = 0.35 - 0.6 * v; }
+      else { const v = (u - 0.6) / 0.4; hp = 1.35 - 0.95 * v; kn = -0.1 - 0.25 * v; tw = -0.25 + 0.25 * v; }
+      L1.hip.rotation.z = hp; L1.knee.rotation.z = kn;
+      L0.hip.rotation.z = -0.12; L0.knee.rotation.z = -0.3;
+      chest.rotation.y = tw; neck.rotation.y = -tw * 0.8;
+      A0.sh.rotation.x = -0.85; A1.sh.rotation.x = 0.5; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.35;
+      chest.rotation.z = u > 0.4 ? 0.12 * Math.sin((u - 0.4) / 0.6 * Math.PI) : -0.08;
     }
     if (extra && extra.charge > 0 && !(kick > 0)) {
-      // carica del tiro: gamba indietro e braccia aperte in proporzione alla potenza
-      const c = Math.min(1, 0.35 + extra.charge * 0.65);
-      pm.legs[1].hip.rotation.z = -0.7 * c; pm.legs[1].knee.rotation.z = -1.2 * c;
-      pm.legs[0].hip.rotation.z = 0.12 * c; pm.legs[0].knee.rotation.z = -0.25 * c;
-      pm.arms[0].sh.rotation.x = -0.35 - 0.5 * c; pm.arms[1].sh.rotation.x = 0.35 + 0.4 * c;
-      body.rotation.z = -0.1 * c;
+      // carica del tiro: gamba indietro, busto che ruota e braccia aperte in proporzione alla potenza
+      const k = Math.min(1, 0.35 + extra.charge * 0.65);
+      L1.hip.rotation.z = -0.7 * k; L1.knee.rotation.z = -1.2 * k;
+      L0.hip.rotation.z = 0.12 * k; L0.knee.rotation.z = -0.25 * k;
+      A0.sh.rotation.x = -0.35 - 0.5 * k; A1.sh.rotation.x = 0.35 + 0.4 * k;
+      chest.rotation.y = 0.3 * k; chest.rotation.z = -0.1 * k;
     }
     if (diveDir) { // tuffo del portiere
       body.rotation.x = -diveDir * 1.25; body.position.y = 0.3;
-      pm.arms[0].sh.rotation.x = -2.6; pm.arms[1].sh.rotation.x = 2.6;
+      A0.sh.rotation.x = -2.6; A1.sh.rotation.x = 2.6; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.15;
+      L0.knee.rotation.z = -0.4;
     }
-    if (extra && extra.tackle > 0) {
-      // scivolata: busto indietro, gamba di attacco tesa, l'altra piegata sotto
-      body.rotation.z = 0.95; body.position.y = -0.36;
-      pm.legs[1].hip.rotation.z = 1.45; pm.legs[1].knee.rotation.z = -0.05;
-      pm.legs[0].hip.rotation.z = 0.5; pm.legs[0].knee.rotation.z = -1.3;
-      pm.arms[0].sh.rotation.x = -0.9; pm.arms[1].sh.rotation.x = 0.9;
+    // contrasto: in piedi (affondo con la gamba tesa) o in scivolata; il tipo si riconosce dalla durata iniziale
+    const tk = extra ? extra.tackle || 0 : 0;
+    if (tk > pm.prevTk + 0.05) pm.tk0 = tk;
+    pm.prevTk = tk;
+    if (tk > 0 && pm.tk0 > 0) {
+      const u = clamp(1 - tk / pm.tk0, 0, 1);
+      if (pm.tk0 > 0.5) {
+        // scivolata: giù in fretta, scivola con la gamba di attacco tesa, poi si rialza
+        const k = Math.min(1, u / 0.12) * Math.min(1, (1 - u) / 0.2);
+        const e = k * k * (3 - 2 * k);
+        chest.rotation.z = 0.95 * e; body.position.y = -0.4 * e;
+        L1.hip.rotation.z = 1.45 * e; L1.knee.rotation.z = -0.05;
+        L0.hip.rotation.z = 0.5 * e; L0.knee.rotation.z = -1.3 * e;
+        A0.sh.rotation.x = -0.9 * e; A1.sh.rotation.x = 0.9 * e;
+        A0.sh.rotation.z = A1.sh.rotation.z = -0.6 * e;
+      } else {
+        // contrasto in piedi: affondo verso la palla e ritorno
+        const r = Math.sin(u * Math.PI);
+        L1.hip.rotation.z = 1.05 * r; L1.knee.rotation.z = -0.12;
+        L0.hip.rotation.z = -0.2 * r; L0.knee.rotation.z = -0.65 * r;
+        body.position.y = -0.12 * r; chest.rotation.z = -0.35 * r;
+        A0.sh.rotation.x = -0.6 * r; A1.sh.rotation.x = 0.6 * r;
+      }
     }
     if (extra && extra.fall > 0) {
-      // a terra dopo un fallo: cade in avanti, resta giù, si rialza
+      // a terra dopo un fallo: cade in avanti con le braccia avanti, resta giù, si rialza
       const f = extra.fall, down = f > 0.85 ? (1.1 - f) / 0.25 : f > 0.3 ? 1 : f / 0.3;
       const k = down * down * (3 - 2 * down);
       body.rotation.z = -1.45 * k; body.position.y = 0.05 * k;
-      pm.arms[0].sh.rotation.z = pm.arms[1].sh.rotation.z = 2.2 * k;
-      pm.legs[0].hip.rotation.z = 0.3 * k; pm.legs[1].hip.rotation.z = -0.2 * k;
+      A0.sh.rotation.z = A1.sh.rotation.z = 2.2 * k; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.3 * k;
+      L0.hip.rotation.z = 0.3 * k; L1.hip.rotation.z = -0.2 * k; L0.knee.rotation.z = -0.4 * k;
+      neck.rotation.z = 0.5 * k;
     }
-    if (extra && extra.header > 0) { body.position.y = 0.35; body.rotation.z = 0.25; pm.arms[0].sh.rotation.x = -0.6; pm.arms[1].sh.rotation.x = 0.6; }
+    if (extra && extra.header > 0) {
+      // colpo di testa: stacco, busto che si inarca e poi colpisce, testa che spinge
+      const u = clamp(1 - extra.header / 0.35, 0, 1);
+      body.position.y = 0.35 * Math.sin(Math.min(1, u * 1.4) * Math.PI * 0.5 + 0.5);
+      chest.rotation.z = 0.3 * Math.cos(u * Math.PI) - 0.05;
+      neck.rotation.z = -0.45 * Math.sin(u * Math.PI);
+      A0.sh.rotation.x = -0.7; A1.sh.rotation.x = 0.7; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.6;
+      L0.knee.rotation.z = -0.7; L1.knee.rotation.z = -0.35;
+    }
     if (extra && extra.celebrate) {
-      pm.arms[0].sh.rotation.x = -2.8; pm.arms[1].sh.rotation.x = 2.8;
-      pm.arms[0].elbow.rotation.z = pm.arms[1].elbow.rotation.z = 0.2;
-      body.position.y = Math.abs(Math.sin(phase * 1.5)) * 0.3;
+      // esultanza: quattro modi diversi (dipendono dal calciatore)
+      const v = pm.celebration;
+      if (v === 0) {
+        A0.sh.rotation.x = -2.8; A1.sh.rotation.x = 2.8; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.2;
+        body.position.y = Math.abs(Math.sin(phase * 1.5)) * 0.3;
+      } else if (v === 1) {
+        // aeroplano: braccia larghe, si piega nelle curve
+        A0.sh.rotation.x = -1.5; A1.sh.rotation.x = 1.5; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.05;
+        body.rotation.x = pm.bank * 2 + Math.sin(pm.t * 2) * 0.12;
+      } else if (v === 2 && amt < 0.5) {
+        // in ginocchio a braccia alzate
+        body.position.y = -0.42; L0.hip.rotation.z = L1.hip.rotation.z = 0.15; L0.knee.rotation.z = L1.knee.rotation.z = -1.9;
+        chest.rotation.z = 0.25; A0.sh.rotation.x = -2.6; A1.sh.rotation.x = 2.6; neck.rotation.z = 0.35;
+      } else {
+        // pugno al cielo
+        A1.sh.rotation.x = 2.9; A1.elbow.rotation.z = 0.3 + 0.6 * Math.abs(Math.sin(pm.t * 8));
+        A0.sh.rotation.x = -0.3; A0.elbow.rotation.z = 0.5;
+        body.position.y += Math.abs(Math.sin(phase * 1.5)) * 0.12;
+      }
     }
   }
 
