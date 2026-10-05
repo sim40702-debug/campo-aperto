@@ -75,7 +75,17 @@ async function route(request, env, ctx) {
   if (is('GET', 'players', '*', 'loadout')) return json(await loadout(env, p[1]));
 
   // ---- partite ----
-  if (is('GET', 'fixtures')) return json(await listFixtures(env, t));
+  if (is('GET', 'fixtures')) {
+    const r = await listFixtures(env, t);
+    // riserva del cron: se mancano partite in programma (cron non ancora attivo o saltato) il giro parte da qui,
+    // al massimo una volta al minuto. Il giro è idempotente e non cambia la risposta di questa richiesta.
+    if (r.next.length < 2 || r.live.length + r.next.length + r.finished.length === 0) {
+      const claim = await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('fallback_tick', ?1) ON CONFLICT (key) DO UPDATE SET value = ?1 WHERE CAST(value AS INTEGER) < ?2")
+        .bind(String(t), t - 60000).run();
+      if (claim.meta.changes) ctx.waitUntil(tickEngine(env).tick());
+    }
+    return json(r);
+  }
   if (is('GET', 'fixtures', '*')) return json(await fixtureDetail(env, p[1], t));
   if (is('GET', 'fixtures', '*', 'events')) return json(await fixtureEvents(env, p[1], Number(q.get('after')) || 0, t));
   if (is('GET', 'fixtures', '*', 'bets')) return json(await fixtureFeed(env, p[1], await viewer(), q));
