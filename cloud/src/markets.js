@@ -5,6 +5,8 @@
 // La liquidazione usa i "fatti" della partita calcolata dal server con lo stesso motore.
 // ============================================================
 
+import { settleBy, bonusFor, payoutFor } from './betlogic.js';
+
 export const MARGIN = 0.06;           // margine del banco: quote un po' sotto il valore equo
 export const MIN_ODDS = 1.03, MAX_ODDS = 50;
 export const GROUPS = ['1X2', 'GOL', 'CORNER', 'CARTELLINI', 'ALTRO'];
@@ -28,83 +30,83 @@ export function linesFor(mean) {
 const fmtLine = l => String(l).replace('.', ',');
 
 // ---------- definizione dei mercati ----------
-// ogni mercato: id, gruppo, etichetta, selezioni (id + etichetta), probabilità e liquidazione.
-// Le selezioni con linea hanno la linea nell'id (es. "O2.5"). F = fatti della partita (vedi factsFromTimeline).
+// ogni mercato: id, gruppo, etichetta, selezioni (id + etichetta) e probabilità per il listino.
+// Le selezioni con linea hanno la linea nell'id (es. "O2.5"). Quando una selezione vince lo decide una sola
+// regola, in betlogic.js (RULES): la usano liquidazione e controllo delle combinazioni.
 function marketList(model, h, a) {
   const lh = model.g[0], la = model.g[1], sh = model.firstHalfShare;
   const J = joint(lh, la), J1 = joint(lh * sh, la * sh), J2 = joint(lh * (1 - sh), la * (1 - sh));
   const pNoGoal = poisson(0, lh) * poisson(0, la);
   const cH = model.c[0], cA = model.c[1], kH = model.k[0], kA = model.k[1];
   const T = { 1: h, 2: a };
-  const ou = (id, group, label, mean, value) => ({
+  const ou = (id, group, label, mean) => ({
     id, group, label,
     sels: linesFor(mean).flatMap(l => [
-      { id: 'O' + l, label: 'Più di ' + fmtLine(l), p: over(mean, l), settle: F => value(F) > l },
-      { id: 'U' + l, label: 'Meno di ' + fmtLine(l), p: 1 - over(mean, l), settle: F => value(F) < l },
+      { id: 'O' + l, label: 'Più di ' + fmtLine(l), p: over(mean, l) },
+      { id: 'U' + l, label: 'Meno di ' + fmtLine(l), p: 1 - over(mean, l) },
     ]),
   });
-  const firstOf = (id, group, label, ph, pa, pn, key, noneLabel) => ({
+  const firstOf = (id, group, label, ph, pa, pn, noneLabel) => ({
     id, group, label, sels: [
-      { id: '1', label: T[1], p: ph * (1 - pn), settle: F => F[key] === 0 },
-      { id: '2', label: T[2], p: pa * (1 - pn), settle: F => F[key] === 1 },
-      { id: 'N', label: noneLabel, p: pn, settle: F => F[key] === -1 },
+      { id: '1', label: T[1], p: ph * (1 - pn) },
+      { id: '2', label: T[2], p: pa * (1 - pn) },
+      { id: 'N', label: noneLabel, p: pn },
     ],
   });
-  const yesNo = (id, group, label, p, value) => ({
+  const yesNo = (id, group, label, p) => ({
     id, group, label, sels: [
-      { id: 'SI', label: 'Sì', p: p, settle: F => !!value(F) },
-      { id: 'NO', label: 'No', p: 1 - p, settle: F => !value(F) },
+      { id: 'SI', label: 'Sì', p: p },
+      { id: 'NO', label: 'No', p: 1 - p },
     ],
   });
   const scores = [];
   for (let i = 0; i <= 3; i++) for (let j = 0; j <= 3; j++) scores.push([i, j]);
-  const goalsOf = F => F.g[0] + F.g[1];
   return [
     { id: '1X2', group: '1X2', label: 'Esito finale', sels: [
-      { id: '1', label: h + ' vincente', p: J((i, j) => i > j), settle: F => F.g[0] > F.g[1] },
-      { id: 'X', label: 'Pareggio', p: J((i, j) => i === j), settle: F => F.g[0] === F.g[1] },
-      { id: '2', label: a + ' vincente', p: J((i, j) => i < j), settle: F => F.g[0] < F.g[1] },
+      { id: '1', label: h + ' vincente', p: J((i, j) => i > j) },
+      { id: 'X', label: 'Pareggio', p: J((i, j) => i === j) },
+      { id: '2', label: a + ' vincente', p: J((i, j) => i < j) },
     ] },
     { id: 'DC', group: '1X2', label: 'Doppia chance', sels: [
-      { id: '1X', label: h + ' o pareggio', p: J((i, j) => i >= j), settle: F => F.g[0] >= F.g[1] },
-      { id: 'X2', label: 'Pareggio o ' + a, p: J((i, j) => i <= j), settle: F => F.g[0] <= F.g[1] },
-      { id: '12', label: h + ' o ' + a, p: J((i, j) => i !== j), settle: F => F.g[0] !== F.g[1] },
+      { id: '1X', label: h + ' o pareggio', p: J((i, j) => i >= j) },
+      { id: 'X2', label: 'Pareggio o ' + a, p: J((i, j) => i <= j) },
+      { id: '12', label: h + ' o ' + a, p: J((i, j) => i !== j) },
     ] },
     { id: 'HT', group: '1X2', label: 'Risultato primo tempo', sels: [
-      { id: '1', label: h, p: J1((i, j) => i > j), settle: F => F.g1[0] > F.g1[1] },
-      { id: 'X', label: 'Pareggio', p: J1((i, j) => i === j), settle: F => F.g1[0] === F.g1[1] },
-      { id: '2', label: a, p: J1((i, j) => i < j), settle: F => F.g1[0] < F.g1[1] },
+      { id: '1', label: h, p: J1((i, j) => i > j) },
+      { id: 'X', label: 'Pareggio', p: J1((i, j) => i === j) },
+      { id: '2', label: a, p: J1((i, j) => i < j) },
     ] },
     { id: 'HCP', group: '1X2', label: 'Handicap', sels: [
-      { id: 'H-1.5', label: h + ' -1,5', p: J((i, j) => i - j >= 2), settle: F => F.g[0] - F.g[1] >= 2 },
-      { id: 'A+1.5', label: a + ' +1,5', p: J((i, j) => i - j < 2), settle: F => F.g[0] - F.g[1] < 2 },
-      { id: 'A-1.5', label: a + ' -1,5', p: J((i, j) => j - i >= 2), settle: F => F.g[1] - F.g[0] >= 2 },
-      { id: 'H+1.5', label: h + ' +1,5', p: J((i, j) => j - i < 2), settle: F => F.g[1] - F.g[0] < 2 },
+      { id: 'H-1.5', label: h + ' -1,5', p: J((i, j) => i - j >= 2) },
+      { id: 'A+1.5', label: a + ' +1,5', p: J((i, j) => i - j < 2) },
+      { id: 'A-1.5', label: a + ' -1,5', p: J((i, j) => j - i >= 2) },
+      { id: 'H+1.5', label: h + ' +1,5', p: J((i, j) => j - i < 2) },
     ] },
     { id: 'CS', group: 'GOL', label: 'Risultato esatto', sels: scores.map(([i, j]) => (
-      { id: i + '-' + j, label: i + '-' + j, p: J((x, y) => x === i && y === j), settle: F => F.g[0] === i && F.g[1] === j }
-    )).concat([{ id: 'ALTRO', label: 'Altro risultato', p: J((x, y) => x > 3 || y > 3), settle: F => F.g[0] > 3 || F.g[1] > 3 }]) },
-    ou('TG', 'GOL', 'Gol totali', lh + la, goalsOf),
-    yesNo('BTTS', 'GOL', 'Entrambe segnano', (1 - poisson(0, lh)) * (1 - poisson(0, la)), F => F.g[0] > 0 && F.g[1] > 0),
-    ou('G1', 'GOL', 'Gol primo tempo', (lh + la) * sh, F => F.g1[0] + F.g1[1]),
-    ou('G2', 'GOL', 'Gol secondo tempo', (lh + la) * (1 - sh), F => goalsOf(F) - F.g1[0] - F.g1[1]),
-    firstOf('FG', 'GOL', 'Primo gol', lh / (lh + la), la / (lh + la), pNoGoal, 'firstGoal', 'Nessun gol'),
-    firstOf('LG', 'GOL', 'Ultimo gol', lh / (lh + la), la / (lh + la), pNoGoal, 'lastGoal', 'Nessun gol'),
-    yesNo('CSH', 'GOL', 'Porta inviolata ' + h, poisson(0, la), F => F.g[1] === 0),
-    yesNo('CSA', 'GOL', 'Porta inviolata ' + a, poisson(0, lh), F => F.g[0] === 0),
-    ou('TC', 'CORNER', 'Corner totali', cH + cA, F => F.c[0] + F.c[1]),
-    ou('HC', 'CORNER', 'Corner ' + h, cH, F => F.c[0]),
-    ou('AC', 'CORNER', 'Corner ' + a, cA, F => F.c[1]),
-    firstOf('FC', 'CORNER', 'Primo corner', cH / (cH + cA || 1), cA / (cH + cA || 1), poisson(0, cH + cA), 'firstCorner', 'Nessun corner'),
-    ou('TK', 'CARTELLINI', 'Cartellini totali', kH + kA, F => F.k[0] + F.k[1]),
-    firstOf('FK', 'CARTELLINI', 'Primo cartellino', kH / (kH + kA || 1), kA / (kH + kA || 1), poisson(0, kH + kA), 'firstCard', 'Nessun cartellino'),
-    yesNo('RED', 'CARTELLINI', 'Espulsione', model.redRate, F => F.red),
-    yesNo('PEN', 'ALTRO', 'Rigore', model.penaltyRate, F => F.pen),
-    ou('TS', 'ALTRO', 'Tiri totali', model.s[0] + model.s[1], F => F.s[0] + F.s[1]),
-    ou('TOT', 'ALTRO', 'Tiri in porta', model.o[0] + model.o[1], F => F.o[0] + F.o[1]),
+      { id: i + '-' + j, label: i + '-' + j, p: J((x, y) => x === i && y === j) }
+    )).concat([{ id: 'ALTRO', label: 'Altro risultato', p: J((x, y) => x > 3 || y > 3) }]) },
+    ou('TG', 'GOL', 'Gol totali', lh + la),
+    yesNo('BTTS', 'GOL', 'Entrambe segnano', (1 - poisson(0, lh)) * (1 - poisson(0, la))),
+    ou('G1', 'GOL', 'Gol primo tempo', (lh + la) * sh),
+    ou('G2', 'GOL', 'Gol secondo tempo', (lh + la) * (1 - sh)),
+    firstOf('FG', 'GOL', 'Primo gol', lh / (lh + la), la / (lh + la), pNoGoal, 'Nessun gol'),
+    firstOf('LG', 'GOL', 'Ultimo gol', lh / (lh + la), la / (lh + la), pNoGoal, 'Nessun gol'),
+    yesNo('CSH', 'GOL', 'Porta inviolata ' + h, poisson(0, la)),
+    yesNo('CSA', 'GOL', 'Porta inviolata ' + a, poisson(0, lh)),
+    ou('TC', 'CORNER', 'Corner totali', cH + cA),
+    ou('HC', 'CORNER', 'Corner ' + h, cH),
+    ou('AC', 'CORNER', 'Corner ' + a, cA),
+    firstOf('FC', 'CORNER', 'Primo corner', cH / (cH + cA || 1), cA / (cH + cA || 1), poisson(0, cH + cA), 'Nessun corner'),
+    ou('TK', 'CARTELLINI', 'Cartellini totali', kH + kA),
+    firstOf('FK', 'CARTELLINI', 'Primo cartellino', kH / (kH + kA || 1), kA / (kH + kA || 1), poisson(0, kH + kA), 'Nessun cartellino'),
+    yesNo('RED', 'CARTELLINI', 'Espulsione', model.redRate),
+    yesNo('PEN', 'ALTRO', 'Rigore', model.penaltyRate),
+    ou('TS', 'ALTRO', 'Tiri totali', model.s[0] + model.s[1]),
+    ou('TOT', 'ALTRO', 'Tiri in porta', model.o[0] + model.o[1]),
     { id: 'POS', group: 'ALTRO', label: 'Più possesso palla', sels: [
-      { id: '1', label: h, p: model.posHome, settle: F => F.pos[0] > F.pos[1] },
-      { id: '2', label: a, p: 1 - model.posHome, settle: F => F.pos[1] > F.pos[0] },
+      { id: '1', label: h, p: model.posHome },
+      { id: '2', label: a, p: 1 - model.posHome },
     ] },
   ];
 }
@@ -140,14 +142,8 @@ export function currentOdds(base, prob, selection, stakes) {
   return Math.max(MIN_ODDS, Math.round(base * (1 - cut) * 100) / 100);
 }
 
-// liquidazione di una selezione: 'WON' | 'LOST' | 'VOID'
-export function settleSelection(model, home, away, names, market, selection, F) {
-  if (!F || F.void) return 'VOID';
-  const m = marketList(pairModel(model, home, away), names.home, names.away).find(x => x.id === market);
-  const s = m && m.sels.find(x => x.id === selection);
-  if (!s) return 'VOID';
-  return s.settle(F) ? 'WON' : 'LOST';
-}
+// liquidazione di una selezione: 'WON' | 'LOST' | 'VOID' (regola unica in betlogic.js)
+export function settleSelection(market, selection, F) { return settleBy(market, selection, F); }
 
 // etichette leggibili (per feed, schedina, storico)
 export function labelOf(marketsJson, market, selection) {
@@ -157,19 +153,17 @@ export function labelOf(marketsJson, market, selection) {
 }
 
 // esito di una scommessa dalle sue selezioni: una persa = persa subito (anche se altre partite non sono finite);
-// altrimenti aperta finché manca qualcosa; poi tutte vinte (le annullate contano 1) = vinta
-export function settleBet(stake, items) {
+// altrimenti aperta finché manca qualcosa; poi vinta: puntata × quote delle selezioni vinte (le annullate tolte
+// dal prodotto) × bonus multipla. Il bonus si ricalcola sulle selezioni rimaste valide e non supera mai quello
+// concesso alla giocata (bonusPct, 0 per le schedine senza bonus).
+// items: [{ status, odds (quota effettiva), bonusFlag (1 se contava per il bonus) }]
+export function settleBet(stake, items, bonusPct) {
   if (items.some(i => i.status === 'LOST')) return { status: 'LOST', payout: 0 };
   if (items.some(i => i.status === 'OPEN')) return null;
   if (items.every(i => i.status === 'VOID')) return { status: 'VOID', payout: stake };
-  return { status: 'WON', payout: payoutOf(stake, items.filter(i => i.status === 'WON').map(i => i.odds)) };
-}
-
-// vincita: puntata × prodotto delle quote, arrotondata per difetto (con un margine per gli errori dei decimali,
-// così l'ordine delle moltiplicazioni non cambia il risultato)
-export function payoutOf(stake, oddsList) {
-  const total = oddsList.reduce((p, o) => p * o, 1);
-  return Math.floor(Math.round(stake * total * 1e6) / 1e6);
+  const won = items.filter(i => i.status === 'WON');
+  const bonus = Math.min(bonusPct || 0, bonusFor(won.filter(i => i.bonusFlag).length));
+  return { status: 'WON', payout: payoutFor(stake, won.reduce((p, i) => p * i.odds, 1) * (1 + bonus)) };
 }
 
 // fatti della partita dagli eventi dell'arbitro (gli stessi che vede il gioco) e dalle statistiche finali.
