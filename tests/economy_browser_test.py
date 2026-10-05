@@ -205,7 +205,10 @@ async def run():
 
         # ---- persistenza: refresh, altro browser, logout/login ----
         balA = http('GET', '/api/me/balance', token=tokA)[1]['balance']; balB = http('GET', '/api/me/balance', token=tokB)[1]['balance']
+        pre = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), tok: !!game.eco.api.token, url: location.href})")
         await B.reload()
+        post = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), url: location.href})")
+        print('localStorage di B prima/dopo il ricaricamento:', pre, post, flush=True)
         try: await B.wait_for_function("window.game && game.loaded && game.eco.api.me", timeout=30000)
         except Exception:
             print('errori B:', errB[-5:], await B.evaluate("({loaded: window.game && game.loaded, tok: !!(window.game && game.eco.api.token)})"), flush=True); raise
