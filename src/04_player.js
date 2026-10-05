@@ -63,8 +63,42 @@ class Player {
       const sp = this.maxSpeed(sprint && l > 0.5) * amount;
       desiredX = dirX / l * sp; desiredZ = dirZ / l * sp;
     }
-    this.steer(desiredX, desiredZ, dt, 1.3);
     this.sprinting = sprint && l > 0.5;
+    this.steerHuman(desiredX, desiredZ, dt);
+    this.quickTurn = true;
+  }
+  // movimento dei calciatori guidati da una persona: il comando si vede subito, ma con peso.
+  // La velocità si divide in due parti rispetto alla direzione voluta: quella laterale (o contraria) si toglie in
+  // fretta come un appoggio del piede, quella in avanti cresce con un'accelerazione che cala verso il massimo.
+  // Fermarsi è rapido ma non istantaneo; in scatto le curve sono più larghe; con la palla un po' più pesante.
+  steerHuman(desiredX, desiredZ, dt) {
+    const stun = this.stunned > 0 ? 0.25 : 1;
+    const ball = this.team.match && this.team.match.ball.owner === this ? 0.88 : 1;
+    const want = len(desiredX, desiredZ);
+    const top = this.maxSpeed(true);
+    if (want < 0.1) {
+      // frenata: circa 0,3 s dalla corsa, 0,5 s dallo scatto
+      const sp = this.speed(), dv = Math.min(sp, 18 * ball * stun * dt);
+      if (sp > 0) { this.vx -= this.vx / sp * dv; this.vz -= this.vz / sp * dv; }
+      return;
+    }
+    const ux = desiredX / want, uz = desiredZ / want;
+    let par = this.vx * ux + this.vz * uz;
+    let px = this.vx - par * ux, pz = this.vz - par * uz;
+    // parte laterale: si toglie con un appoggio (più largo in scatto e ad alta velocità)
+    const pl = len(px, pz);
+    if (pl > 0) {
+      const lat = (this.sprinting ? 11 : 17) * ball * stun * (1 - 0.3 * Math.min(1, Math.abs(par) / top)) * dt;
+      const k = Math.max(0, pl - lat) / pl;
+      px *= k; pz *= k;
+    }
+    // parte in avanti: se va al contrario si pianta il piede (frenata forte), poi accelera
+    if (par < want) {
+      let a = par < 0 ? 17 * ball * stun : this.accel() * 1.22 * ball * stun * (1 - 0.76 * Math.pow(Math.max(0, par) / top, 1.5));
+      if (par < 1.5) a += 7 * stun;   // primo passo esplosivo: il movimento si vede dal primo istante
+      par = Math.min(want, par + a * dt);
+    } else par = Math.max(want, par - 14 * ball * stun * dt);
+    this.vx = par * ux + px; this.vz = par * uz + pz;
   }
   // dinamica del movimento: la variazione di velocità è limitata dall'accelerazione del giocatore.
   // La spinta cala avvicinandosi alla velocità massima (accelerazione progressiva, e in piena corsa si curva più
@@ -104,9 +138,11 @@ class Player {
     if (sp > 0.4 && this.anim.dive <= 0) {
       const target = Math.atan2(this.vz, this.vx);
       const d = angleDiff(this.facing, target);
-      const turn = 9 * dt;
+      // chi è guidato da una persona gira il corpo più in fretta: si vede subito dove sta andando
+      const turn = (this.quickTurn ? 16 : 9) * dt;
       this.facing += clamp(d, -turn, turn);
     }
+    this.quickTurn = false;
     // energia: lo sprint consuma, la corsa leggera recupera un po'
     // fatica di fondo: abbassa il massimo recuperabile (circa -30 in 90 minuti)
     const staminaAttr = this.data.attr.stamina / 100;
