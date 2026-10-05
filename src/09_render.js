@@ -54,10 +54,16 @@ class Renderer {
   }
 
   // rapporto tra pixel reali e pixel CSS: nativo (HiDPI/4K) limitato dal preset, per scala utente e dinamica
+  // con una risoluzione scelta (renderHeight) si disegna esattamente a quell'altezza, qualunque sia la finestra
   pixelRatio() {
     const dpr = window.devicePixelRatio || 1;
+    if (this.renderHeight) {
+      const h = this.container.clientHeight || window.innerHeight || 1;
+      return Math.max(0.35, Math.min(4, this.renderHeight / h) * this.resScale * this.dynScale);
+    }
     return Math.max(0.35, Math.min(dpr, this.Q.dprCap) * this.resScale * this.dynScale);
   }
+  setRenderResolution(height) { this.renderHeight = height || 0; this.resize(); }
 
   resize() {
     const w = this.container.clientWidth || window.innerWidth, h = this.container.clientHeight || window.innerHeight;
