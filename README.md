@@ -111,12 +111,30 @@ node relay.js --host 127.0.0.1 --port 8787
 
 Metti davanti un reverse proxy HTTPS (nginx o Caddy) che inoltri `wss://calcio.tuodominio.ch` a `127.0.0.1:8787` con l'upgrade WebSocket. Poi nel gioco inserisci l'indirizzo in **Impostazioni → Online → Server online**.
 
+## Competizioni: campionato, torneo, coppe
+
+Dal menu **Competizioni**:
+
+- **Campionato**: da 6 a 20 squadre, solo andata o andata e ritorno. Calendario all'italiana generato da solo, classifica
+  (punti, PG, V, N, P, GF, GS, DR, forma delle ultime 5, serie, porte inviolate, percentuale di vittorie), statistiche,
+  marcatori e, a fine stagione, campione, miglior attacco e difesa, capocannoniere. **Nuova stagione** tiene lo storico.
+- **Torneo**: 8, 16 o 32 squadre a eliminazione diretta (sedicesimi, ottavi, quarti, semifinali, finale) con supplementari
+  e rigori.
+- **Coppe**: modelli pronti (Coppa Nazionale, Coppa dei Campioni con gironi, Coppa Lampo, Coppa della Tradizione) o il tuo
+  formato: gironi + eliminazione, andata e ritorno, supplementari sì/no, rigori sì/no (senza rigori una parità si ripete).
+
+**Gioca** apre la partita vera; al fischio finale il risultato entra da solo nella competizione e le altre partite della
+giornata si simulano. **Simula partita** usa la simulazione ufficiale (forza delle rose, forma, fattore campo): la stessa
+partita dà sempre lo stesso risultato, quindi non si può "rilanciare". Uscire a metà simula il tempo che manca dal punteggio
+attuale; se il gioco si chiude a metà partita, al riavvio la partita si completa con la simulazione.
+
 ## Monete, scommesse e negozio
 
 Con un account (nome utente e password, dal menu: **Accedi**) hai un portafoglio di monete salvato sul server: lo ritrovi
 uguale su ogni computer e browser. Dal menu:
 
-- **Partite**: ogni 10 minuti una partita del server tra due squadre del gioco. Scommetti fino a 10 secondi dal calcio
+- **Partite**: ogni 10 minuti una partita della **Serie del server**, il campionato del server (giornate e classifica in
+  Competizioni). Scommetti fino a 10 secondi dal calcio
   d'inizio (1X2, gol, corner, cartellini, tiri, possesso e altri, singole o multiple), poi **Guarda partita**: il gioco la
   rigioca in 3D esattamente come l'ha calcolata il server, con la cronaca e le scommesse degli altri giocatori accanto.
 - **Scommesse**: le tue in corso e concluse, quelle pubbliche degli altri (con **Copia scommessa**: la giocata parte solo
@@ -185,6 +203,8 @@ python3 tests/browser_test.py            # menu, partita, tastiera, impostazioni
 python3 tests/controls_browser_test.py   # controller simulato, comandi, rimappatura
 python3 tests/online_browser_test.py     # due giocatori online con il server relay
 python3 tests/economy_browser_test.py    # account, scommesse, social, negozio, partite del server (serve cloud/: npm install)
+python3 tests/competitions_browser_test.py  # campionato, torneo con supplementari e rigori, coppa con gironi
+python3 tests/feel_browser_test.py       # reattività: tasti al fotogramma dopo, pulsanti, cambio schermata
 ```
 
 Per provare la vera app desktop:

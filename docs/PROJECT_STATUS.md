@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 05/10/2026, sessione 9, versione 0.7.1
+Aggiornato: 05/10/2026, sessione 10, versione 0.8.0
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -38,6 +38,8 @@ browser, server locale, multipla della stessa partita, conflitti, transizioni, q
 visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio compreso).
 
 ## Funzionalità completate (verificate)
+- 0.8.0: Competizioni (campionato, torneo, coppe configurabili, supplementari e rigori nel motore), Serie del server per
+  le scommesse, carriera sull'account, reattività (movimento, buffer dei comandi, predizione online), personaggi.
 - 0.7.1: nomi delle squadre personalizzabili (anche online, scelti dall'host) e nome della squadra di casa di nuovo visibile.
 - 0.7.0: multiple vere (più mercati della stessa partita se compatibili, motore unico validateBetCombination, quota
   collegata, bonus a soglie, VOID), "La mia schedina" con conflitti spiegati, Home da videogioco, transizioni senza salti,
@@ -74,7 +76,7 @@ visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio 
 - Tattica in pausa solo offline.
 
 ## Non ancora implementato
-Sostituzioni, finte, tiro a giro manuale, barriera controllabile, salvataggi, editor giocatori, creazione squadra, allenamento, torneo, campionato, coppe, carriera, mercato. Nel menu sono dichiarati "In costruzione".
+Sostituzioni, finte, tiro a giro manuale, barriera controllabile, editor giocatori, creazione squadra, allenamento, mercato.
 
 ## Bug conosciuti
 - Controller provato solo con un controller simulato nei test: da provare con controller veri (Xbox, PlayStation, Switch Pro).

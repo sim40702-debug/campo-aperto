@@ -229,6 +229,20 @@ Limiti onesti:
   scommesse a partita in corso;
 - il limite di registrazioni per rete si aggira cambiando rete: tiene lontani solo gli abusi più semplici.
 
+## Campionato del server e competizioni
+
+Dalla 0.8.0 le partite del server (quelle su cui si scommette) non sono più accoppiate a caso: formano la **Serie del
+server**, un campionato all'italiana con andata e ritorno tra le 8 squadre (14 giornate, una partita ogni 10 minuti).
+Quando tutte le partite di una stagione sono state create comincia subito la successiva. Ogni partita porta la sua
+etichetta ("Serie del server · stagione 1 · giornata 3"); la classifica, la giornata in corso e i marcatori si calcolano
+in `GET /api/league` **solo dalle partite già finite**: nessun risultato futuro viene rivelato. Risultati e liquidazione
+restano quelli del motore sul server, come prima.
+
+Le regole (calendario, classifica con scontri diretti, tabellone, gironi, simulazione) stanno in `cloud/src/complogic.js`,
+lo stesso file usato dal gioco per Campionato, Torneo e Coppe della carriera (build.js lo include come `CompLogic`).
+La carriera del giocatore si salva sul computer e, con l'account, anche sul server (`/api/me/career`): sono dati del gioco
+senza monete, il server ne controlla forma e dimensione.
+
 ## Indirizzi dell'API
 
 Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'accesso.
@@ -255,12 +269,14 @@ Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'acc
 | `GET /feed?before=` | — | scommesse pubbliche di tutte le partite |
 | `GET /stats/today`, `GET /leaderboard?metric=&period=` | — | statistiche del giorno, classifiche (in cache) |
 | `GET /shop`, `POST /shop/buy`, `GET /inventory`, `POST /inventory/equip`, `POST /inventory/unequip` | — / sì | negozio e inventario |
+| `GET /league` | — | campionato del server: stagione, giornata, classifica e marcatori (solo partite finite, in cache 15 s) |
+| `GET /me/career`, `POST /me/career` `{data, updatedAt}` | sì | carriera del giocatore (competizioni del gioco): vince la copia più recente, massimo 400 KB |
 
 ## Test
 
 ```bash
 cd cloud
-npm test                                 # mercati, schedine (68), API (114) e relay (22) contro il server vero in locale
+npm test                                 # mercati, schedine (68), competizioni (27), API (124) e relay (22) contro il server vero in locale
 cd ..
 npm run build:test
 python3 tests/economy_browser_test.py    # il gioco nel browser con due giocatori e il server locale
