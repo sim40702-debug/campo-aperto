@@ -9,7 +9,9 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
   restano salvati sul computer per quella squadra; la sigla del tabellone viene dal nome (es. "I Leoni" → ILE).
 - Online: l'host scrive i nomi nella lobby, tutti li vedono nella lobby e in partita. I nomi ricevuti dalla rete sono
   ripuliti (testo semplice, niente < >, al massimo 24 caratteri); la squadra del database non cambia.
-- Test: rete 87 (nomi ostili), gioco nel browser 31, online 18.
+- App desktop: alla chiusura della finestra (e prima di uscire) impostazioni e accesso vengono scritti subito su
+  disco. Nuovo test sull'app vera (tests/electron_persist_test.py): modifica e chiusura immediata, 5 riavvii.
+- Test: rete 87 (nomi ostili), gioco nel browser 31, online 18, app desktop con riavvii 9.
 
 ## 0.7.0 — 05/10/2026 (multiple vere, Home nuova, transizioni, giocatori, risoluzione)
 - Multiple vere: più selezioni della stessa partita se compatibili, fino a 20 selezioni. Motore unico in
