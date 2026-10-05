@@ -112,6 +112,15 @@ Terminale 3 (seconda finestra, senza ricompilare, con impostazioni separate):
 Nella prima finestra: Gioca online, Crea partita. Nella seconda: Gioca online, scrivi il codice, Entra.
 Su Mac, per aprire una seconda finestra dell'app pacchettizzata: `open -n "/Applications/Campo Aperto.app" --args --profilo=2`.
 
+### Giocare in rete locale
+Nell'app desktop, senza terminale né indirizzi IP: chi ospita sceglie Gioca online, Ospita in rete locale e dà agli amici
+il codice di 6 caratteri (inizia sempre con L). Gli amici (stessa rete Wi-Fi o cavo) scrivono solo il codice in Unisciti e premono Entra: il gioco
+cerca l'host da solo. Al primo avvio Windows può mostrare l'avviso del firewall: scegli Consenti (rete privata).
+Se la rete blocca la ricerca (alcuni Wi-Fi pubblici o di scuola), nella lobby dell'host c'è l'indirizzo, per esempio
+192.168.1.23:8787: gli amici lo inseriscono in Impostazioni, Online come `ws://192.168.1.23:8787`.
+Il codice non viaggia in chiaro nella rete (nonce e HMAC), ma essendo di 6 caratteri non protegge da un attaccante deciso sulla stessa rete: gioca solo su reti fidate.
+Usano le porte 8787 (TCP, partita) e 8788 (UDP, ricerca). Tutti devono avere la stessa versione del gioco.
+
 ### Rete di casa (due computer)
 Sul computer che fa da server:
 

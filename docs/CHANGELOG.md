@@ -2,6 +2,21 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.4.0 — 05/10/2026 (partita in rete locale)
+- Nuovo pulsante "Ospita in rete locale" (solo app desktop): avvia un piccolo server sul computer di chi ospita e apre la
+  lobby con il codice. Gli amici scrivono SOLO il codice in "Unisciti": il gioco cerca l'host nella rete con un breve
+  messaggio UDP (porta 8788) e si collega da solo, senza digitare indirizzi IP. I codici della rete locale iniziano sempre con L
+  e solo questi vengono cercati in rete (gli altri vanno subito al server online); il codice non viaggia in chiaro (nonce + HMAC,
+  limite di 10 richieste al secondo per indirizzo). Se non lo trova, ripiega sul server impostato.
+- Server integrato più rigido: solo il computer che ospita può creare la partita, massimo 32 collegamenti, socket senza
+  stanza chiusi dopo 10 secondi. Il codice ricevuto dal server viene controllato prima dell'uso.
+- Nella lobby dell'host compare l'indirizzo di rete (es. 192.168.1.23:8787) come ripiego. Windows può chiedere il permesso
+  del firewall al primo avvio: va consentito. Il server si ferma quando la partita finisce o si chiude il gioco.
+- Nuovi file: desktop/lan.js (server integrato e ricerca), desktop/preload.js (ponte isolato, solo 3 comandi).
+  La libreria ws passa tra le dipendenze (serve dentro l'app pacchettizzata).
+- Versione 0.4.0: tutti i giocatori devono avere la stessa versione.
+- Test: net_test 43 (+11, rete locale: ricerca dal codice, codice sbagliato, datagrammi malformati, risposte false, riavvio porte).
+
 ## 0.3.2 — 02/10/2026 (più gol, più fluido)
 - Più gol nelle partite: media nelle partite IA contro IA da 0.94 a 3.3 gol (tempi da 3 minuti, 30 partite),
   tiri da 9.5 a 13 a partita. Cause trovate: l'IA tirava spesso sopra la soglia di potenza che manda la palla
