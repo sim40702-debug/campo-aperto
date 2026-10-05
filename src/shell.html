@@ -109,6 +109,11 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .flap.flip { animation: flip 0.35s ease-out both; }
 @keyframes flip { 0% { transform: rotateX(90deg); } 100% { transform: none; } }
 .code-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
+/* indirizzo del server in rete locale (solo host) */
+.lan-box { background: var(--night-2); border-left: 4px solid var(--flood); padding: 12px 16px; margin: -6px 0 22px; max-width: 640px; }
+.lan-main { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 2px 0 4px; }
+.lan-main b { font-family: Consolas, 'Courier New', monospace; font-weight: 700; font-size: clamp(22px, 3.4vw, 34px); color: var(--flood); overflow-wrap: anywhere; user-select: all; }
+.lan-box p { margin: 4px 0 0; }
 
 .lobby-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
 .col { background: var(--night-2); padding: 14px; min-height: 160px; border-top: 4px solid var(--slate); }
@@ -321,7 +326,12 @@ body.pad-nav .mode:focus b { color: var(--flood); }
         <p class="small" id="lb-copied" style="margin:8px 0 0">Dai questo codice agli altri giocatori.</p>
       </div>
     </div>
-    <p class="hintline" id="lb-lan" hidden></p>
+    <div class="lan-box" id="lb-lan" hidden>
+      <span class="small">Il tuo indirizzo</span>
+      <div class="lan-main"><b id="lb-lan-addr"></b><button class="ghost" id="lb-lan-copy">Copia</button></div>
+      <p class="small" id="lb-lan-more" hidden></p>
+      <p class="small" style="margin:6px 0 0">Gli amici nella stessa rete entrano con il codice. Se la ricerca non funziona, possono impostare questo indirizzo in Impostazioni → Online. Se Windows chiede il permesso del firewall, consentilo.</p>
+    </div>
     <div class="lobby-grid">
       <div class="col" id="lb-col-0"><h3><span class="kitdot" id="lb-kit-0"></span><span id="lb-team-0">Casa</span></h3><ul id="lb-list-0"></ul><button class="seg" data-side="0">Gioca qui</button></div>
       <div class="col" id="lb-col-1"><h3><span class="kitdot" id="lb-kit-1"></span><span id="lb-team-1">Ospiti</span></h3><ul id="lb-list-1"></ul><button class="seg" data-side="1">Gioca qui</button></div>

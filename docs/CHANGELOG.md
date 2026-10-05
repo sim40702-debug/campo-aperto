@@ -12,6 +12,8 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
   stanza chiusi dopo 10 secondi. Il codice ricevuto dal server viene controllato prima dell'uso.
 - Nella lobby dell'host compare l'indirizzo di rete (es. 192.168.1.23:8787) come ripiego. Windows può chiedere il permesso
   del firewall al primo avvio: va consentito. Il server si ferma quando la partita finisce o si chiude il gioco.
+- L'indirizzo dell'host è ben visibile: riquadro nella lobby con IP:porta in grande (quello realmente usato per la rete per primo,
+  gli altri adattatori sotto), pulsante "Copia" e avviso "Server avviato su IP:porta" all'avvio.
 - Nuovi file: desktop/lan.js (server integrato e ricerca), desktop/preload.js (ponte isolato, solo 3 comandi).
   La libreria ws passa tra le dipendenze (serve dentro l'app pacchettizzata).
 - Versione 0.4.0: tutti i giocatori devono avere la stessa versione.

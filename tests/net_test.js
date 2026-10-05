@@ -176,6 +176,11 @@ function startLoops(host, clients, hostInput) {
   const LP = { port: 0, discoveryPort: 38788 };
   const lh = await lan.startHost(LP);
   check('LAN: host avviato con porta valida', lh.port > 0 && Array.isArray(lh.addresses) && lh.discovery, JSON.stringify(lh));
+  const v4 = a => typeof a === 'string' && /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(a) && a.split('.').every(x => +x <= 255);
+  check('LAN: indirizzi IPv4 validi e senza duplicati', lh.addresses.every(v4) && new Set(lh.addresses).size === lh.addresses.length, JSON.stringify(lh.addresses));
+  const dr = await lan.defaultRouteAddress();
+  if (dr && lh.addresses.includes(dr)) check('LAN: il primo indirizzo è quello della rotta predefinita', lh.addresses[0] === dr, dr + ' / ' + JSON.stringify(lh.addresses));
+  else check('LAN: indirizzo della rotta predefinita (non determinabile, saltato)', true);
   check('LAN: avvio ripetuto idempotente', (await lan.startHost(LP)).port === lh.port);
   const lhLink = new A.NetLink('ws://127.0.0.1:' + lh.port);
   const lc = await lhLink.create('Simone');

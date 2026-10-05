@@ -38,6 +38,30 @@ function localAddresses() {
   return out;
 }
 
+// indirizzo con cui il PC raggiunge la rete (rotta predefinita): connect() su UDP non invia pacchetti. null se offline
+function defaultRouteAddress() {
+  return new Promise(resolve => {
+    let s, t;
+    const end = v => { clearTimeout(t); try { s.close(); } catch (e) { /* già chiuso */ } resolve(v); };
+    try {
+      s = dgram.createSocket('udp4');
+      s.on('error', () => end(null));
+      t = setTimeout(() => end(null), 500);
+      s.connect(53, '8.8.8.8', () => { try { const a = s.address().address; end(/^\d+\.\d+\.\d+\.\d+$/.test(a) ? a : null); } catch (e) { end(null); } });
+    } catch (e) { resolve(null); }
+  });
+}
+
+// indirizzi locali senza duplicati, con quello della rotta predefinita per primo
+async function orderedAddresses() {
+  const list = [...new Set(localAddresses().map(i => i.address))];
+  try {
+    const d = await defaultRouteAddress();
+    if (d && list.includes(d)) return [d, ...list.filter(a => a !== d)];
+  } catch (e) { /* tengo l'ordine di sistema */ }
+  return list;
+}
+
 // indirizzo di broadcast diretto: indirizzo OR maschera invertita
 function broadcastOf(i) {
   try {
@@ -106,7 +130,7 @@ async function doStart(opts) {
     relay = await createRelay(Object.assign({ host: bindHost, port: 0, maxRooms: 1, quiet: true }, LAN_RELAY, opts.relayOpts)); // porta occupata: una libera
   }
   const sock = await openResponder(relay, opts.discoveryPort === undefined ? DISCOVERY_PORT : opts.discoveryPort);
-  host = { relay, sock, port: relay.port, addresses: localAddresses().map(i => i.address) };
+  host = { relay, sock, port: relay.port, addresses: await orderedAddresses() };
   return { port: host.port, addresses: host.addresses.slice(), discovery: !!sock };
 }
 
@@ -167,4 +191,4 @@ function findGame(code, opts) {
   });
 }
 
-module.exports = { startHost, stopHost, findGame, CODE_RE };
+module.exports = { startHost, stopHost, findGame, defaultRouteAddress, CODE_RE };
