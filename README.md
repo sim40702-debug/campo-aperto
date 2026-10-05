@@ -99,6 +99,24 @@ node relay.js --host 127.0.0.1 --port 8787
 
 Metti davanti un reverse proxy HTTPS (nginx o Caddy) che inoltri `wss://calcio.tuodominio.ch` a `127.0.0.1:8787` con l'upgrade WebSocket. Poi nel gioco inserisci l'indirizzo in **Impostazioni → Online → Server online**.
 
+## Monete, scommesse e negozio
+
+Con un account (nome utente e password, dal menu: **Accedi**) hai un portafoglio di monete salvato sul server: lo ritrovi
+uguale su ogni computer e browser. Dal menu:
+
+- **Partite**: ogni 10 minuti una partita del server tra due squadre del gioco. Scommetti fino a 10 secondi dal calcio
+  d'inizio (1X2, gol, corner, cartellini, tiri, possesso e altri, singole o multiple), poi **Guarda partita**: il gioco la
+  rigioca in 3D esattamente come l'ha calcolata il server, con la cronaca e le scommesse degli altri giocatori accanto.
+- **Scommesse**: le tue in corso e concluse, quelle pubbliche degli altri (con **Copia scommessa**: la giocata parte solo
+  quando confermi), i codici BET-XXXXX condivisi, la classifica dei migliori scommettitori e le statistiche del giorno.
+- **Negozio**, **Personaggio**, **Inventario**: maglie, pantaloncini, calzettoni, scarpe, guanti, capelli e accessori per il
+  tuo attaccante, con numero e nome di maglia. Online gli altri ti vedono vestito così.
+- **Profilo**: saldo, movimenti, obiettivi, bonus giornaliero e la scelta "Mostra pubblicamente le mie scommesse".
+
+Il server è un Worker Cloudflare con database D1 (`cloud/`): è lui a tenere i saldi e a decidere quote, risultati e
+vincite, il gioco mostra soltanto. Come metterlo online sul tuo account, aggiornarlo e fare i backup:
+[docs/ECONOMIA.md](docs/ECONOMIA.md).
+
 ---
 
 ## Sviluppo
@@ -130,11 +148,12 @@ Dopo qualche minuto i file compaiono in **Releases**, dentro una release in bozz
 ### Struttura
 
 ```
-src/       codice del gioco (simulazione, grafica, audio, input, rete)
+src/       codice del gioco (simulazione, grafica, audio, input, rete, account ed economia)
 server/    server lobby/relay per l'online
+cloud/     server dell'economia (Cloudflare Worker + D1 + Durable Object), con migrazioni e test
 desktop/   app Electron
 tests/     test automatici
-docs/      roadmap e changelog
+docs/      roadmap, changelog, guida dell'economia
 ```
 
 ### Test nel browser e nell'app desktop
@@ -152,6 +171,8 @@ Poi prepara la build di test e lancia i test:
 npm run build:test
 python3 tests/browser_test.py            # menu, partita, tastiera, impostazioni, risoluzioni
 python3 tests/controls_browser_test.py   # controller simulato, comandi, rimappatura
+python3 tests/online_browser_test.py     # due giocatori online con il server relay
+python3 tests/economy_browser_test.py    # account, scommesse, social, negozio, partite del server (serve cloud/: npm install)
 ```
 
 Per provare la vera app desktop:
@@ -161,7 +182,13 @@ npm run build:desktop
 npx electron tests/electron_smoke.js
 ```
 
-Su Linux senza schermo anteponi `xvfb-run` all'ultimo comando.
+Con il server dell'economia in locale (serve `npm install` in `cloud/`):
+
+```bash
+npx electron tests/electron_economy_smoke.js
+```
+
+Su Linux senza schermo anteponi `xvfb-run` ai comandi Electron; se lavori come root aggiungi `--no-sandbox` dopo `electron`.
 
 ### Nota tecnica: Node.js 26
 

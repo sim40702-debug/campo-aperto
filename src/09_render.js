@@ -38,6 +38,7 @@ class Renderer {
     this.buildBall();
     this.buildFx();
     this.playerMeshes = [];
+    this.cosmetics = new Map();   // aspetto comprato nel negozio (dal server) per i calciatori degli umani
     this.humanMarks = [];
     this.shake = 0;
     this.resize();
@@ -418,13 +419,22 @@ class Renderer {
     this.ballShadow.material.opacity = 0.55 / (1 + h * 0.6);
   }
 
-  numberTexture(num, color, bg) {
+  numberTexture(num, color, bg, name) {
     const S = this.Q.detail > 1 ? 128 : 64;   // numeri più nitidi in alta qualità
     const cv = document.createElement('canvas'); cv.width = S; cv.height = S;
     const g = cv.getContext('2d');
     g.fillStyle = bg; g.fillRect(0, 0, S, S);
-    g.fillStyle = color; g.font = 'bold ' + Math.round(S * 0.62) + 'px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(String(num), S / 2, S * 0.55);
+    g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (name) {
+      // nome sopra il numero (personaggio dell'account)
+      g.font = 'bold ' + Math.round(S * 0.17) + 'px Arial';
+      g.fillText(String(name).slice(0, 12), S / 2, S * 0.13, S * 0.96);
+      g.font = 'bold ' + Math.round(S * 0.56) + 'px Arial';
+      g.fillText(String(num), S / 2, S * 0.62);
+    } else {
+      g.font = 'bold ' + Math.round(S * 0.62) + 'px Arial';
+      g.fillText(String(num), S / 2, S * 0.55);
+    }
     const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding;
     return t;
   }
@@ -466,8 +476,16 @@ class Renderer {
   // Corpo, testa e capelli sono un'unica geometria colorata; gambe e braccia restano snodate.
   // Un solo materiale condiviso da tutti i giocatori (i colori stanno nei vertici).
   makePlayerMesh(p) {
-    const look = p.data.look;
-    const kit = p.isGK ? (p.team.index === 0 ? ['#2bd18c', '#1a1a1a', '#2bd18c'] : ['#ff7ac8', '#1a1a1a', '#ff7ac8']) : p.team.kit;
+    const cos = this.cosmetics.get(p) || null, it = (cos && cos.items) || {};
+    const look0 = p.data.look;
+    // capelli e scarpe dell'aspetto comprato; il resto della maglia resta quello della squadra
+    const look = !cos ? look0 : Object.assign({}, look0, {
+      hairStyle: it.capelli ? it.capelli.style : look0.hairStyle, hair: it.capelli ? it.capelli.color : look0.hair,
+      boots: it.scarpe ? it.scarpe.color : look0.boots, beard: it.capelli ? false : look0.beard,
+    });
+    const kit0 = p.isGK ? (p.team.index === 0 ? ['#2bd18c', '#1a1a1a', '#2bd18c'] : ['#ff7ac8', '#1a1a1a', '#ff7ac8']) : p.team.kit;
+    const kit = [kit0[0], it.pantaloncini ? it.pantaloncini.color : kit0[1], it.calzettoni ? it.calzettoni.color : kit0[2]];
+    const pat = it.maglia || null, acc = it.accessori || null, gloves = it.guanti ? it.guanti.color : null;
     if (!this.playerMat) this.playerMat = new THREE.MeshLambertMaterial({ vertexColors: true });
     const mat = this.playerMat;
     const root = new THREE.Group();
@@ -485,10 +503,20 @@ class Renderer {
       parts.push({ geo: new THREE.SphereGeometry(0.128, 12, 8, 0, Math.PI * 2, 0, look.hairStyle === 'medi' ? 1.9 : 1.4), color: look.hair, pos: [0, 1.7, 0], rot: [0, 0, 0.25], scale: hs });
     }
     if (look.beard) parts.push({ geo: new THREE.SphereGeometry(0.1, 10, 6, 0, Math.PI * 2, 1.8, 1.2), color: look.hair, pos: [0.02, 1.66, 0] });
+    // motivo della maglia (negozio): pezzi sottili appoggiati sul busto, nella stessa geometria
+    if (pat) {
+      const fx = 0.185 * w;   // superficie davanti (+x) e dietro (-x) del busto
+      if (pat.pattern === 'colletto' || pat.pattern === 'bordi') parts.push({ geo: new THREE.CylinderGeometry(0.105, 0.125, 0.05, seg(10)), color: pat.color, pos: [0, 1.52, 0] });
+      if (pat.pattern === 'bordi') parts.push({ geo: new THREE.CylinderGeometry(0.168 * w, 0.168 * w, 0.045, seg(10)), color: pat.color, pos: [0, 0.915, 0], scale: [1, 1, 1.36] });
+      if (pat.pattern === 'righe') for (const z of [-0.15, -0.05, 0.05, 0.15]) for (const sx of [1, -1]) parts.push({ geo: new THREE.BoxGeometry(0.02, 0.6, 0.045), color: pat.color, pos: [sx * (fx - Math.abs(z) * 0.18), 1.2, z * w] });
+      if (pat.pattern === 'fascia') for (const sx of [1, -1]) parts.push({ geo: new THREE.BoxGeometry(0.02, 0.09, 0.62 * w), color: pat.color, pos: [sx * (fx + 0.004), 1.22, 0], rot: [sx * 0.75, 0, 0] });
+    }
+    if (acc && acc.kind === 'fascia') parts.push({ geo: new THREE.CylinderGeometry(0.128, 0.128, 0.035, seg(12)), color: acc.color, pos: [0, 1.74, 0] });
     const torso = new THREE.Mesh(this.mergeColored(parts), mat);
     torso.castShadow = true; body.add(torso);
     // numero sulla schiena
-    const numMat = new THREE.MeshBasicMaterial({ map: this.numberTexture(p.data.number, kit[1] === kit[0] ? '#ffffff' : kit[1], kit[0]) });
+    const numColor = kit0[1] === kit0[0] ? '#ffffff' : kit0[1];
+    const numMat = new THREE.MeshBasicMaterial({ map: cos ? this.numberTexture(cos.number || p.data.number, numColor, kit0[0], cos.name) : this.numberTexture(p.data.number, numColor, kit0[0]) });
     const num = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.26), numMat);
     num.position.set(-0.2 * w - 0.001, 1.22, 0); num.rotation.y = -Math.PI / 2; body.add(num);
     const cyl = (r1, r2, l) => new THREE.CylinderGeometry(r1, r2, l, seg(7));
@@ -500,18 +528,26 @@ class Renderer {
       thigh.castShadow = true; hip.add(thigh);
       const knee = new THREE.Group(); knee.position.y = -0.4; hip.add(knee);
       // stinco e scarpa nello stesso pezzo (si muovono insieme)
-      const shin = new THREE.Mesh(this.mergeColored([
+      const shinParts = [
         { geo: cyl(0.06, 0.05, 0.38), color: kit[2], pos: [0, -0.19, 0] },
         { geo: new THREE.BoxGeometry(0.24, 0.07, 0.1), color: look.boots, pos: [0.05, -0.4, 0] },
-      ]), mat);
+      ];
+      if (it.calzettoni && it.calzettoni.stripe) shinParts.push({ geo: cyl(0.062, 0.06, 0.05), color: it.calzettoni.stripe, pos: [0, -0.05, 0] });
+      const shin = new THREE.Mesh(this.mergeColored(shinParts), mat);
       shin.castShadow = true; knee.add(shin);
       legs.push({ hip, knee });
       const sh = new THREE.Group(); sh.position.set(0, 1.46, side * 0.27 * w); body.add(sh);
       // le braccia non proiettano ombra: differenza invisibile, molto lavoro in meno
-      const upper = new THREE.Mesh(this.mergeColored([{ geo: cyl(0.055, 0.05, 0.3), color: kit[0], pos: [0, -0.15, 0] }]), mat);
+      const upperParts = [{ geo: cyl(0.055, 0.05, 0.3), color: pat && pat.pattern === 'maniche' ? pat.color : kit[0], pos: [0, -0.15, 0] }];
+      if (pat && pat.pattern === 'bordi') upperParts.push({ geo: cyl(0.057, 0.057, 0.04), color: pat.color, pos: [0, -0.28, 0] });
+      if (acc && acc.kind === 'capitano' && side === 1) upperParts.push({ geo: cyl(0.062, 0.06, 0.07), color: acc.color, pos: [0, -0.12, 0] });
+      const upper = new THREE.Mesh(this.mergeColored(upperParts), mat);
       sh.add(upper);
       const elbow = new THREE.Group(); elbow.position.y = -0.3; sh.add(elbow);
-      const fore = new THREE.Mesh(this.mergeColored([{ geo: cyl(0.045, 0.04, 0.28), color: armColor, pos: [0, -0.14, 0] }]), mat);
+      const foreParts = [{ geo: cyl(0.045, 0.04, 0.28), color: armColor, pos: [0, -0.14, 0] }];
+      if (acc && acc.kind === 'polsini') foreParts.push({ geo: cyl(0.05, 0.05, 0.06), color: acc.color, pos: [0, -0.24, 0] });
+      if (gloves) foreParts.push({ geo: new THREE.SphereGeometry(0.055, seg(8), seg(6)), color: gloves, pos: [0, -0.31, 0], scale: [1, 1.2, 0.8] });
+      const fore = new THREE.Mesh(this.mergeColored(foreParts), mat);
       elbow.add(fore);
       arms.push({ sh, elbow });
     }
@@ -531,9 +567,20 @@ class Renderer {
   }
 
   setupMatch(match) {
+    if (match !== this.match) this.cosmetics = new Map();
     for (const pm of this.playerMeshes) this.disposePlayerMesh(pm);
     this.playerMeshes = (match.allSlots ? match.allSlots() : match.allPlayers()).map(p => this.makePlayerMesh(p));
     this.match = match;
+  }
+
+  // aspetto comprato (letto dal server) per un calciatore: si ricostruisce solo il suo modello
+  setCosmetic(p, loadout) {
+    if (!loadout) return;
+    this.cosmetics.set(p, loadout);
+    const i = this.playerMeshes.findIndex(pm => pm.player === p);
+    if (i < 0) return;
+    this.disposePlayerMesh(this.playerMeshes[i]);
+    this.playerMeshes[i] = this.makePlayerMesh(p);
   }
 
   clearMatch() {

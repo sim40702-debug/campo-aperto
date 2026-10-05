@@ -2,6 +2,34 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.6.0 — 05/10/2026 (account, monete, scommesse, social, negozio)
+- Server dell'economia in `cloud/` (Cloudflare Worker + database D1 + Durable Object), vedi docs/ECONOMIA.md. Il database
+  è l'autorità: saldo, quote, risultati, vincite, oggetti e prezzi si decidono lì; il gioco mostra e chiede.
+- Account con nome utente e password (PBKDF2-SHA256, mai in chiaro), sessione con token (sul computer solo il token).
+  Portafoglio con vincolo di saldo non negativo e registro dei movimenti con riferimento unico (niente doppioni).
+- Partite del server ogni 10 minuti, calcolate con il motore del gioco (stessi file, `node build.js engine`; nessuna
+  seconda simulazione). Seme segreto fino al calcio d'inizio, scommesse chiuse 10 s prima, eventi rivelati solo quando
+  avvengono, liquidazione automatica dai fatti della partita.
+- Motore: generatore casuale per partita (Match opts.rng), istante reale negli eventi, eventi SHOT e SHOT_ON_TARGET;
+  "Guarda partita" rigioca in 3D la partita del server allineata al suo orologio, con controllo dei gol: se il gioco va
+  diversamente la visione si ferma e vale il server. Impronta del motore (ENGINE_ID) uguale in gioco e server.
+- 25 mercati (1X2, doppia chance, primo tempo, handicap, risultato esatto, gol, entrambe segnano, gol per tempo, primo e
+  ultimo gol, porta inviolata, corner, primo corner, cartellini, primo cartellino, espulsione, rigore, tiri, tiri in porta,
+  possesso) con quote da una calibrazione Monte Carlo del motore; singole e multiple fino a 10 partite; quota ricontrollata
+  alla conferma ("Quota cambiata").
+- Social: scommesse dei giocatori (solo pubbliche, nessun dato privato), "Copia scommessa" che riempie la schedina senza
+  giocare, codici BET-XXXXX, reazioni, più giocate, statistiche, classifiche per bravura (mai per saldo) con periodi,
+  privacy "Mostra pubblicamente le mie scommesse". Aggiornamento leggero (6-20 s, solo le novità, solo a schermata aperta).
+- Negozio con 30 oggetti in 7 categorie e rarità, inventario, personaggio (numero e nome di maglia), anteprime disegnate;
+  in partita il tuo attaccante ha il tuo aspetto, e online gli altri lo leggono dal server.
+- Ricompense: monete di benvenuto, bonus giornaliero con serie (doppio nel fine settimana), premio spettatore, 7 obiettivi,
+  premi di stagione.
+- Menu: saldo, Partite, Scommesse, Negozio, Personaggio, Inventario, Profilo; "Guarda partita" apre le partite del server
+  (la partita libera tra IA resta nella stessa schermata). Impostazioni → Online → Server dell'economia.
+- App desktop: la politica di sicurezza permette HTTPS verso il server dell'economia. Release: variabile CAMPO_API_URL.
+- Test: mercati (21), API contro il server vero in locale (100: sicurezza, 20 test social, saldi persistenti anche dopo il
+  riavvio del server, liquidazione), gioco nel browser con due giocatori (45), app desktop Electron con il server (6).
+
 ## 0.5.0 — 05/10/2026 (arbitro vero, fisica più credibile, grafica)
 - Arbitro (nuovo src/08_referee.js). Prima il fallo era un numero casuale: probabilità di base più scivolata più "da dietro",
   senza guardare chi prende il pallone; inseguendo il portatore oltre metà dei contrasti diventava fallo. Ora

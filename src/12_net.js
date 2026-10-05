@@ -23,7 +23,7 @@ const NET = {
   PSTRIDE: 14,            // valori per ogni calciatore (posizione, animazioni, energia, cartellini, caduta)
   BANNER_KINDS: ['goal', 'foul', 'yellow', 'red', 'advantage', 'offside', 'penalty', 'info'],
   REF_TYPES: ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'SECOND_YELLOW', 'PENALTY', 'FREE_KICK', 'CORNER', 'OFFSIDE',
-    'THROW_IN', 'GOAL_KICK', 'ADVANTAGE', 'KICK_OFF', 'HALF_TIME', 'FULL_TIME'],
+    'THROW_IN', 'GOAL_KICK', 'ADVANTAGE', 'KICK_OFF', 'HALF_TIME', 'FULL_TIME', 'SHOT', 'SHOT_ON_TARGET'],
   EV_TYPES: ['kick', 'whistle', 'post', 'save', 'goal', 'tackle', 'switch', 'ref'],
 };
 const netNow = () => performance.now() / 1000;
@@ -271,7 +271,7 @@ function cleanNetEvent(e) {
     c.r = { type: r.type, minute: num(r.minute, 0) | 0, half: r.half === 2 ? 2 : 1, clock: num(r.clock, 0), team: r.team === 0 || r.team === 1 ? r.team : -1,
       player: who(r.player), victim: who(r.victim), x: clamp(num(r.x, 0), -70, 70), z: clamp(num(r.z, 0), -50, 50),
       reason: typeof r.reason === 'string' ? r.reason.slice(0, 80) : '', severity: clamp(num(r.severity, 0), 0, 1),
-      consequence: typeof r.consequence === 'string' ? r.consequence.slice(0, 16) : '' };
+      consequence: typeof r.consequence === 'string' ? r.consequence.slice(0, 16) : '', t: num(r.t, 0) };
   }
   return c;
 }
