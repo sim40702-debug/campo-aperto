@@ -49,8 +49,11 @@ async def main():
         f1 = await pg.evaluate("document.activeElement.id")
         await tap(pg, 13)
         f2 = await pg.evaluate("document.activeElement.id")
-        check('controller: la croce sposta la selezione nel menu', f1 == 'btn-quick' and f2 == 'btn-online', (f1, f2))
-        await tap(pg, 12)   # su: torna a Nuova partita
+        await tap(pg, 13)
+        f3 = await pg.evaluate("document.activeElement.id")
+        # Home: Gioca, sotto la casella larga Guarda partita, poi la riga di caselle (Multiplayer a sinistra)
+        check('controller: la croce sposta la selezione nel menu', f1 == 'btn-quick' and f2 == 'btn-watch' and f3 == 'btn-online', (f1, f2, f3))
+        await tap(pg, 12); await tap(pg, 12)   # su, su: torna a Gioca
         await tap(pg, 0)    # A
         await pg.wait_for_timeout(200)
         check('controller: A apre la schermata selezionata', await pg.evaluate("game.screen==='setup'"))
@@ -68,7 +71,7 @@ async def main():
         check('Esc chiude la schermata Comandi', await pg.evaluate("game.screen==='menu'"))
         # frecce della tastiera nei menu
         await pg.keyboard.press('ArrowDown'); await pg.keyboard.press('ArrowDown')
-        check('tastiera: le frecce spostano la selezione nel menu', await pg.evaluate("document.activeElement.classList.contains('mode')"))
+        check('tastiera: le frecce spostano la selezione nel menu', await pg.evaluate("document.activeElement.classList.contains('home-tile')"))
 
         # ---- rimappatura del controller: scatto su LB (4)
         await pg.click('#btn-settings'); await pg.wait_for_timeout(200)

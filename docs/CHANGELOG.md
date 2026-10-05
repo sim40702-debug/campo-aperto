@@ -2,7 +2,7 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
-## 0.7.0 — 06/10/2026 (multiple vere, Home nuova, transizioni, giocatori, risoluzione)
+## 0.7.0 — 05/10/2026 (multiple vere, Home nuova, transizioni, giocatori, risoluzione)
 - Multiple vere: più selezioni della stessa partita se compatibili, fino a 20 selezioni. Motore unico in
   cloud/src/betlogic.js (lo stesso nel server e nel gioco): ogni mercato è una condizione sui fatti della partita, la
   compatibilità si controlla provando gli esiti possibili per gruppi indipendenti (niente liste di casi). Selezione

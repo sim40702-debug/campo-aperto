@@ -44,9 +44,15 @@ def start_server(persist):
         time.sleep(0.5)
     raise RuntimeError('server non partito')
 
-async def newpage(b, w=1280, h=800):
-    ctx = await b.new_context(viewport={'width': w, 'height': h})
-    pg = await ctx.new_page()
+async def newpage(b, w=1280, h=800, profile=None):
+    # profile: cartella del profilo (Chromium su disco, come l'app desktop con la sua partizione persistente).
+    # Senza, contesto in memoria: per le pagine file:// Chromium può perdere il localStorage a un ricaricamento.
+    if profile:
+        ctx = await b.launch_persistent_context(profile, args=ARGS, viewport={'width': w, 'height': h})
+        pg = ctx.pages[0] if ctx.pages else await ctx.new_page()
+    else:
+        ctx = await b.new_context(viewport={'width': w, 'height': h})
+        pg = await ctx.new_page()
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
@@ -81,7 +87,8 @@ async def run():
     async with async_playwright() as p:
         b = await p.chromium.launch(args=ARGS)
         ctxA, A, errA = await newpage(b)
-        ctxB, B, errB = await newpage(b)
+        # B su un profilo su disco: serve per controllare che il ricaricamento lasci collegati (sezione persistenza)
+        ctxB, B, errB = await newpage(p.chromium, profile=tempfile.mkdtemp(prefix='campo-e2e-profB-'))
         check('menu: saldo sconosciuto senza account (nessun valore inventato)', await menu_balance(A) == '—' and await text(A, '#eco-user') == 'Accedi')
         await A.screenshot(path=HERE + '/shots/40_menu_economia.png')
         await register(A, NA, 'password-a1')
@@ -145,6 +152,10 @@ async def run():
         chg = await B.evaluate("document.getElementById('slip').innerText")
         check('quota ricontrollata alla conferma: "Quota cambiata", originale e attuale', 'Quota cambiata' in chg and ('originale %.2f' % home_odds) in chg, chg.replace('\n', ' | '))
         check('dopo "Quota cambiata" nessun addebito', http('GET', '/api/me/balance', token=tokB)[1]['balance'] == 1000)
+        clicked_fast = await B.evaluate("(() => { document.getElementById('slip-confirm').click(); return game.eco.slip.items.length; })()")
+        await B.wait_for_timeout(300)
+        check('un clic subito dopo il cambio di quota non conferma niente', http('GET', '/api/me/bets', token=tokB)[1]['bets'] == [] or clicked_fast == 0)
+        await B.wait_for_timeout(800)   # il giocatore guarda la quota nuova
         await B.click('#slip-confirm')
         await B.wait_for_function("game.eco.slip.items.length===0", timeout=15000)
         bb = http('GET', '/api/me/bets', token=tokB)[1]['bets']
@@ -207,11 +218,11 @@ async def run():
         balA = http('GET', '/api/me/balance', token=tokA)[1]['balance']; balB = http('GET', '/api/me/balance', token=tokB)[1]['balance']
         pre = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), tok: !!game.eco.api.token, url: location.href})")
         await B.reload()
-        post = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), url: location.href})")
+        post = await B.evaluate("({keys: Object.keys(localStorage), sess: !!localStorage.getItem('campoAperto.session.v1'), settingsFields: Object.keys(JSON.parse(localStorage.getItem('campoAperto.settings.v1') || '{}')).length, url: location.href})")
         print('localStorage di B prima/dopo il ricaricamento:', pre, post, flush=True)
-        try: await B.wait_for_function("window.game && game.loaded && game.eco.api.me", timeout=30000)
+        try: await B.wait_for_function("window.game && game.loaded && game.eco.api.me", timeout=30000, polling=250)
         except Exception:
-            print('errori B:', errB[-5:], await B.evaluate("({loaded: window.game && game.loaded, tok: !!(window.game && game.eco.api.token)})"), flush=True); raise
+            print('errori B:', errB[-5:], await B.evaluate("({loaded: window.game && game.loaded, tok: !!(window.game && game.eco.api.token), me: !!(window.game && game.eco.api.me), screen: window.game && game.screen})"), flush=True); raise
         check('refresh di B: ancora collegato, saldo %d' % balB, await B.evaluate("game.eco.api.me.balance") == balB and await menu_balance(B) == format(balB, ',').replace(',', '.'))
         ctxA2, A2, errA2 = await newpage(b)
         await A2.click('#eco-user'); await A2.fill('#ac-user', NA); await A2.fill('#ac-pass', 'password-a1'); await A2.click('#ac-login')
@@ -346,6 +357,8 @@ async def run():
 
         for nm, e in [('A', errA), ('B', errB), ('A2', errA2)]:
             check('nessun errore JavaScript (%s)' % nm, len(e) == 0, e[:3])
+        await ctxB.close()
         await b.close()
 
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())

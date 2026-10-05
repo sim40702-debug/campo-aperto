@@ -647,10 +647,11 @@ class Economy {
     try {
       const r = await this.api.post('/api/slip/quote', { items: sl.items.map(i => ({ fixture: i.fixture, market: i.market, selection: i.selection })), stake: stake > 0 ? stake : undefined });
       this.sync(r.serverTime);
+      let moved = false;
       r.items.forEach((q, k) => {
         const it = sl.items[k];
         if (!it || it.fixture !== q.fixture || it.market !== q.market || it.selection !== q.selection) return;
-        if (q.odds && it.odds && Math.abs(q.odds - it.odds) > 1e-9 && !it.origOdds) it.origOdds = it.odds;
+        if (q.odds && it.odds && Math.abs(q.odds - it.odds) > 1e-9) { moved = true; if (!it.origOdds) it.origOdds = it.odds; }
         if (q.odds) it.odds = q.odds;
         it.available = q.available; it.reason = q.reason;
         it.marketLabel = q.marketLabel || it.marketLabel; it.selectionLabel = q.selectionLabel || it.selectionLabel;
@@ -659,6 +660,11 @@ class Economy {
       r.sig = this.slipSig();
       sl.quote = r;
       if (!r.valid && r.errors.length) { $('slip-status').className = 'status err'; $('slip-status').textContent = r.errors[0].message; }
+      else if (moved) {
+        // una quota è cambiata mentre la schedina era aperta: si conferma solo dopo averla vista
+        sl.oddsMovedAt = performance.now(); sl.key = null;
+        $('slip-status').className = 'status err'; $('slip-status').textContent = 'Quota cambiata: controlla le nuove quote e conferma di nuovo';
+      }
       this.renderSlip();
     } catch (e) { /* si riprova al prossimo giro o alla conferma */ }
   }
@@ -679,6 +685,8 @@ class Economy {
   async confirmBet() {
     if (this.needLogin()) return;
     const s = this.slip, st = $('slip-status');
+    // un clic arrivato un istante dopo un cambio di quota non vale: il giocatore deve vedere la quota nuova
+    if (s.oddsMovedAt && performance.now() - s.oddsMovedAt < 700) return;
     const stake = Math.floor(Number($('slip-stake').value));
     if (!(stake >= 1)) { st.className = 'status err'; st.textContent = 'Scrivi una puntata di almeno 1 moneta'; return; }
     // la chiave resta la stessa se si riprova dopo un errore di rete: il server non registra due volte

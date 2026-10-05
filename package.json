@@ -1,7 +1,7 @@
 {
   "name": "campo-aperto",
   "productName": "Campo Aperto",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "campoApiUrl": "https://campo-aperto-api.campo-aperto.workers.dev",
   "description": "Gioco di calcio 3D originale, undici contro undici",
   "author": "Simone",
