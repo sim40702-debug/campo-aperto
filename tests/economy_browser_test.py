@@ -252,6 +252,62 @@ async def run():
         finally:
             pass
 
+        # ---- transizioni: la schermata nasce al suo posto (nessuno spostamento laterale) ----
+        ctxC, C, errC = await newpage(b)
+        NC = 'carla_' + sfx
+        await register(C, NC, 'password-c1')
+        await C.evaluate("game.showScreen('menu')")
+        await C.evaluate("window.__xs=[]; (function f(t0){ const r=document.querySelector('#fixtures .sheet').getBoundingClientRect(); window.__xs.push(r.left); if (performance.now()-t0<400) requestAnimationFrame(()=>f(t0)); })(performance.now()); document.querySelector('[data-eco=fixtures]').click();")
+        await C.wait_for_timeout(600)
+        xs = await C.evaluate("window.__xs.filter(x => x !== 0)")
+        final = await C.evaluate("document.querySelector('#fixtures .sheet').getBoundingClientRect().left")
+        check('transizione: la schermata entra al suo posto (spostamento massimo %.1f px, mai fuori schermo)' % (max(abs(x - final) for x in xs) if xs else 0), xs and min(xs) >= 0 and max(abs(x - final) for x in xs) <= 8, xs[:6])
+
+        # ---- multipla sulla stessa partita costruita dall'interfaccia, conflitti ----
+        await C.wait_for_selector('.fxrow[data-fx="%s"]' % code, timeout=20000)
+        await C.click('.fxrow[data-fx="%s"]' % code)
+        await C.wait_for_function("game.screen==='center' && document.querySelectorAll('#mc-markets .sel').length > 0", timeout=20000)
+        await C.click('#mc-markets [data-m="1X2"][data-s="1"]')
+        await C.click('#mc-tabs .tab:has-text("Gol")')
+        over = await C.evaluate("game.eco.fx.markets.find(m=>m.id==='TG').sels.find(s=>/^O/.test(s.id)).id")
+        await C.click('#mc-markets [data-m="TG"][data-s="%s"]' % over)
+        check('stessa partita: 1 + %s entrambe in schedina' % over, await C.evaluate("game.eco.slip.items.length===2 && !game.eco.slip.conflict"))
+        await C.click('#mc-markets [data-m="CS"][data-s="0-1"]')
+        await C.wait_for_function("!document.getElementById('slip-conflict').hidden", timeout=5000)
+        ctext = await C.evaluate("document.getElementById('slip-conflict-text').textContent")
+        check('selezione incompatibile: non entra, si vede il motivo e la selezione in conflitto', await C.evaluate("game.eco.slip.items.length===2 && document.querySelectorAll('#slip .slip-it.conflict').length>=1") and '0-1' in ctext and 'non' in ctext, ctext)
+        await C.click('#slip-conflict-cancel')
+        check('Annulla: la schedina resta com\'era', await C.evaluate("game.eco.slip.items.length===2 && document.getElementById('slip-conflict').hidden"))
+        await C.click('#mc-markets [data-m="CS"][data-s="0-1"]')
+        await C.click('#slip-conflict-replace')
+        sl = await C.evaluate("game.eco.slip.items.map(i=>i.market+':'+i.selection)")
+        check('Sostituisci: tolta la selezione in conflitto, aggiunta la nuova', 'CS:0-1' in sl and '1X2:1' not in sl, sl)
+        await C.click('#mc-tabs .tab:has-text("1X2")')
+        check('selezioni incompatibili smorzate (1X2 "1" con 0-1 in schedina)', await C.evaluate("document.querySelector('#mc-markets [data-m=\"1X2\"][data-s=\"1\"]').classList.contains('blocked') && !document.querySelector('#mc-markets [data-m=\"1X2\"][data-s=\"2\"]').classList.contains('blocked')"))
+        await C.wait_for_function("game.eco.slip.quote && game.eco.slip.quote.valid", timeout=10000)
+        st = await C.evaluate("({sel: document.getElementById('slip-sel').textContent, odds: document.getElementById('slip-odds').textContent, bonus: document.getElementById('slip-bonus').textContent, txt: document.getElementById('slip').innerText})")
+        check('La mia schedina: selezioni, quota totale, bonus, partita', st['sel'] == str(len(sl)) and st['odds'] != '—' and 'La mia schedina' in st['txt'], st)
+        await C.fill('#slip-stake', '10')
+        await C.click('#slip-confirm')
+        await C.wait_for_function("game.eco.slip.items.length===0", timeout=15000)
+        tokC = await C.evaluate('game.eco.api.token')
+        cb = http('GET', '/api/me/bets', token=tokC)[1]['bets']
+        check('multipla della stessa partita accettata dal server (%d selezioni)' % (len(cb[0]['items']) if cb else 0), len(cb) == 1 and len(cb[0]['items']) == len(sl) and all(i['fixture'] == code for i in cb[0]['items']))
+        await C.screenshot(path=HERE + '/shots/52_multipla_stessa_partita.png')
+
+        # ---- comandi personalizzati salvati sull'account: un altro browser li ritrova ----
+        await C.evaluate("game.settings.keys.sprint = ['KeyX', 'ShiftRight']; game.input.setKeys(game.settings.keys); saveSettings(game.settings)")
+        await C.wait_for_timeout(2500)
+        ctxC2, C2, errC2 = await newpage(b)
+        await C2.click('#eco-user'); await C2.fill('#ac-user', NC); await C2.fill('#ac-pass', 'password-c1'); await C2.click('#ac-login')
+        await C2.wait_for_function("game.screen==='menu' && game.eco.api.me", timeout=30000)
+        await C2.wait_for_function("game.settings.keys.sprint[0]==='KeyX'", timeout=10000)
+        check('comandi personalizzati: sull\'altro browser Scatto = X (dall\'account)', await C2.evaluate("game.input.keys.sprint[0]==='KeyX'"))
+        await C2.reload(); await C2.wait_for_function("window.game && game.loaded", timeout=30000)
+        check('comandi personalizzati: restano dopo il refresh', await C2.evaluate("game.settings.keys.sprint[0]==='KeyX'"))
+        for nm, e in [('C', errC), ('C2', errC2)]:
+            check('nessun errore JavaScript (%s)' % nm, len(e) == 0, e[:3])
+
         # ---- guarda partita: sincronizzata con il server ----
         fx = http('GET', '/api/fixtures/' + code)[1]
         set_clock(fx['kickoffAt'] + 20000)

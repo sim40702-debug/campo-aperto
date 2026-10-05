@@ -30,6 +30,7 @@ function defaultSettings() {
     apiUrl: '',               // server dell'economia (https://...): vuoto = quello incluso nella versione (DEFAULT_API_URL)
     lanHost: '',              // ultimo indirizzo dell'host in rete locale con cui sei entrato (IP o IP:porta)
     netDebug: false,          // pannello di diagnostica della rete
+    controlsUpdatedAt: 0,     // ultima modifica dei comandi (per scegliere tra computer e account la più recente)
   };
 }
 function loadSettings() {
@@ -66,6 +67,9 @@ function loadSettings() {
   if (!PAD_NAMES[s.padLayout]) s.padLayout = 'xbox';
   return s;
 }
+// chi vuole sapere quando le impostazioni cambiano (es. i comandi da salvare anche sull'account)
+let settingsSavedHook = null;
 function saveSettings(s) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) { /* non disponibile: restano valide per la sessione */ }
+  if (settingsSavedHook) { try { settingsSavedHook(s); } catch (e) { console.error(e); } }
 }

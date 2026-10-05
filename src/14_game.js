@@ -963,7 +963,8 @@ class Game {
     if (!this.replay) return false;
     const rp = this.replay, m = this.match;
     rp.i += dt * 60 * rp.speed;
-    const skip = this.input.consume('Space') || this.input.consumeAction('pass') || this.input.consume('Enter');
+    // si salta con l'azione Passaggio (tasto o pulsante scelti dal giocatore), non con un tasto fisso
+    const skip = this.input.consumeAction('pass');
     if (rp.i >= rp.frames.length - 1 || skip || (this.mode !== 'offline' && m.state !== 'GOAL' && rp.i > 10 && m.state !== 'KICKOFF')) {
       this.replay = null; $('replay-tag').hidden = true; return false;
     }
@@ -1061,7 +1062,7 @@ class Game {
   }
   updateReplayTag() {
     const sm = $('replay-tag').querySelector('small');
-    if (sm) sm.textContent = (this.input.lastDevice === 'pad' ? this.btn('pass') : 'Spazio') + ' per saltare';
+    if (sm) sm.textContent = this.btn('pass') + ' per saltare';
   }
   flashChip(action) {
     if (this.screen !== 'match') return;
