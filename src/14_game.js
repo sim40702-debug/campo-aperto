@@ -3,7 +3,7 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['menu', 'setup', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime'];
+const SCREENS = ['menu', 'setup', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 
 class Game {
@@ -43,6 +43,8 @@ class Game {
     this.perf = { t: 0, frames: 0, good: 0 };
     this.settingsReturn = 'menu';
     this.bindUI();
+    this.fxw = null;
+    this.eco = new Economy(this);
     this.startDemo();
     this.showScreen('menu');
     requestAnimationFrame(t => this.loop(t));
@@ -59,7 +61,7 @@ class Game {
   showScreen(name) {
     this.screen = name;
     for (const id of SCREENS) $(id).hidden = true;
-    const panel = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', match: 'hud' }[name];
+    const panel = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', match: 'hud' }[name] || (ECO_SCREENS.includes(name) ? name : null);
     if (panel) {
       const el = $(panel);
       el.hidden = false;
@@ -75,6 +77,7 @@ class Game {
     const first = panel && name !== 'match' ? $(panel).querySelector('.primary, .mode') : null;
     // nel menu principale il primo pulsante si evidenzia solo se si usa controller o tastiera
     if (first && (name !== 'menu' || this.input.lastDevice === 'pad')) setTimeout(() => first.focus({ preventScroll: true }), 30);
+    if (this.eco) this.eco.onShow(name);
   }
 
   toast(text, isErr) {
@@ -95,7 +98,7 @@ class Game {
     // suono di conferma per ogni pulsante
     document.addEventListener('click', e => { if (e.target.closest && e.target.closest('button')) this.audio.ui(); });
     $('btn-quick').onclick = () => { this.setup.side = this.setup.side === -1 ? 0 : this.setup.side; this.showScreen('setup'); };
-    $('btn-watch').onclick = () => { this.setup.side = -1; this.showScreen('setup'); };
+    $('btn-watch').onclick = () => this.eco.open('fixtures');
     $('btn-online').onclick = () => this.showScreen('online');
     $('btn-settings').onclick = () => this.openSettings('grafica', 'menu');
     $('btn-controls').onclick = () => this.openHelp('menu');
@@ -227,6 +230,7 @@ class Game {
     this.renderChips(!!m.humanById(localId));
     this.showScreen('match');
     this.audio.whistle(1);
+    this.eco.dressMatch(m, localId, names);
   }
 
   startMatch() {
@@ -241,7 +245,31 @@ class Game {
     $('netind').hidden = true;
   }
 
+  // guarda una partita del server (vedi 17_fixture_watch.js)
+  startFixtureWatch(fx) {
+    if (this.net) this.leaveOnline(false);
+    if (this.fxw) this.fxw.stop();
+    this.fxw = new FixtureWatch(this, fx);
+    this.mode = 'fixture';
+    this.prepareMatchView(this.fxw.m, null, null);
+    $('netind').hidden = true;
+    $('fxside').hidden = false;
+    this.fxw.begin();
+  }
+  stopFixtureWatch(toCenter) {
+    const code = this.fxw && this.fxw.fx.code;
+    if (this.fxw) this.fxw.stop();
+    this.fxw = null;
+    $('fxside').hidden = true;
+    this.mode = 'menu';
+    this.match = null; this.paused = false; this.replay = null;
+    $('pause').hidden = true; $('replay-tag').hidden = true;
+    this.startDemo();
+    if (toCenter && code) this.eco.openCenter(code); else this.showScreen('menu');
+  }
+
   quitToMenu() {
+    if (this.mode === 'fixture') { this.stopFixtureWatch(true); return; }
     if (this.net) this.leaveOnline(false);
     this.mode = 'menu';
     this.match = null; this.paused = false; this.replay = null;
@@ -257,8 +285,9 @@ class Game {
     if (this.paused) {
       const online = this.mode !== 'offline';
       $('pause-online').hidden = !online;
+      $('pause-online').textContent = this.mode === 'fixture' ? 'Partita del server: il tempo continua mentre sei in questo menu.' : 'Partita online: il gioco continua mentre sei in questo menu.';
       $('pause-restart').hidden = online;
-      $('pause-quit').textContent = this.mode === 'host' ? 'Chiudi la partita per tutti' : online ? 'Esci dalla partita' : 'Esci al menu';
+      $('pause-quit').textContent = this.mode === 'host' ? 'Chiudi la partita per tutti' : this.mode === 'fixture' ? 'Torna al centro partita' : online ? 'Esci dalla partita' : 'Esci al menu';
       $('pause-camera').textContent = 'Telecamera: ' + CAMERA_NAMES[this.renderer.camMode];
       $('pause-restart').textContent = 'Ricomincia';
       for (const id of ['pause-restart', 'pause-quit']) { $(id).classList.remove('confirm'); $(id)._armed = false; }
@@ -375,7 +404,7 @@ class Game {
   navRoot() {
     if (!$('busy').hidden) return $('busy');
     if (this.screen === 'match') return this.paused && !$('pause').hidden ? $('pause') : null;
-    const id = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime' }[this.screen];
+    const id = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime' }[this.screen] || (ECO_SCREENS.includes(this.screen) ? this.screen : null);
     return id ? $(id) : null;
   }
   navItems(root) {
@@ -431,6 +460,8 @@ class Game {
       case 'online': $('on-back').click(); break;
       case 'settings': this.closeSettings(); break;
       case 'help': this.closeHelp(); break;
+      case 'center': this.eco.open('fixtures'); break;
+      case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': this.showScreen('menu'); break;
     }
   }
   // tasti nei menu (la partita non è in corso o è in pausa)
@@ -563,7 +594,7 @@ class Game {
     this.input.capture = null; this.input.padCapture = null;
     const r = this.settingsReturn;
     if (r === 'pause') { this.showScreen('match'); this.togglePause(true); }
-    else this.showScreen(r === 'online' ? 'online' : 'menu');
+    else this.showScreen(r === 'online' || ECO_SCREENS.includes(r) ? r : 'menu');
   }
 
   renderSettings() {
@@ -618,6 +649,10 @@ class Game {
     $('st-server').value = s.server;
     $('st-server').onchange = () => { s.server = $('st-server').value.trim(); save(); $('st-server-status').textContent = ''; };
     $('st-server-test').onclick = () => this.testServer();
+    $('st-api').value = s.apiUrl || '';
+    $('st-api').placeholder = DEFAULT_API_URL || 'https://campo-aperto-api.tuonome.workers.dev';
+    $('st-api').onchange = () => { s.apiUrl = $('st-api').value.trim(); save(); $('st-api-status').textContent = ''; this.eco.renderWallet(); };
+    $('st-api-test').onclick = () => this.testApi();
     $('st-netdebug').checked = s.netDebug;
     $('st-netdebug').onchange = () => this.toggleNetDiag($('st-netdebug').checked);
   }
@@ -694,6 +729,18 @@ class Game {
     }
   }
 
+  async testApi() {
+    const st = $('st-api-status');
+    this.settings.apiUrl = $('st-api').value.trim(); saveSettings(this.settings);
+    if (!this.eco.api.configured()) { st.className = 'status err'; st.textContent = 'Scrivi un indirizzo che inizia con https://'; return; }
+    st.className = 'status'; st.textContent = 'Provo…';
+    try {
+      const r = await this.eco.api.get('/api/status');
+      st.className = 'status ok';
+      st.textContent = r.engine === ENGINE_ID ? 'Server raggiungibile, stesso motore del gioco: le partite si guardano in 3D' : 'Server raggiungibile, ma con un altro motore (' + r.engine + '): aggiorna il gioco o il server per guardare le partite in 3D';
+    } catch (e) { st.className = 'status err'; st.textContent = e.message; }
+  }
+
   async testServer() {
     const st = $('st-server-status');
     const url = $('st-server').value.trim();
@@ -736,6 +783,7 @@ class Game {
       if (this.mode === 'offline') this.updateOffline(dt);
       else if (this.mode === 'host') this.tickHost(dt, false);
       else if (this.mode === 'client') this.updateClient(dt);
+      else if (this.mode === 'fixture' && this.fxw) this.fxw.update(dt);
       this.updateHeldChips(dt);
     } else if (this.screen === 'fulltime' && this.match) {
       if (this.mode === 'host') this.tickHost(dt, false);
@@ -1120,11 +1168,11 @@ class Game {
     ];
     $('ft-stats').innerHTML = '<tr><th>' + a.data.short + '</th><th></th><th>' + b.data.short + '</th></tr>' +
       rows.map(r => '<tr><td>' + r[1] + '</td><th>' + r[0] + '</th><td>' + r[2] + '</td></tr>').join('');
-    $('ft-rematch').hidden = this.mode === 'client';
+    $('ft-rematch').hidden = this.mode === 'client' || this.mode === 'fixture';
     $('ft-setup').hidden = this.mode !== 'offline';
     $('ft-wait').hidden = this.mode !== 'client';
     $('ft-rematch').textContent = this.mode === 'host' ? 'Torna alla lobby' : 'Rivincita';
-    $('ft-menu').textContent = this.mode === 'host' ? 'Chiudi la partita' : this.mode === 'client' ? 'Esci' : 'Menu principale';
+    $('ft-menu').textContent = this.mode === 'host' ? 'Chiudi la partita' : this.mode === 'client' ? 'Esci' : this.mode === 'fixture' ? 'Torna al centro partita' : 'Menu principale';
   }
 
   // ---------- ONLINE ----------
@@ -1133,7 +1181,10 @@ class Game {
   renderOnline() {
     const lan = !!window.campoLan, server = this.settings.server;
     const blocked = BUILD_TARGET === 'web';
-    $('on-name').value = this.settings.name;
+    const acct = this.eco.api.loggedIn() && this.eco.api.username;
+    $('on-name').value = acct || this.settings.name;
+    $('on-name').disabled = !!acct;
+    $('on-name').title = acct ? 'Con l\'account il nome è quello dell\'account' : '';
     $('online-webonly').hidden = !blocked;
     $('on-create').disabled = blocked || (!lan && !server);
     $('on-join').disabled = blocked;
@@ -1147,6 +1198,7 @@ class Game {
     $('on-status').textContent = ''; $('on-status').className = 'status';
   }
   onlineName() {
+    if (this.eco.api.loggedIn() && this.eco.api.username) return this.eco.api.username;
     const n = $('on-name').value.trim().slice(0, 16);
     if (n) { this.settings.name = n; saveSettings(this.settings); }
     return this.settings.name;

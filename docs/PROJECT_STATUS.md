@@ -1,13 +1,13 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 05/10/2026, sessione 7, versione 0.5.0
+Aggiornato: 05/10/2026, sessione 8, versione 0.6.0
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
 
 ## Tecnologia
 - HTML5 + JavaScript, Three.js r128 (da cdnjs), Web Audio per i suoni procedurali.
-- Una sola pagina autocontenuta, generata da `build.js` concatenando `src/01..14` (destinazioni: web, test, desktop; la variabile BUILD_TARGET dice quale).
+- Una sola pagina autocontenuta, generata da `build.js` concatenando `src/01..17` (destinazioni: web, test, desktop; la variabile BUILD_TARGET dice quale).
 - Node.js supportato: 22, 24, 26 (26 grazie a overrides yauzl 3.4.0 per l'installatore di Electron 33).
 - App desktop: Electron 33 + electron-builder (config in package.json, icona in risorse/, finestra in desktop/main.js).
 - Simulazione (moduli 01-08) e rete (12) indipendenti da THREE e DOM: girano anche in Node per i test.
@@ -22,11 +22,22 @@ Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a 
 08 partita e regole (più umani) + 08_referee arbitro (contrasti, falli, vantaggio, cartellini; vedi docs/ARBITRO_E_FISICA.md),
 09 render 3D (preset qualità, HiDPI, particelle), 10 audio (tre canali), 11 input (tastiera, mouse, controller, rimappabile, navigazione menu), 12 rete (NetLink,
 HostSession, ClientSession), 13 impostazioni (localStorage), 14 gioco (schermate, HUD, loop, online), shell.html (UI).
+15 account (client dell'API, solo il token in localStorage), 16 economia (schermate partite, centro partita, schedina, feed social,
+negozio, personaggio, inventario, profilo, classifiche, anteprime 2D), 17 visione sincronizzata delle partite del server.
 server/relay.js: lobby e inoltro messaggi.
+cloud/: server dell'economia (Cloudflare Worker + D1 + Durable Object "Engine"), vedi docs/ECONOMIA.md. Il motore del server è
+generato da `node build.js engine` con gli stessi file 01..08 (impronta ENGINE_ID = SHA-256 dei file); RNG per partita
+(Match opts.rng) per rigiocare uguale una partita dal seme. Quote da cloud/src/odds-model.json (Monte Carlo col motore vero).
 Test: rules_test.js (31), referee_test.js (54), sim_test.js, net_test.js (83, relay e WebSocket veri), browser_test.py (28), controls_browser_test.py (27,
 controller simulato), online_browser_test.py (15, due giocatori), electron_smoke.js (16, app vera con tasti reali e due finestre online).
 
+Test dell'economia: cloud/test/markets_test.js (21), cloud/test/api_test.js (100, contro wrangler dev), economy_browser_test.py (46,
+due giocatori nel browser, server locale, multiplayer con cosmetici, visione sincronizzata).
+
 ## Funzionalità completate (verificate)
+- Economia (0.6.0): account, portafoglio sul server, partite del server, 25 mercati, singole e multiple, liquidazione,
+  feed social, copia con conferma, condivisione, reazioni, statistiche, classifiche, negozio, inventario, personaggio,
+  cosmetici in 3D anche online, bonus giornaliero, obiettivi, premio spettatore, premi di stagione.
 - Partita rapida 11v11 umano vs IA o IA vs IA, 8 squadre originali, setup completo.
 - Fisica palla: rotolamento, volo, effetto, rimbalzi, pali/traversa/rete.
 - Azioni: passaggio, lancio/cross, filtrante, tiro caricato, colpo di testa, contrasto, scivolata, cambio giocatore.

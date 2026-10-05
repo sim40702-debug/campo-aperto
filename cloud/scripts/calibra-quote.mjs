@@ -6,7 +6,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import { writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 
-export const HALF_SECONDS = 90;   // deve coincidere con FIXTURE_HALF_SECONDS del server
+export const HALF_SECONDS = 90;   // durata di un tempo: le partite del server usano questa (halfSeconds nel modello)
 
 async function simulate(jobs) {
   const { Match, buildDatabase, makeRng } = await import('../src/engine.gen.js');
