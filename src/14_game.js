@@ -14,6 +14,9 @@ class Game {
     setSeed(Date.now() % 100000);
     this.renderer = new Renderer($('stage'), this.settings.quality);
     this.renderer.setResolutionScale(this.settings.resScale);
+    this.renderer.setRenderResolution(this.settings.renderRes);
+    // app desktop: la finestra riprende la dimensione scelta
+    if (window.campoWindow && this.settings.windowSize) { const [w, h] = this.settings.windowSize.split('x').map(Number); window.campoWindow.setSize(w, h).catch(() => {}); }
     this.renderer.camMode = this.settings.camera || 0;
     this.audio = new GameAudio();
     this.audio.setVolumes({ master: this.settings.volMaster, sfx: this.settings.volSfx, crowd: this.settings.volCrowd, muted: this.settings.muted });
@@ -65,6 +68,7 @@ class Game {
     if (panel) {
       const el = $(panel);
       el.hidden = false;
+      if (el.scrollTop) el.scrollTop = 0;   // ogni schermata si apre dall'inizio
       el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
     }
     if (name === 'setup') this.renderSetup();
@@ -74,7 +78,7 @@ class Game {
     // in partita i tasti di gioco non devono far scorrere la pagina o spostare il focus
     this.input.gameKeysActive = name === 'match';
     if (name === 'match') { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
-    const first = panel && name !== 'match' ? $(panel).querySelector('.primary, .mode') : null;
+    const first = panel && name !== 'match' ? $(panel).querySelector('.primary') : null;
     // nel menu principale il primo pulsante si evidenzia solo se si usa controller o tastiera
     if (first && (name !== 'menu' || this.input.lastDevice === 'pad')) setTimeout(() => first.focus({ preventScroll: true }), 30);
     if (this.eco) this.eco.onShow(name);
@@ -101,6 +105,8 @@ class Game {
     $('btn-watch').onclick = () => this.eco.open('fixtures');
     $('btn-online').onclick = () => this.showScreen('online');
     $('btn-settings').onclick = () => this.openSettings('grafica', 'menu');
+    $('btn-graphics').onclick = () => this.openSettings('grafica', 'menu');
+    $('btn-audio').onclick = () => this.openSettings('audio', 'menu');
     $('btn-controls').onclick = () => this.openHelp('menu');
     $('help-back').onclick = () => this.closeHelp();
     $('help-keys').onclick = () => { const r = this.helpReturn; this.openSettings('controlli', r === 'pause' ? 'pause' : 'menu'); };
@@ -129,8 +135,8 @@ class Game {
     $('on-name').onchange = () => { this.settings.name = $('on-name').value.trim().slice(0, 16) || this.settings.name; saveSettings(this.settings); };
     $('on-code').oninput = () => { const v = normalizeCode($('on-code').value); if ($('on-code').value !== v) $('on-code').value = v; };
     $('on-code').onkeydown = e => { if (e.key === 'Enter') this.joinOnline(); };
-    $('on-create').onclick = () => this.createOnline();
-    $('on-create-server').onclick = () => this.createOnline(true);
+    $('on-create').onclick = () => this.createOnline(this.onlineServer() ? 'server' : 'lan');
+    $('on-create-server').onclick = () => this.createOnline('lan');
     $('on-join').onclick = () => this.joinOnline();
     $('on-back').onclick = () => this.showScreen('menu');
     $('on-server-edit').onclick = () => this.openSettings('online', 'online');
@@ -611,6 +617,20 @@ class Game {
     $('st-dyn').checked = s.dynamicRes;
     $('st-dyn').onchange = () => { s.dynamicRes = $('st-dyn').checked; if (!s.dynamicRes) this.renderer.setDynamicScale(1); save(); this.updateDrawInfo(); };
     this.segmented('st-fps', [{ label: 'Schermo', value: 0 }, { label: '30', value: 30 }, { label: '60', value: 60 }, { label: '120', value: 120 }, { label: '144', value: 144 }], s.fpsLimit, v => { s.fpsLimit = v; save(); this.renderSettings(); });
+    // risoluzione di disegno: nativa o fissa (sopra la finestra = più nitido, sotto = più leggero)
+    this.segmented('st-renderres', [{ label: 'Nativa', value: 0 }, { label: '1280×720', value: 720 }, { label: '1600×900', value: 900 }, { label: '1920×1080', value: 1080 },
+      { label: '2560×1440', value: 1440 }, { label: '3840×2160', value: 2160 }], s.renderRes, v => { s.renderRes = v; this.renderer.setRenderResolution(v); save(); this.renderSettings(); });
+    // app desktop: dimensione della finestra
+    $('st-winrow').hidden = !window.campoWindow; $('st-winlbl').hidden = !window.campoWindow;
+    if (window.campoWindow) {
+      this.segmented('st-winsize', ['1280x720', '1366x768', '1600x900', '1920x1080', '2560x1440'].map(v => ({ label: v.replace('x', '×'), value: v })), s.windowSize, async v => {
+        s.windowSize = v; save();
+        const [w, h] = v.split('x').map(Number);
+        const r = await window.campoWindow.setSize(w, h);
+        if (r && r.fitted) this.toast('Lo schermo è più piccolo: finestra ' + r.width + '×' + r.height);
+        setTimeout(() => this.renderSettings(), 200);
+      });
+    }
     $('st-full').textContent = document.fullscreenElement ? 'Disattiva' : 'Attiva';
     $('st-showfps').checked = s.showFps;
     $('st-showfps').onchange = () => { s.showFps = $('st-showfps').checked; $('fps').hidden = !s.showFps; save(); };
@@ -745,11 +765,15 @@ class Game {
     const st = $('st-server-status');
     const url = $('st-server').value.trim();
     this.settings.server = url; saveSettings(this.settings);
-    if (!url) { st.className = 'status'; st.textContent = 'Nessun server: si gioca in rete locale'; return; }
+    if (!url) {
+      const def = this.onlineServer();
+      st.className = 'status'; st.textContent = def ? 'Vuoto: si usa il server predefinito ' + def : 'Nessun server: si gioca in rete locale';
+      return;
+    }
     if (!/^wss?:\/\/[^\s/]+/i.test(url)) { st.className = 'status err'; st.textContent = 'L\'indirizzo deve iniziare con ws:// oppure wss://'; return; }
     st.className = 'status'; st.textContent = 'Provo…';
     try {
-      const ws = await new NetLink(url).open(4000);
+      const ws = await new NetLink(url).open(4000, 'op=probe');
       ws.close();
       st.className = 'status ok';
       // un server su localhost risponde solo su questo computer: per gli altri giocatori "localhost" è il loro computer
@@ -939,7 +963,8 @@ class Game {
     if (!this.replay) return false;
     const rp = this.replay, m = this.match;
     rp.i += dt * 60 * rp.speed;
-    const skip = this.input.consume('Space') || this.input.consumeAction('pass') || this.input.consume('Enter');
+    // si salta con l'azione Passaggio (tasto o pulsante scelti dal giocatore), non con un tasto fisso
+    const skip = this.input.consumeAction('pass');
     if (rp.i >= rp.frames.length - 1 || skip || (this.mode !== 'offline' && m.state !== 'GOAL' && rp.i > 10 && m.state !== 'KICKOFF')) {
       this.replay = null; $('replay-tag').hidden = true; return false;
     }
@@ -1037,7 +1062,7 @@ class Game {
   }
   updateReplayTag() {
     const sm = $('replay-tag').querySelector('small');
-    if (sm) sm.textContent = (this.input.lastDevice === 'pad' ? this.btn('pass') : 'Spazio') + ' per saltare';
+    if (sm) sm.textContent = this.btn('pass') + ' per saltare';
   }
   flashChip(action) {
     if (this.screen !== 'match') return;
@@ -1178,8 +1203,15 @@ class Game {
   // ---------- ONLINE ----------
   // Rete locale (app desktop, window.campoLan): chi crea avvia il server sul proprio computer, il codice inizia con L
   // e chi entra trova l'host con una ricerca UDP. Server online (facoltativo, Impostazioni): codici senza L, sul server impostato.
+  // server delle partite online: quello delle impostazioni, altrimenti il relay del server dell'economia
+  // (stesso Worker, wss://…/relay): un solo indirizzo per tutti, il codice sceglie la partita
+  onlineServer() {
+    if (this.settings.server) return this.settings.server;
+    const api = String(this.settings.apiUrl || DEFAULT_API_URL || '').trim().replace(/\/+$/, '');
+    return /^https?:\/\/[^\s/]+$/i.test(api) ? api.replace(/^http/i, 'ws') + '/relay' : '';
+  }
   renderOnline() {
-    const lan = !!window.campoLan, server = this.settings.server;
+    const lan = !!window.campoLan, server = this.onlineServer();
     const blocked = BUILD_TARGET === 'web';
     const acct = this.eco.api.loggedIn() && this.eco.api.username;
     $('on-name').value = acct || this.settings.name;
@@ -1188,13 +1220,19 @@ class Game {
     $('online-webonly').hidden = !blocked;
     $('on-create').disabled = blocked || (!lan && !server);
     $('on-join').disabled = blocked;
+    // con un server: "Crea partita" è via internet (tutti allo stesso indirizzo, il codice sceglie la partita);
+    // nell'app desktop resta anche la partita in rete locale
+    $('on-create').textContent = server ? 'Crea partita online' : 'Crea partita';
     $('on-create-server').hidden = !lan || !server;
-    $('on-create-info').textContent = lan
-      ? 'La partita gira su questo computer, che fa anche da server: gli amici sulla stessa rete (Wi-Fi o cavo) entrano con il codice, senza indirizzi IP. Se Windows chiede il permesso del firewall, consentilo.'
-      : 'Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.';
+    $('on-create-server').textContent = 'Crea in rete locale';
+    $('on-create-info').textContent = server
+      ? 'Ricevi un codice di 6 caratteri da dare agli amici: entrano da casa loro, ovunque siano, senza indirizzi IP né porte da aprire. La partita la simula il tuo computer: scegli tu squadre e durata e avvii quando siete pronti.'
+      : lan
+        ? 'La partita gira su questo computer, che fa anche da server: gli amici sulla stessa rete (Wi-Fi o cavo) entrano con il codice, senza indirizzi IP. Se Windows chiede il permesso del firewall, consentilo.'
+        : 'Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.';
     $('on-host-row').hidden = !lan;
     $('on-host').value = this.settings.lanHost || '';
-    $('on-server').textContent = server || (lan ? 'nessuno, si gioca in rete locale' : 'nessuno');
+    $('on-server').textContent = server ? (this.settings.server ? server : server + ' (predefinito)') : (lan ? 'nessuno, si gioca in rete locale' : 'nessuno');
     $('on-status').textContent = ''; $('on-status').className = 'status';
   }
   onlineName() {
@@ -1238,15 +1276,15 @@ class Game {
     try { window.campoLan.hostStop().catch(() => {}); } catch (e) { /* ignora */ }
   }
 
-  // nell'app desktop la partita si ospita su questo computer; useServer: sul server online impostato
-  async createOnline(useServer) {
+  // where: 'server' (via internet, sul server online) oppure 'lan' (app desktop: ospitata su questo computer)
+  async createOnline(where) {
     const name = this.onlineName();
-    const lan = !!window.campoLan && !useServer;
-    const server = this.settings.server;
+    const lan = !!window.campoLan && where === 'lan';
+    const server = this.onlineServer();
     this.netLog = []; this.netLastError = '';
     if (!lan && !server) { this.onlineError('Nessun server online impostato: aggiungilo in Impostazioni → Online'); return; }
     let url = server, cancelled = false, link = null;
-    this.busy(lan ? 'Avvio la partita su questo computer…' : 'Creo la partita su ' + server + '…', () => { cancelled = true; if (link) link.leave(); this.stopLan(); this.netNote('Annullato'); });
+    this.busy(lan ? 'Avvio la partita su questo computer…' : 'Creo la partita online…', () => { cancelled = true; if (link) link.leave(); this.stopLan(); this.netNote('Annullato'); });
     try {
       if (lan) {
         const r = await window.campoLan.hostStart();
@@ -1287,7 +1325,7 @@ class Game {
     if (!NET.CODE_RE.test(code)) { this.onlineError('Codice partita non valido: sono 6 caratteri, lettere e numeri (senza 0, 1, I e O)'); return; }
     const lan = code[0] === 'L'; // le partite in rete locale hanno sempre codici con L, quelle dei server mai
     if (lan && !window.campoLan) { this.onlineError('Questo è il codice di una partita in rete locale: per entrare serve l\'app desktop di Campo Aperto'); return; }
-    if (!lan && !this.settings.server) { this.onlineError('Codice non valido per la rete locale: i codici delle partite in rete locale iniziano con L. Se la partita è su un server online, impostalo in Impostazioni → Online'); return; }
+    if (!lan && !this.onlineServer()) { this.onlineError('Codice non valido per la rete locale: i codici delle partite in rete locale iniziano con L. Se la partita è su un server online, impostalo in Impostazioni → Online'); return; }
     // indirizzo dell'host scritto a mano (facoltativo): destinatario in più per la ricerca e ripiego se nessuno risponde
     let addr = null, addrFromSaved = false;
     if (lan && $('on-host').value.trim()) {
@@ -1296,7 +1334,7 @@ class Game {
       const saved = parseHostAddress(this.settings.lanHost || '');
       addrFromSaved = !!saved && addr.text === saved.text;
     }
-    let link = null, cancelled = false, f = null, target = null, url = this.settings.server;
+    let link = null, cancelled = false, f = null, target = null, url = this.onlineServer();
     this.busy((lan ? 'Cerco la partita ' : 'Entro nella partita ') + code + '…', () => { cancelled = true; if (link) link.leave(); this.netNote('Annullato'); });
     try {
       if (lan) {

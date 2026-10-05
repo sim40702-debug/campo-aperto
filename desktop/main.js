@@ -1,7 +1,7 @@
 // ============================================================
 // APP DESKTOP — apre il gioco in una finestra (Electron)
 // ============================================================
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, screen } = require('electron');
 const path = require('path');
 const { fileURLToPath } = require('url');
 const lan = require('./lan.js');
@@ -37,6 +37,29 @@ ipcMain.handle('lan:check', async (e, ip, port) => {
   if (!fidato(e)) return { error: 'Richiesta non consentita' };
   if (!lan.isPrivateV4(ip) || !Number.isInteger(port) || port < 1 || port > 65535) return { ok: false, code: 'EINVAL' };
   try { return await lan.checkHost(ip, port, 3000); } catch (err) { return { ok: false, code: 'ERR' }; }
+});
+
+// dimensione della finestra scelta nelle impostazioni (contenuto in pixel), mai più grande dello schermo
+const SIZES = [[1280, 720], [1366, 768], [1600, 900], [1920, 1080], [2560, 1440], [3840, 2160]];
+ipcMain.handle('win:set-size', async (e, w, h) => {
+  if (!fidato(e)) return { error: 'Richiesta non consentita' };
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || !SIZES.some(s => s[0] === w && s[1] === h)) return { error: 'Dimensione non valida' };
+  if (win.isFullScreen()) win.setFullScreen(false);
+  if (win.isMaximized()) win.unmaximize();
+  const area = screen.getDisplayMatching(win.getBounds()).workAreaSize;
+  const cw = Math.min(w, area.width), ch = Math.min(h, area.height - 40);
+  win.setContentSize(cw, ch);
+  win.center();
+  return { width: cw, height: ch, fitted: cw !== w || ch !== h };
+});
+ipcMain.handle('win:info', async e => {
+  if (!fidato(e)) return { error: 'Richiesta non consentita' };
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win) return {};
+  const [width, height] = win.getContentSize();
+  const d = screen.getDisplayMatching(win.getBounds());
+  return { width, height, fullScreen: win.isFullScreen(), screen: { width: d.size.width * d.scaleFactor, height: d.size.height * d.scaleFactor }, sizes: SIZES };
 });
 
 // l'audio del pubblico può partire senza aspettare un clic

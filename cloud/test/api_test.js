@@ -265,6 +265,32 @@ async function main() {
   check('STATISTICHE SCOMMESSE: conteggi veri (4 giocate, 3 giocatori, 1030 monete, 1X2 75/25/0)', st.bets === 4 && st.players === 3 && st.coins === 1030 && st.split1X2['1'] === 75 && st.split1X2.X === 25 && st.split1X2['2'] === 0, st);
   check('statistiche: la vincita potenziale più alta è solo di profili pubblici', st.biggestPotential && [NA, ND].includes(st.biggestPotential.user));
 
+  // ===== multiple vere: più selezioni della stessa partita, quote collegate, bonus =====
+  const NM = 'multi_' + sfx;
+  const M = (await register(NM)).body.token;
+  const dm = (await GET('/api/fixtures/' + F2.code)).body;
+  const pick = (m, i) => { const mk = dm.markets.find(x => x.id === m); const s2 = i === undefined ? mk.sels[0] : mk.sels[i]; return { fixture: F2.code, market: m, selection: s2.id, odds: s2.odds }; };
+  const pickId = (m, id) => ({ fixture: F2.code, market: m, selection: id, odds: oddsOf(dm, m, id) });
+  const mq1 = (await POST('/api/slip/quote', { items: [pickId('1X2', '1'), pick('TG'), pickId('BTTS', 'SI')], stake: 10 })).body;
+  check('quota: 1 + Over + BTTS Sì della stessa partita sono una schedina valida', mq1.valid === true && mq1.selections === 3 && mq1.groups.length === 1, mq1.errors);
+  check('quota della partita mai sopra il prodotto delle quote', mq1.groups[0].odds <= mq1.groups[0].product + 1e-9, mq1.groups[0]);
+  const cs = dm.markets.find(x => x.id === 'CS').sels.find(x => x.id === '1-0');
+  const tgU = dm.markets.find(x => x.id === 'TG').sels.find(x => /^U/.test(x.id) && Number(x.id.slice(1)) >= 1.5);
+  const mq2 = (await POST('/api/slip/quote', { items: [{ fixture: F2.code, market: 'CS', selection: '1-0', odds: cs.odds }, { fixture: F2.code, market: 'TG', selection: tgU.id, odds: tgU.odds }] })).body;
+  check('1-0 + ' + tgU.id + ': quota collegata vicina a quella di 1-0 (' + cs.odds + ') e non il prodotto (' + mq2.groups[0].product + ')', mq2.valid && mq2.groups[0].correlated && mq2.totalOdds <= cs.odds * 1.02 && mq2.items[1].redundant === true, mq2.groups);
+  const mq3 = (await POST('/api/slip/quote', { items: [{ fixture: F2.code, market: 'CS', selection: '1-0', odds: cs.odds }, pickId('BTTS', 'SI')] })).body;
+  check('quota: 1-0 + BTTS Sì → non valida con messaggio', mq3.valid === false && mq3.errors[0].code === 'INCOMPATIBLE' && /1-0/.test(mq3.errors[0].message) && mq3.totalOdds === null, mq3.errors);
+  // cinque selezioni indipendenti tra loro (gruppi diversi): bonus del 5%
+  const five = [pickId('1X2', '1'), pick('TC', 0), pick('TK', 0), pick('TS', 0), pickId('POS', '1')].filter(x => x.odds);
+  const mq5 = (await POST('/api/slip/quote', { items: five, stake: 10 })).body;
+  const exp5 = five.reduce((p, x) => p * x.odds, 1);
+  const bonus5 = five.every(x => x.odds >= 1.2) ? 0.05 : 0;
+  check('5 selezioni della stessa partita, indipendenti: bonus ' + Math.round(mq5.bonusPct * 100) + '%, quota = prodotto × bonus', five.length === 5 && mq5.valid && mq5.bonusPct === bonus5 && Math.abs(mq5.totalOdds - Math.round(exp5 * (1 + bonus5) * 100) / 100) < 0.011, { mq5: mq5.totalOdds, exp: exp5, items: five.map(x => x.odds) });
+  const b5 = await POST('/api/bets', { items: five, stake: 10, clientKey: newKey() }, M);
+  check('giocata della multipla con bonus: quota e vincita calcolate dal server', b5.status === 201 && b5.body.bet.bonusPct === bonus5 && b5.body.bet.items.length === 5 && b5.body.bet.potentialPayout === Math.floor(Math.round(10 * exp5 * (1 + bonus5) * 1e6) / 1e6), b5.body);
+  const bc = await POST('/api/bets', { items: [{ fixture: F2.code, market: 'CS', selection: '1-0', odds: cs.odds }, { fixture: F2.code, market: 'TG', selection: tgU.id, odds: tgU.odds }], stake: 10, clientKey: newKey() }, M);
+  check('giocata 1-0 + ' + tgU.id + ': vincita possibile = quella di 1-0, non del prodotto', bc.status === 201 && bc.body.bet.potentialPayout <= Math.floor(10 * cs.odds * 1.02), bc.body.bet && bc.body.bet.potentialPayout);
+
   // ===== sicurezza =====
   const balA0 = await balanceOf(A);
   const s1 = await POST('/api/me', { balance: 999999 }, A);
@@ -296,7 +322,9 @@ async function main() {
   check('SEC saldo insufficiente → 402 INSUFFICIENT_FUNDS', (await POST('/api/bets', { items: [{ fixture: F2.code, market: '1X2', selection: 'X', odds: oddsOf(d2, '1X2', 'X') }], stake: 5000, clientKey: newKey() }, B)).body.error === 'INSUFFICIENT_FUNDS');
   check('SEC puntate non valide (0, negativa, decimale, enorme) → 400', (await Promise.all([0, -5, 2.5, 1e9, 'x'].map(s => POST('/api/bets', { items: [{ fixture: F2.code, market: '1X2', selection: 'X', odds: 2 }], stake: s, clientKey: newKey() }, A)))).every(r => r.status === 400));
   check('SEC selezione inesistente → rifiutata', (await POST('/api/bets', { items: [{ fixture: F2.code, market: 'CS', selection: '9-9', odds: 2 }], stake: 1, clientKey: newKey() }, A)).status === 409);
-  check('SEC multipla con la stessa partita due volte → 400', (await POST('/api/bets', { items: [{ fixture: F2.code, market: '1X2', selection: 'X', odds: 2 }, { fixture: F2.code, market: 'BTTS', selection: 'SI', odds: 2 }], stake: 1, clientKey: newKey() }, A)).status === 400);
+  const incomp = await POST('/api/bets', { items: [{ fixture: F2.code, market: '1X2', selection: 'X', odds: oddsOf(d2, '1X2', 'X') }, { fixture: F2.code, market: '1X2', selection: '1', odds: oddsOf(d2, '1X2', '1') }], stake: 1, clientKey: newKey() }, A);
+  check('SEC stessa partita: 1 + X incompatibili → 409 INCOMPATIBLE con il motivo', incomp.status === 409 && incomp.body.error === 'INCOMPATIBLE' && /non si può combinare/.test(incomp.body.message), incomp.body);
+  check('SEC stessa selezione due volte → 400 DUPLICATE', (await POST('/api/bets', { items: [{ fixture: F2.code, market: '1X2', selection: 'X', odds: 2 }, { fixture: F2.code, market: '1X2', selection: 'X', odds: 2 }], stake: 1, clientKey: newKey() }, A)).body.error === 'DUPLICATE');
   const bBal2 = await balanceOf(B);
   const expensive = shop.filter(i => i.price > bBal2).sort((x, y) => y.price - x.price)[0];
   const buyNo = await POST('/api/shop/buy', { item: expensive.id, price: 0 }, B);
@@ -314,6 +342,13 @@ async function main() {
   const locked = await POST('/api/auth/login', { username: NZ, password: 'password-' + NZ });
   check('SEC 8 password sbagliate → account bloccato per qualche minuto (anche con la password giusta)', lastLock.status === 401 && locked.status === 429);
   check('SEC nessuna via per scrivere un risultato o liquidare dal client', (await POST('/api/bets/' + codeA + '/settle', { status: 'WON' }, A)).status === 404 && (await POST('/api/fixtures/' + F1.code + '/result', { goals: [9, 0] }, A)).status === 404);
+
+  // ===== preferenze (comandi personalizzati) sull'account =====
+  const pr = await POST('/api/me/prefs', { prefs: { keys: { sprint: ['KeyX', null] }, padKeys: { pass: 0 }, mouse: false, padLayout: 'ps', deadzone: 0.2, updatedAt: 123 } }, B);
+  check('comandi salvati sull\'account e riletti dal profilo', pr.status === 200 && (await GET('/api/me', B)).body.prefs.keys.sprint[0] === 'KeyX');
+  check('preferenze non valide rifiutate (tasto con caratteri strani, campo sconosciuto ignorato)', (await POST('/api/me/prefs', { prefs: { keys: { sprint: ['<script>'] } } }, B)).status === 400 &&
+    (await POST('/api/me/prefs', { prefs: { boh: 1, updatedAt: 5 } }, B)).status === 200 && (await GET('/api/me', B)).body.prefs.boh === undefined);
+  check('preferenze solo con l\'accesso', (await POST('/api/me/prefs', { prefs: {} })).status === 401);
 
   // ===== negozio e personaggio =====
   const eq = await POST('/api/inventory/equip', { item: buyList[0] }, B);
@@ -379,10 +414,16 @@ async function main() {
   ], stake: 10, clientKey: newKey() }, A);
   check('multipla su due partite: quota = prodotto', mult.status === 201 && mult.body.bet.type === 'MULTIPLA' && Math.abs(mult.body.bet.odds - Math.round(oddsOf(d3, 'DC', '1X') * oddsOf(d4, 'DC', 'X2') * 100) / 100) < 0.011);
   await setClock(F2.kickoffAt + 6 * 60000);   // F2 finita (dura ~3-4 minuti), F3 non ancora iniziata
-  await tick();
+  const tk3 = await tick();
   const mv = (await GET('/api/bets/' + mult.body.bet.code, A)).body;
+  const f2now = (await GET('/api/fixtures/' + F2.code)).body;
+  const v5 = (await GET('/api/bets/' + b5.body.bet.code, M)).body, vc = (await GET('/api/bets/' + bc.body.bet.code, M)).body;
+  check('liquidazione multipla con bonus (' + v5.status + '): vinta = vincita possibile, persa = 0', (v5.status === 'WON' && v5.payout === v5.potentialPayout) || (v5.status === 'LOST' && v5.payout === 0), v5);
+  check('liquidazione 1-0 + Under (' + vc.status + ')', (vc.status === 'WON' && vc.payout === vc.potentialPayout) || (vc.status === 'LOST' && vc.payout === 0), vc);
+  check('registro di M coerente dopo la liquidazione', (await ledgerOk(M)).ok);
   check('multipla dopo la prima partita: ' + mv.items[0].status + ' → ' + (mv.items[0].status === 'LOST' ? 'persa subito' : 'resta aperta finché non finisce la seconda'),
-    mv.items[0].status !== 'OPEN' && mv.items[1].status === 'OPEN' && (mv.items[0].status === 'LOST' ? mv.status === 'LOST' : mv.status === 'OPEN'));
+    mv.items[0].status !== 'OPEN' && mv.items[1].status === 'OPEN' && (mv.items[0].status === 'LOST' ? mv.status === 'LOST' : mv.status === 'OPEN'),
+    { tick: tk3.status, tickBody: tk3.body, f2: { phase: f2now.phase, settled: f2now.settled, durationMs: f2now.durationMs, kickoffAt: f2now.kickoffAt, serverTime: f2now.serverTime }, f3: F3.code, items: mv.items.map(i => i.fixture + ':' + i.status) });
 
   // ===== persistenza dopo tutto: riavvio =====
   const snap = { A: await balanceOf(A), B: await balanceOf(B), betA: JSON.stringify((await GET('/api/bets/' + codeA, A)).body) };

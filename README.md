@@ -74,9 +74,19 @@ Ogni tasto si può rimappare in **Impostazioni → Controlli**. Nell'app desktop
 
 ## Multiplayer
 
+### Via internet (da casa propria)
+
+1. Chi ospita va su **Gioca online → Crea partita online** e riceve un codice di 6 caratteri.
+2. Gli amici, ognuno da casa sua, aprono **Unisciti**, scrivono il codice e premono **Entra**.
+3. Ognuno sceglie la squadra: fino a 8 persone, 4 per squadra; gli altri calciatori li muove l'IA.
+
+Tutti si collegano allo stesso indirizzo (il server del gioco, `wss://…workers.dev/relay`): il codice sceglie la
+partita, quindi si possono giocare più partite contemporaneamente. Non servono indirizzi IP, porte o impostazioni.
+La partita la simula il computer di chi la crea: se lui esce, la partita finisce.
+
 ### In rete locale
 
-1. Chi ospita va su **Gioca online → Crea partita** e riceve un codice di 6 caratteri.
+1. Nell'app desktop, chi ospita va su **Gioca online → Crea in rete locale** e riceve un codice che inizia con L.
 2. Gli amici aprono **Unisciti**, scrivono il codice e premono **Entra**.
 3. Ognuno sceglie la squadra: fino a 4 umani per squadra, gli altri li muove l'IA.
 
@@ -89,7 +99,9 @@ Non servono indirizzi IP né porte da aprire.
 - **macOS:** Impostazioni di Sistema → Privacy e sicurezza → Rete locale → attiva Campo Aperto.
 - Reti ospiti, Wi-Fi pubblici e VPN spesso bloccano il collegamento tra dispositivi.
 
-### Online con il tuo server
+### Online con un tuo server (facoltativo)
+
+Al posto del server predefinito puoi usare un relay tuo:
 
 ```bash
 cd server

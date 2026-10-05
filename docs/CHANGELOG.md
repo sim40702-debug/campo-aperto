@@ -2,6 +2,46 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.7.0 — 05/10/2026 (multiple vere, Home nuova, transizioni, giocatori, risoluzione)
+- Multiple vere: più selezioni della stessa partita se compatibili, fino a 20 selezioni. Motore unico in
+  cloud/src/betlogic.js (lo stesso nel server e nel gioco): ogni mercato è una condizione sui fatti della partita, la
+  compatibilità si controlla provando gli esiti possibili per gruppi indipendenti (niente liste di casi). Selezione
+  incompatibile: non entra, si vede quale la blocca, "Sostituisci" o "Annulla"; quelle incompatibili sono smorzate.
+- Quote: quota base = prodotto; nella stessa partita la quota collegata dalla probabilità congiunta del modello (mai
+  sopra il prodotto); bonus multipla a soglie configurabili (5 → +5%, 10 → +10%, 15 → +15%, 20 → +25%); vincita
+  massima. Tutto calcolato dal server; il gioco mostra subito una stima con le stesse regole.
+- Liquidazione: VOID tolta dal prodotto e bonus ricalcolato; liquidazione con le stesse regole del controllo.
+  Migrazione 0003 (quota base, bonus, quota effettiva delle selezioni, preferenze).
+- "La mia schedina": selezioni raggruppate per partita, quota collegata, bonus e soglia successiva, vincita possibile.
+  Se una quota cambia (alla conferma o mentre la schedina è aperta) si vede "Quota cambiata" con la quota originale e
+  la nuova, e un clic arrivato subito dopo non gioca: si conferma solo dopo aver visto la quota nuova.
+- Home ridisegnata: GIOCA in primo piano, sezioni (Guarda partita, Multiplayer, Scommesse, Shop, Personalizzazione),
+  scheda del giocatore con avatar, nome e coin, menu (Impostazioni, Controlli, Audio, Grafica, Account).
+- Transizioni: due @keyframes con lo stesso nome ("slidein") si sovrascrivevano e i pannelli partivano spostati di
+  metà larghezza, poi saltavano al centro; idem l'avviso in basso. Ora un solo sistema con nomi unici: dissolvenza e
+  micro-movimento di 6 px, la schermata nasce al suo posto.
+- Giocatori: busto e pantaloncini sagomati, testa ovale con collo, orecchie, naso e occhi, spalle, maniche, mani,
+  calzettoni e scarpe con la punta; corsa con inerzia (inclinazione in accelerazione e in curva, gomiti nello scatto),
+  respiro da fermo, tiro in tre tempi, scivolata più credibile.
+- Impostazioni → Grafica: risoluzione di disegno (nativa o fissa da 1280×720 a 3840×2160) e, nell'app desktop,
+  dimensione della finestra.
+- Comandi: salto del replay con l'azione Passaggio (niente tasti fissi); comandi personalizzati salvati anche
+  sull'account (vince la modifica più recente).
+- Test: schedine 68, API 114, relay 22, gioco nel browser con multipla della stessa partita, conflitti, transizioni,
+  comandi sull'account.
+
+## 0.6.1 — 05/10/2026 (partite online via internet, stesso indirizzo per tutti)
+- Relay delle partite online nel Worker dell'economia: tutti si collegano a `wss://…workers.dev/relay` e il codice
+  sceglie la partita. Ogni partita è un Durable Object a sé (più partite insieme, separate), stesso protocollo di
+  server/relay.js; il codice viaggia anche nell'indirizzo (`?code=`, `?op=create`) così il Worker trova subito la stanza.
+- Nel gioco "Crea partita online" usa questo server senza impostare niente (Impostazioni → Online → Server online vuoto =
+  predefinito); nell'app desktop resta "Crea in rete locale".
+- Il relay risponde alla chiusura del socket: senza risposta il rientro automatico di un giocatore caduto partiva tardi.
+- Server: le partite del server si creano anche se il cron di Cloudflare è in ritardo (al massimo una volta al minuto).
+- Impronta del motore indipendente dagli a capo (CRLF su Windows).
+- Test: relay nel Worker (22: 5 giocatori nella stessa partita, una seconda partita in contemporanea, errori, caduta e
+  rientro, uscita dell'host), test nel browser con il relay del Worker.
+
 ## 0.6.0 — 05/10/2026 (account, monete, scommesse, social, negozio)
 - Server dell'economia in `cloud/` (Cloudflare Worker + database D1 + Durable Object), vedi docs/ECONOMIA.md. Il database
   è l'autorità: saldo, quote, risultati, vincite, oggetti e prezzi si decidono lì; il gioco mostra e chiede.
