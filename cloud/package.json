@@ -1,6 +1,6 @@
 {
   "name": "campo-aperto-cloud",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Backend di Campo Aperto: account, monete, scommesse, negozio (Cloudflare Workers + D1 + Durable Objects)",
   "scripts": {
@@ -9,7 +9,7 @@
     "migrate:local": "wrangler d1 migrations apply campo-aperto --local",
     "migrate:remote": "wrangler d1 migrations apply campo-aperto --remote",
     "deploy": "npm run engine && wrangler d1 migrations apply campo-aperto --remote && wrangler deploy",
-    "test": "node test/markets_test.js && node test/betlogic_test.js && node test/api_test.js && node test/relay_test.js"
+    "test": "node test/markets_test.js && node test/betlogic_test.js && node test/complogic_test.js && node test/api_test.js && node test/relay_test.js"
   },
   "devDependencies": {
     "wrangler": "4.45.0"

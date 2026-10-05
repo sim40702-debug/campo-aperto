@@ -5,6 +5,7 @@ import { buildMarkets, settleSelection, settleBet } from './markets.js';
 import { simulateFixture, teamDb, teamInfo, engineVersion } from './simulate.js';
 import { award, paySeasonPrizes } from './rewards.js';
 import model from './odds-model.json';
+import { nextLeagueMatch } from './league.js';
 
 const MAX_NEW_PER_TICK = 3;          // ~1 s di CPU ciascuna
 const MIN_LEAD_MS = 90 * 1000;       // una partita nuova deve restare aperta alle scommesse almeno 90 s
@@ -18,13 +19,13 @@ export async function ensureFixtures(env, t) {
   for (let k = 0; k < ahead; k++) slots.push(first + k * interval);
   const { results } = await env.DB.prepare('SELECT kickoff_at FROM fixtures WHERE kickoff_at >= ?').bind(first).all();
   const have = new Set(results.map(r => r.kickoff_at));
-  const nTeams = teamDb().length;
   let created = 0;
   for (const kickoff of slots) {
     if (have.has(kickoff) || created >= MAX_NEW_PER_TICK) continue;
-    const home = randomInt31() % nTeams;
-    let away = randomInt31() % (nTeams - 1);
-    if (away >= home) away++;
+    // squadre dal calendario del campionato del server (giornata e posto nella giornata)
+    const lm = await nextLeagueMatch(env, t);
+    if (!lm) break;
+    const home = lm.home, away = lm.away;
     const seed = randomInt31() || 1;
     const half = Number(model.halfSeconds);
     const sim = simulateFixture(home, away, seed, half);
@@ -34,9 +35,9 @@ export async function ensureFixtures(env, t) {
     mk.teams = teams;
     const code = 'PA-' + randomCode(5);
     const stmts = [
-      env.DB.prepare('INSERT INTO fixtures (code, home, away, home_name, away_name, kickoff_at, half_seconds, seed, engine, status, duration_ms, facts, markets, created_at) ' +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'READY', ?, ?, ?, ?)")
-        .bind(code, home, away, teams.home.name, teams.away.name, kickoff, half, seed, sim.engine, sim.durationMs, JSON.stringify(sim.facts), JSON.stringify(mk), t),
+      env.DB.prepare('INSERT INTO fixtures (code, home, away, home_name, away_name, kickoff_at, half_seconds, seed, engine, status, duration_ms, facts, markets, created_at, comp_id, comp_round, comp_slot, comp_label) ' +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'READY', ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(code, home, away, teams.home.name, teams.away.name, kickoff, half, seed, sim.engine, sim.durationMs, JSON.stringify(sim.facts), JSON.stringify(mk), t, lm.league.id, lm.round, lm.slot, lm.label),
     ];
     sim.events.forEach((e, i) => stmts.push(env.DB.prepare(
       'INSERT INTO match_events (fixture_id, seq, t_ms, type, minute, half, team, player, detail) SELECT id, ?, ?, ?, ?, ?, ?, ?, ? FROM fixtures WHERE code = ?')
