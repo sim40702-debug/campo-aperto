@@ -4,7 +4,7 @@
 const fs = require('fs'), path = require('path');
 const files = fs.readdirSync(path.join(__dirname, '../src')).filter(f => /^(0[1-8]|12)_/.test(f)).sort();
 let code = 'var GAME_VERSION = "test";\n' + files.map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
-code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, NET, NetLink, HostSession, ClientSession, normalizeCode, parseHostAddress, sanitizeInput };';
+code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, NET, NetLink, HostSession, ClientSession, normalizeCode, parseHostAddress, sanitizeInput, cleanTeamName, namedTeam };';
 require('vm').runInThisContext(code);
 const A = globalThis.__api;
 const { createRelay } = require('../server/relay.js');
@@ -370,6 +370,18 @@ function startLoops(host, clients, hostInput) {
   check('lobby ostile: members non array -> messaggio ignorato', cs.lobby === null);
   cs.onMsg(Object.assign({}, okLobby, { code: '<x>', members: new Array(20).fill({ id: 'q', name: 'q', side: 0, connected: true, ping: 1, isHost: false }) }));
   check('lobby ostile: codice non valido scartato, al massimo 8 membri', cs.lobby && cs.lobby.code === '' && cs.lobby.members.length === 8);
+
+  // --- nomi personalizzati delle squadre: testo semplice, accorciati, mai HTML; vuoto = nome originale
+  cs.onMsg(Object.assign({}, okLobby, { settings: Object.assign({}, okLobby.settings, { names: ['<b>I Leoni</b>\u0007 di   Brera' + 'x'.repeat(40), 42] }) }));
+  const ln = cs.lobby && cs.lobby.settings.names;
+  check('lobby: nomi delle squadre ripuliti (niente < >, spazi, al massimo 24) e non-stringhe scartate', ln && ln[0] === 'bI Leoni/b di Brera' + 'x'.repeat(5) && ln[0].length === 24 && ln[1] === '', JSON.stringify(ln));
+  cs.onMsg(Object.assign({}, okLobby, { settings: Object.assign({}, okLobby.settings, { names: 'non un array' }) }));
+  check('lobby: nomi non validi -> nomi originali', cs.lobby && cs.lobby.settings.names[0] === '' && cs.lobby.settings.names[1] === '');
+  const nt = A.namedTeam(db[0], 'Àquile Nere');
+  check('squadra rinominata: nome e sigla nuovi, squadra del database intatta', nt.name === 'Àquile Nere' && nt.short === 'AQU' && db[0].name !== 'Àquile Nere' && A.namedTeam(db[0], '   ') === db[0], nt.short);
+  const cm = new A.ClientSession(stub, db, 'x'); clearInterval(cm.pingTimer);
+  cm.buildMatch({ mid: 'm1', setup: { home: 0, away: 1, halfSeconds: 120, difficulty: 1, names: ['I Leoni', ''] }, humans: [] });
+  check('partita online: il client usa i nomi scelti dall\'host', cm.match && cm.match.teams[0].data.name === 'I Leoni' && cm.match.teams[0].data.short === 'ILE' && cm.match.teams[1].data.name === db[1].name);
 
   // --- il relay locale rifiuta le pagine web (Origin http/https), accetta chi non ha Origin
   const { WebSocket: WsC } = require('ws');

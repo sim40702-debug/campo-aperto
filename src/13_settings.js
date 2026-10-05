@@ -24,6 +24,7 @@ function defaultSettings() {
     deadzone: 0.22,           // zona morta delle levette (0.1 - 0.4)
     assistReceive: true,      // senza direzione, chi riceve un tuo passaggio va incontro alla palla
     lastSetup: null,          // ultima partita impostata (squadre, durata...)
+    teamNames: {},            // nomi scelti per le squadre: indice della squadra -> nome (vuoto = nome originale)
     camera: 0,
     name: '',
     server: '',               // server online (wss://...), facoltativo: senza, le partite si ospitano in rete locale
@@ -63,6 +64,14 @@ function loadSettings() {
   s.resScale = clamp(Number(s.resScale) || 1, 0.5, 1);
   if (![0, 720, 900, 1080, 1440, 2160].includes(s.renderRes)) s.renderRes = 0;
   if (!/^\d{3,4}x\d{3,4}$/.test(s.windowSize)) s.windowSize = '';
+  const tn = {};
+  if (s.teamNames && typeof s.teamNames === 'object' && !Array.isArray(s.teamNames)) {
+    for (const k of Object.keys(s.teamNames).slice(0, 64)) {
+      const v = typeof cleanTeamName === 'function' ? cleanTeamName(s.teamNames[k]) : '';
+      if (/^\d{1,3}$/.test(k) && v) tn[k] = v;
+    }
+  }
+  s.teamNames = tn;
   s.deadzone = clamp(Number(s.deadzone) || 0.22, 0.1, 0.4);
   if (!PAD_NAMES[s.padLayout]) s.padLayout = 'xbox';
   return s;

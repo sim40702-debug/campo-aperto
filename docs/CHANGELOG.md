@@ -2,6 +2,15 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.7.1 — 05/10/2026 (nomi delle squadre)
+- Nuova partita: il nome della squadra di casa non si vedeva. Causa: due elementi con lo stesso id ("home-name"), il
+  nome del giocatore nella Home e quello della squadra; il gioco scriveva nel primo. Ora la Home usa "home-user-name".
+- Nomi delle squadre personalizzabili: si scrivono direttamente nella scheda della squadra (vuoto = nome originale),
+  restano salvati sul computer per quella squadra; la sigla del tabellone viene dal nome (es. "I Leoni" → ILE).
+- Online: l'host scrive i nomi nella lobby, tutti li vedono nella lobby e in partita. I nomi ricevuti dalla rete sono
+  ripuliti (testo semplice, niente < >, al massimo 24 caratteri); la squadra del database non cambia.
+- Test: rete 87 (nomi ostili), gioco nel browser 31, online 18.
+
 ## 0.7.0 — 05/10/2026 (multiple vere, Home nuova, transizioni, giocatori, risoluzione)
 - Multiple vere: più selezioni della stessa partita se compatibili, fino a 20 selezioni. Motore unico in
   cloud/src/betlogic.js (lo stesso nel server e nel gioco): ogni mercato è una condizione sui fatti della partita, la

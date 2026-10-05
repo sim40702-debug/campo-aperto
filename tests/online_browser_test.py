@@ -66,6 +66,11 @@ async def main():
             await A.click('#lb-len .seg:nth-child(1)')
             await B.wait_for_function("game.net.client.lobby.settings.halfSeconds===120", timeout=10000)
             check('impostazioni dell host sincronizzate nella lobby', True)
+            # l'host dà un nome alla squadra di casa: il client lo vede nella lobby e in partita
+            await A.fill('#lb-home-name', 'Squadra di Simone')
+            await A.press('#lb-home-name', 'Enter')
+            await B.wait_for_function("game.net.client.lobby.settings.names[0]==='Squadra di Simone' && document.getElementById('lb-team-0').textContent==='Squadra di Simone'", timeout=10000)
+            check('nome della squadra scelto dall host visibile al client nella lobby', True)
             await B.wait_for_timeout(400)
             await B.screenshot(path=HERE + '/shots/21_lobby_client.png')
             check('il client non può avviare la partita', await B.evaluate("document.getElementById('lb-start').hidden"))
@@ -74,6 +79,8 @@ async def main():
             await A.wait_for_function("game.screen==='match' && game.mode==='host'", timeout=15000)
             await B.wait_for_function("game.screen==='match' && game.mode==='client'", timeout=15000)
             check('avvio: entrambi in partita (host e client)', True)
+            tn = [await pg.evaluate("[game.match.teams[0].data.name, document.getElementById('sb-home').textContent]") for pg in (A, B)]
+            check('in partita: host e client con il nome scelto e la sigla SQU', tn[0] == tn[1] == ['Squadra di Simone', 'SQU'], tn)
             # l'host batte il calcio d'inizio
             await A.wait_for_function("game.match.setPieceReady", timeout=60000)
             await A.keyboard.press('j')
