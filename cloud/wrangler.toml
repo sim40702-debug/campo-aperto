@@ -18,10 +18,19 @@ migrations_dir = "migrations"
 name = "ENGINE"
 class_name = "Engine"
 
+# relay delle partite online: una stanza (Durable Object) per ogni codice partita
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "Relay"
+
 # Durable Object con SQLite: disponibile anche sul piano gratuito
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Engine"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Relay"]
 
 [vars]
 FIXTURE_INTERVAL_MIN = "10"

@@ -10,6 +10,8 @@ import { me, balance, transactions, setPrivacy, publicProfile } from './profile.
 import { claimDaily, claimWatch } from './rewards.js';
 import { engineVersion, gameVersion } from './simulate.js';
 export { Engine } from './engine-do.js';
+export { Relay } from './relay-do.js';
+import { relayFetch } from './relay-do.js';
 
 const API_VERSION = 1;
 const tickEngine = env => env.ENGINE.get(env.ENGINE.idFromName('tick'));
@@ -131,6 +133,8 @@ async function route(request, env, ctx) {
 
 export default {
   async fetch(request, env, ctx) {
+    // partite online: stesso indirizzo per tutti, il codice sceglie la stanza (vedi relay-do.js)
+    if (new URL(request.url).pathname === '/relay') return relayFetch(request, env);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     try {
       return await route(request, env, ctx);

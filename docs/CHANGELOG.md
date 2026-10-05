@@ -2,6 +2,18 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.6.1 — 05/10/2026 (partite online via internet, stesso indirizzo per tutti)
+- Relay delle partite online nel Worker dell'economia: tutti si collegano a `wss://…workers.dev/relay` e il codice
+  sceglie la partita. Ogni partita è un Durable Object a sé (più partite insieme, separate), stesso protocollo di
+  server/relay.js; il codice viaggia anche nell'indirizzo (`?code=`, `?op=create`) così il Worker trova subito la stanza.
+- Nel gioco "Crea partita online" usa questo server senza impostare niente (Impostazioni → Online → Server online vuoto =
+  predefinito); nell'app desktop resta "Crea in rete locale".
+- Il relay risponde alla chiusura del socket: senza risposta il rientro automatico di un giocatore caduto partiva tardi.
+- Server: le partite del server si creano anche se il cron di Cloudflare è in ritardo (al massimo una volta al minuto).
+- Impronta del motore indipendente dagli a capo (CRLF su Windows).
+- Test: relay nel Worker (22: 5 giocatori nella stessa partita, una seconda partita in contemporanea, errori, caduta e
+  rientro, uscita dell'host), test nel browser con il relay del Worker.
+
 ## 0.6.0 — 05/10/2026 (account, monete, scommesse, social, negozio)
 - Server dell'economia in `cloud/` (Cloudflare Worker + database D1 + Durable Object), vedi docs/ECONOMIA.md. Il database
   è l'autorità: saldo, quote, risultati, vincite, oggetti e prezzi si decidono lì; il gioco mostra e chiede.

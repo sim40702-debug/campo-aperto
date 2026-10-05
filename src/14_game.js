@@ -129,8 +129,8 @@ class Game {
     $('on-name').onchange = () => { this.settings.name = $('on-name').value.trim().slice(0, 16) || this.settings.name; saveSettings(this.settings); };
     $('on-code').oninput = () => { const v = normalizeCode($('on-code').value); if ($('on-code').value !== v) $('on-code').value = v; };
     $('on-code').onkeydown = e => { if (e.key === 'Enter') this.joinOnline(); };
-    $('on-create').onclick = () => this.createOnline();
-    $('on-create-server').onclick = () => this.createOnline(true);
+    $('on-create').onclick = () => this.createOnline(this.onlineServer() ? 'server' : 'lan');
+    $('on-create-server').onclick = () => this.createOnline('lan');
     $('on-join').onclick = () => this.joinOnline();
     $('on-back').onclick = () => this.showScreen('menu');
     $('on-server-edit').onclick = () => this.openSettings('online', 'online');
@@ -745,11 +745,15 @@ class Game {
     const st = $('st-server-status');
     const url = $('st-server').value.trim();
     this.settings.server = url; saveSettings(this.settings);
-    if (!url) { st.className = 'status'; st.textContent = 'Nessun server: si gioca in rete locale'; return; }
+    if (!url) {
+      const def = this.onlineServer();
+      st.className = 'status'; st.textContent = def ? 'Vuoto: si usa il server predefinito ' + def : 'Nessun server: si gioca in rete locale';
+      return;
+    }
     if (!/^wss?:\/\/[^\s/]+/i.test(url)) { st.className = 'status err'; st.textContent = 'L\'indirizzo deve iniziare con ws:// oppure wss://'; return; }
     st.className = 'status'; st.textContent = 'Provo…';
     try {
-      const ws = await new NetLink(url).open(4000);
+      const ws = await new NetLink(url).open(4000, 'op=probe');
       ws.close();
       st.className = 'status ok';
       // un server su localhost risponde solo su questo computer: per gli altri giocatori "localhost" è il loro computer
@@ -1178,8 +1182,15 @@ class Game {
   // ---------- ONLINE ----------
   // Rete locale (app desktop, window.campoLan): chi crea avvia il server sul proprio computer, il codice inizia con L
   // e chi entra trova l'host con una ricerca UDP. Server online (facoltativo, Impostazioni): codici senza L, sul server impostato.
+  // server delle partite online: quello delle impostazioni, altrimenti il relay del server dell'economia
+  // (stesso Worker, wss://…/relay): un solo indirizzo per tutti, il codice sceglie la partita
+  onlineServer() {
+    if (this.settings.server) return this.settings.server;
+    const api = String(this.settings.apiUrl || DEFAULT_API_URL || '').trim().replace(/\/+$/, '');
+    return /^https?:\/\/[^\s/]+$/i.test(api) ? api.replace(/^http/i, 'ws') + '/relay' : '';
+  }
   renderOnline() {
-    const lan = !!window.campoLan, server = this.settings.server;
+    const lan = !!window.campoLan, server = this.onlineServer();
     const blocked = BUILD_TARGET === 'web';
     const acct = this.eco.api.loggedIn() && this.eco.api.username;
     $('on-name').value = acct || this.settings.name;
@@ -1188,13 +1199,19 @@ class Game {
     $('online-webonly').hidden = !blocked;
     $('on-create').disabled = blocked || (!lan && !server);
     $('on-join').disabled = blocked;
+    // con un server: "Crea partita" è via internet (tutti allo stesso indirizzo, il codice sceglie la partita);
+    // nell'app desktop resta anche la partita in rete locale
+    $('on-create').textContent = server ? 'Crea partita online' : 'Crea partita';
     $('on-create-server').hidden = !lan || !server;
-    $('on-create-info').textContent = lan
-      ? 'La partita gira su questo computer, che fa anche da server: gli amici sulla stessa rete (Wi-Fi o cavo) entrano con il codice, senza indirizzi IP. Se Windows chiede il permesso del firewall, consentilo.'
-      : 'Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.';
+    $('on-create-server').textContent = 'Crea in rete locale';
+    $('on-create-info').textContent = server
+      ? 'Ricevi un codice di 6 caratteri da dare agli amici: entrano da casa loro, ovunque siano, senza indirizzi IP né porte da aprire. La partita la simula il tuo computer: scegli tu squadre e durata e avvii quando siete pronti.'
+      : lan
+        ? 'La partita gira su questo computer, che fa anche da server: gli amici sulla stessa rete (Wi-Fi o cavo) entrano con il codice, senza indirizzi IP. Se Windows chiede il permesso del firewall, consentilo.'
+        : 'Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.';
     $('on-host-row').hidden = !lan;
     $('on-host').value = this.settings.lanHost || '';
-    $('on-server').textContent = server || (lan ? 'nessuno, si gioca in rete locale' : 'nessuno');
+    $('on-server').textContent = server ? (this.settings.server ? server : server + ' (predefinito)') : (lan ? 'nessuno, si gioca in rete locale' : 'nessuno');
     $('on-status').textContent = ''; $('on-status').className = 'status';
   }
   onlineName() {
@@ -1238,15 +1255,15 @@ class Game {
     try { window.campoLan.hostStop().catch(() => {}); } catch (e) { /* ignora */ }
   }
 
-  // nell'app desktop la partita si ospita su questo computer; useServer: sul server online impostato
-  async createOnline(useServer) {
+  // where: 'server' (via internet, sul server online) oppure 'lan' (app desktop: ospitata su questo computer)
+  async createOnline(where) {
     const name = this.onlineName();
-    const lan = !!window.campoLan && !useServer;
-    const server = this.settings.server;
+    const lan = !!window.campoLan && where === 'lan';
+    const server = this.onlineServer();
     this.netLog = []; this.netLastError = '';
     if (!lan && !server) { this.onlineError('Nessun server online impostato: aggiungilo in Impostazioni → Online'); return; }
     let url = server, cancelled = false, link = null;
-    this.busy(lan ? 'Avvio la partita su questo computer…' : 'Creo la partita su ' + server + '…', () => { cancelled = true; if (link) link.leave(); this.stopLan(); this.netNote('Annullato'); });
+    this.busy(lan ? 'Avvio la partita su questo computer…' : 'Creo la partita online…', () => { cancelled = true; if (link) link.leave(); this.stopLan(); this.netNote('Annullato'); });
     try {
       if (lan) {
         const r = await window.campoLan.hostStart();
@@ -1287,7 +1304,7 @@ class Game {
     if (!NET.CODE_RE.test(code)) { this.onlineError('Codice partita non valido: sono 6 caratteri, lettere e numeri (senza 0, 1, I e O)'); return; }
     const lan = code[0] === 'L'; // le partite in rete locale hanno sempre codici con L, quelle dei server mai
     if (lan && !window.campoLan) { this.onlineError('Questo è il codice di una partita in rete locale: per entrare serve l\'app desktop di Campo Aperto'); return; }
-    if (!lan && !this.settings.server) { this.onlineError('Codice non valido per la rete locale: i codici delle partite in rete locale iniziano con L. Se la partita è su un server online, impostalo in Impostazioni → Online'); return; }
+    if (!lan && !this.onlineServer()) { this.onlineError('Codice non valido per la rete locale: i codici delle partite in rete locale iniziano con L. Se la partita è su un server online, impostalo in Impostazioni → Online'); return; }
     // indirizzo dell'host scritto a mano (facoltativo): destinatario in più per la ricerca e ripiego se nessuno risponde
     let addr = null, addrFromSaved = false;
     if (lan && $('on-host').value.trim()) {
@@ -1296,7 +1313,7 @@ class Game {
       const saved = parseHostAddress(this.settings.lanHost || '');
       addrFromSaved = !!saved && addr.text === saved.text;
     }
-    let link = null, cancelled = false, f = null, target = null, url = this.settings.server;
+    let link = null, cancelled = false, f = null, target = null, url = this.onlineServer();
     this.busy((lan ? 'Cerco la partita ' : 'Entro nella partita ') + code + '…', () => { cancelled = true; if (link) link.leave(); this.netNote('Annullato'); });
     try {
       if (lan) {
