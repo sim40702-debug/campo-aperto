@@ -23,10 +23,16 @@ ipcMain.handle('lan:host-stop', async e => {
   if (!fidato(e)) return { error: 'Richiesta non consentita' };
   try { await lan.stopHost(); return { ok: true }; } catch (err) { return { error: 'Non riesco a fermare il server in rete locale' }; }
 });
-ipcMain.handle('lan:find', async (e, code) => {
+ipcMain.handle('lan:find', async (e, code, hosts) => {
   if (!fidato(e)) return { error: 'Richiesta non consentita' };
   if (typeof code !== 'string' || !lan.CODE_RE.test(code)) return { error: 'Codice non valido' };
-  try { return (await lan.findGame(code)) || { url: null }; } catch (err) { return { url: null }; }
+  const extra = Array.isArray(hosts) ? hosts.filter(lan.isV4).slice(0, 4) : [];
+  try { return await lan.findGame(code, { hosts: extra }); } catch (err) { return { url: null, why: 'no-reply', detail: '' }; }
+});
+ipcMain.handle('lan:check', async (e, ip, port) => {
+  if (!fidato(e)) return { error: 'Richiesta non consentita' };
+  if (!lan.isPrivateV4(ip) || !Number.isInteger(port) || port < 1 || port > 65535) return { ok: false, code: 'EINVAL' };
+  try { return await lan.checkHost(ip, port, 3000); } catch (err) { return { ok: false, code: 'ERR' }; }
 });
 
 // l'audio del pubblico può partire senza aspettare un clic

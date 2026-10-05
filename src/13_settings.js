@@ -25,6 +25,7 @@ function defaultSettings() {
     camera: 0,
     name: '',
     server: 'ws://localhost:8787',
+    lanHost: '',              // ultimo indirizzo dell'host in rete locale con cui sei entrato (IP o IP:porta)
   };
 }
 function loadSettings() {

@@ -4,7 +4,7 @@
 const fs = require('fs'), path = require('path');
 const files = fs.readdirSync(path.join(__dirname, '../src')).filter(f => /^(0[1-8]|12)_/.test(f)).sort();
 let code = 'var GAME_VERSION = "test";\n' + files.map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
-code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, NET, NetLink, HostSession, ClientSession, normalizeCode, sanitizeInput };';
+code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, NET, NetLink, HostSession, ClientSession, normalizeCode, parseHostAddress, sanitizeInput };';
 require('vm').runInThisContext(code);
 const A = globalThis.__api;
 const { createRelay } = require('../server/relay.js');
@@ -198,8 +198,34 @@ function startLoops(host, clients, hostInput) {
     check('LAN: create da un indirizzo non loopback rifiutata', rej && rej.code === 'LOCAL_ONLY', rej && rej.message);
   } else check('LAN: create da indirizzo non loopback (nessuna rete, saltato)', true);
   const t0 = Date.now();
-  check('LAN: codice sbagliato -> null', (await lan.findGame('LZZZZZ', { discoveryPort: LP.discoveryPort, timeout: 600 })) === null);
-  check('LAN: codice malformato -> null subito', (await lan.findGame('abc', { discoveryPort: LP.discoveryPort })) === null && Date.now() - t0 < 1500);
+  const wrong = await lan.findGame('LZZZZZ', { discoveryPort: LP.discoveryPort, timeout: 600, hosts: ['127.0.0.1'], noBroadcast: true });
+  check('LAN: codice sbagliato -> url null, why no-reply', wrong.url === null && wrong.why === 'no-reply', JSON.stringify(wrong));
+  const malformed = await lan.findGame('abc', { discoveryPort: LP.discoveryPort });
+  check('LAN: codice malformato -> url null subito', malformed.url === null && Date.now() - t0 < 1500, JSON.stringify(malformed));
+  // scansione unicast: con i broadcast spenti, l'host si trova dall'indirizzo dato
+  const uni = await lan.findGame(lc.code, { discoveryPort: LP.discoveryPort, hosts: ['127.0.0.1', 'non-un-ip', '1.2.3.999'], noBroadcast: true });
+  check('LAN: findGame trova l host in unicast senza broadcast (opts.hosts)', uni.url && uni.url.endsWith(':' + lh.port), JSON.stringify(uni));
+  const sw = lan.sweepTargets([{ address: '172.20.10.2', netmask: '255.255.255.240' }, { address: '169.254.3.4', netmask: '255.255.255.0' }, { address: '10.0.0.5', netmask: '255.0.0.0' }]);
+  check('LAN: scansione di una /28: 13 indirizzi (senza il proprio, rete e broadcast), niente link-local né sottoreti grandi',
+    sw.length === 13 && !sw.includes('172.20.10.2') && !sw.includes('172.20.10.0') && !sw.includes('172.20.10.15') && sw.includes('172.20.10.9') && !sw.some(a => a.startsWith('169.254.') || a.startsWith('10.')), JSON.stringify(sw));
+  check('LAN: scansione di una /24 = 253 indirizzi e limite totale rispettato', lan.sweepTargets([{ address: '192.168.1.7', netmask: '255.255.255.0' }]).length === 253
+    && lan.sweepTargets([{ address: '192.168.1.7', netmask: '255.255.255.0' }, { address: '192.168.2.7', netmask: '255.255.255.0' }], 300).length === 300);
+  // prova TCP diretta
+  const chk = await lan.checkHost('127.0.0.1', lh.port, 2000);
+  const closedSrv = require('net').createServer(); await new Promise(r => closedSrv.listen(0, '127.0.0.1', r));
+  const closedPort = closedSrv.address().port; await new Promise(r => closedSrv.close(r));
+  const chk2 = await lan.checkHost('127.0.0.1', closedPort, 2000);
+  check('LAN: checkHost ok su una porta in ascolto', chk.ok === true && chk.ms >= 0, JSON.stringify(chk));
+  check('LAN: checkHost ECONNREFUSED su una porta chiusa', chk2.ok === false && chk2.code === 'ECONNREFUSED', JSON.stringify(chk2));
+  check('LAN: checkHost rifiuta indirizzo o porta non validi', (await lan.checkHost('host.local', 80, 500)).ok === false && (await lan.checkHost('127.0.0.1', 70000, 500)).code === 'EINVAL');
+  check('LAN: no-reply senza detail (errno sporadici non mostrati)', wrong.detail === '', JSON.stringify(wrong));
+  check('LAN: isV4 rifiuta ottetti con zeri iniziali, valori > 255 e non stringhe', lan.isV4('1.2.3.4') && lan.isV4('10.0.0.0') && !lan.isV4('01.2.3.4') && !lan.isV4('1.2.3.004') && !lan.isV4('1.2.3.256') && !lan.isV4('1.2.3') && !lan.isV4(null));
+  check('LAN: isPrivateV4 accetta solo reti locali', ['10.1.2.3', '172.16.0.1', '172.31.255.1', '172.20.10.9', '192.168.1.5', '127.0.0.1', '169.254.1.1', '100.64.0.1', '100.127.9.9'].every(lan.isPrivateV4)
+    && ['8.8.8.8', '172.15.0.1', '172.32.0.1', '192.169.1.1', '100.63.0.1', '100.128.0.1', '1.1.1.1', '224.0.0.1', '010.0.0.1', 'host.local', ''].every(a => !lan.isPrivateV4(a)));
+  // indirizzo dell'host scritto a mano
+  const pa = A.parseHostAddress;
+  check('indirizzo host: IP, IP:porta e ws://IP:porta accettati', pa('1.2.3.4').url === 'ws://1.2.3.4:8787' && pa('1.2.3.4:9000').port === 9000 && pa(' ws://1.2.3.4:9000/ ').url === 'ws://1.2.3.4:9000' && pa('172.20.10.9:8787').text === '172.20.10.9');
+  check('indirizzo host: nomi, ottetti e porte non validi rifiutati', ['host.local', 'localhost:8787', '1.2.3', '1.2.3.256', '1.2.3.4:0', '1.2.3.4:65536', '1.2.3.4:abc', '01.2.3.4', 'http://1.2.3.4', '1.2.3.4 5', '', null].every(x => pa(x) === null));
   // datagrammi malformati o vecchi: ignorati, nessuna risposta, il responder resta vivo
   await wait(1100);
   const probe = dgram.createSocket('udp4'); let got = 0, last = null; probe.on('message', b => { got++; last = b; });
@@ -234,7 +260,7 @@ function startLoops(host, clients, hostInput) {
       fake.send(JSON.stringify(Object.assign({}, base, m)), ri.port, ri.address);
     fake.send('xx', ri.port, ri.address);
   });
-  check('LAN: risposte con h2 sbagliato o incoerenti scartate', (await lan.findGame('LABCDE', { discoveryPort: 39999, timeout: 800 })) === null);
+  check('LAN: risposte con h2 sbagliato o incoerenti scartate', (await lan.findGame('LABCDE', { discoveryPort: 39999, timeout: 800 })).url === null);
   fake.close();
   lhLink.leave(); lcLink.leave();
   await lan.stopHost();
