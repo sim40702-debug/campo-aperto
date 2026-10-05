@@ -133,3 +133,40 @@ desktop/   app Electron
 tests/     test automatici
 docs/      roadmap e changelog
 ```
+
+### Test nel browser e nell'app desktop
+
+Servono Python e Playwright:
+
+```bash
+pip install playwright
+playwright install chromium
+```
+
+Poi prepara la build di test e lancia i test:
+
+```bash
+npm run build:test
+python3 tests/browser_test.py            # menu, partita, tastiera, impostazioni, risoluzioni
+python3 tests/controls_browser_test.py   # controller simulato, comandi, rimappatura
+```
+
+Per provare la vera app desktop:
+
+```bash
+npm run build:desktop
+npx electron tests/electron_smoke.js
+```
+
+Su Linux senza schermo anteponi `xvfb-run` all'ultimo comando.
+
+### Nota tecnica: Node.js 26
+
+Electron 33 si installa con `extract-zip`, che usa `yauzl` 2.10. Con Node 26 questa versione si ferma dopo il primo file dell'archivio e non segnala nessun errore, quindi Electron resta installato solo in parte.
+
+In `package.json` ci sono due impostazioni per evitarlo:
+
+- `"overrides": { "yauzl": "3.4.0" }` fa usare a `extract-zip` una versione compatibile con Node 26. L'estrazione è identica a quella di `unzip`, link simbolici del Mac compresi.
+- `"allowScripts"` autorizza lo script postinstall di Electron, come richiede npm 11.
+
+In più `scripts/controlla-electron.js` parte da solo dopo `npm install` e prima di `npm start` / `npm run dist:*`. Se trova un'installazione di Electron a metà la cancella e la rifà, senza comandi a mano.
