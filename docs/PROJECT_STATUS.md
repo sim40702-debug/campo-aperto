@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 05/10/2026, sessione 6, versione 0.4.2
+Aggiornato: 05/10/2026, sessione 7, versione 0.5.0
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -18,11 +18,12 @@ Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a 
 - Passo fisso 1/60 s. Coordinate: x lunghezza (±52.5), z larghezza (±34), y altezza.
 
 ## Architettura (src/)
-01 config e RNG, 02 database, 03 fisica palla, 04 giocatore, 05 squadra e tattica, 06 azioni, 07 IA, 08 partita e regole (più umani),
+01 config e RNG, 02 database, 03 fisica palla (aria, effetto, rimbalzo), 04 giocatore, 05 squadra e tattica, 06 azioni (volo dei calci calcolato), 07 IA,
+08 partita e regole (più umani) + 08_referee arbitro (contrasti, falli, vantaggio, cartellini; vedi docs/ARBITRO_E_FISICA.md),
 09 render 3D (preset qualità, HiDPI, particelle), 10 audio (tre canali), 11 input (tastiera, mouse, controller, rimappabile, navigazione menu), 12 rete (NetLink,
 HostSession, ClientSession), 13 impostazioni (localStorage), 14 gioco (schermate, HUD, loop, online), shell.html (UI).
 server/relay.js: lobby e inoltro messaggi.
-Test: rules_test.js (31), sim_test.js, net_test.js (32, relay e WebSocket veri), browser_test.py (28), controls_browser_test.py (27,
+Test: rules_test.js (31), referee_test.js (54), sim_test.js, net_test.js (83, relay e WebSocket veri), browser_test.py (28), controls_browser_test.py (27,
 controller simulato), online_browser_test.py (15, due giocatori), electron_smoke.js (16, app vera con tasti reali e due finestre online).
 
 ## Funzionalità completate (verificate)
@@ -54,7 +55,7 @@ controller simulato), online_browser_test.py (15, due giocatori), electron_smoke
 - Tattica in pausa solo offline.
 
 ## Non ancora implementato
-Cartellini, sostituzioni, finte, tiro a giro manuale, barriera controllabile, salvataggi, editor giocatori, creazione squadra, allenamento, torneo, campionato, coppe, carriera, mercato. Nel menu sono dichiarati "In costruzione".
+Sostituzioni, finte, tiro a giro manuale, barriera controllabile, salvataggi, editor giocatori, creazione squadra, allenamento, torneo, campionato, coppe, carriera, mercato. Nel menu sono dichiarati "In costruzione".
 
 ## Bug conosciuti
 - Controller provato solo con un controller simulato nei test: da provare con controller veri (Xbox, PlayStation, Switch Pro).

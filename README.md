@@ -60,12 +60,15 @@ sudo apt install ./CampoAperto-*.deb
 | Filtrante | I | Y |
 | Cambio giocatore | Q / Tab | LB |
 | Pressing | E (tieni premuto) | RB |
+| Tiro a giro / passaggio teso / filtrante alto | E + K / J / I | RB + B / A / Y |
 | Pausa | Esc / P | Menu |
 | Telecamera | C | View |
 | Audio on/off | M | — |
 | Guida comandi | F1 / H | — |
 
 Ogni tasto si può rimappare in **Impostazioni → Controlli**. Nell'app desktop **F11** attiva lo schermo intero.
+
+**Arbitro:** il contatto da solo non è fallo. Se prendi prima il pallone il contrasto è regolare; da dietro, attraverso le gambe, è fallo; le scivolate imprudenti o violente portano giallo o rosso. C'è il vantaggio e il doppio giallo espelle. Dettagli su arbitro e fisica in [`docs/ARBITRO_E_FISICA.md`](docs/ARBITRO_E_FISICA.md).
 
 ---
 
