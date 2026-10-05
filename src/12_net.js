@@ -27,10 +27,23 @@ const netNow = () => performance.now() / 1000;
 // pulizia del codice inserito dall'utente: maiuscole, solo caratteri ammessi
 function normalizeCode(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); }
 
+// indirizzo dell'host scritto a mano: IP, IP:porta o ws://IP:porta (porta predefinita 8787). null se non valido
+function parseHostAddress(s) {
+  const m = /^(?:ws:\/\/)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?::(\d{1,5}))?\/?$/.exec(String(s || '').trim());
+  if (!m) return null;
+  const o = m.slice(1, 5);
+  if (o.some(x => +x > 255 || (x.length > 1 && x[0] === '0'))) return null;
+  const port = m[5] === undefined ? 8787 : +m[5];
+  if (port < 1 || port > 65535) return null;
+  const ip = o.join('.');
+  return { ip, port, url: 'ws://' + ip + ':' + port, text: ip + (port === 8787 ? '' : ':' + port) };
+}
+
 // ---------- COLLEGAMENTO AL SERVER ----------
 class NetLink {
-  constructor(url) {
+  constructor(url, openMs) {
     this.url = url;
+    this.openMs = openMs || 0;  // tempo massimo per aprire il socket in join (0 = predefinito)
     this.ws = null;
     this.handlers = {};
     this.state = 'idle';        // idle, connecting, online, reconnecting, closed
@@ -107,7 +120,7 @@ class NetLink {
     code = normalizeCode(code);
     if (!NET.CODE_RE.test(code)) throw new Error('Il codice è di 6 caratteri (lettere e numeri)');
     this.state = 'connecting';
-    const ws = await this.open();
+    const ws = await this.open(this.openMs || undefined);
     this.ws = ws;
     try {
       const r = await this.request({ t: 'join', v: NET.PROTOCOL, code: code, name: name }, ['joined']);

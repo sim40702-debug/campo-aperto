@@ -6,6 +6,7 @@
 // ============================================================
 'use strict';
 const dgram = require('dgram');
+const net = require('net');
 const os = require('os');
 const crypto = require('crypto');
 const { createRelay, PROTOCOL } = require('../server/relay.js');
@@ -151,24 +152,69 @@ function stopHost() {
   });
 }
 
-// cerca l'host con questo codice: { url } oppure null
+const MAX_TARGETS = 1024, SWEEP_CHUNK = 64, SWEEP_STEP = 15;
+const isV4 = a => typeof a === 'string' && /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(a) && a.split('.').every(x => +x <= 255 && (x.length === 1 || x[0] !== '0'));
+// indirizzi di rete locale: privati, loopback, link-local e CGNAT (hotspot); gli altri non vengono contattati dal gioco
+const isPrivateV4 = a => {
+  if (!isV4(a)) return false;
+  const [p, q] = a.split('.').map(Number);
+  return p === 10 || p === 127 || (p === 172 && q >= 16 && q <= 31) || (p === 192 && q === 168) || (p === 169 && q === 254) || (p === 100 && q >= 64 && q <= 127);
+};
+const ipToInt = a => a.split('.').reduce((n, x) => n * 256 + +x, 0);
+const intToIp = n => [n >>> 24 & 255, n >>> 16 & 255, n >>> 8 & 255, n & 255].join('.');
+const prefixOf = m => (isV4(m) ? ipToInt(m).toString(2).replace(/0/g, '').length : -1);
+
+// indirizzi dei dispositivi di ogni sottorete piccola (prefisso da /24 a /30), senza il proprio, la rete e il broadcast;
+// niente 169.254.x.x (link-local) né sottoreti grandi. Totale limitato a "max".
+function sweepTargets(ifaces, max) {
+  const out = [], seen = new Set();
+  if (max === undefined) max = MAX_TARGETS;
+  for (const i of ifaces || []) {
+    try {
+      if (!i || !isV4(i.address) || !isV4(i.netmask) || i.address.startsWith('169.254.')) continue;
+      const p = prefixOf(i.netmask);
+      if (p < 24 || p > 30) continue;
+      const mask = (0xFFFFFFFF << (32 - p)) >>> 0, net = (ipToInt(i.address) & mask) >>> 0, bc = (net | ~mask) >>> 0;
+      for (let n = net + 1; n < bc; n++) {
+        const ip = intToIp(n);
+        if (ip === i.address || seen.has(ip)) continue;
+        if (out.length >= max) return out;
+        seen.add(ip); out.push(ip);
+      }
+    } catch (e) { /* interfaccia anomala: ignorata */ }
+  }
+  return out;
+}
+
+// cerca l'host con questo codice: { url } oppure { url: null, why, detail }
+//   why: 'no-network' (nessuna rete), 'blocked' (tutti gli invii falliti, detail = errno più frequente), 'no-reply' (nessuno risponde)
+// opts: timeout, discoveryPort, hosts (indirizzi IPv4 extra a cui scrivere direttamente),
+//       noBroadcast (solo prove: niente broadcast né scansione della sottorete)
 function findGame(code, opts) {
   opts = opts || {};
-  const timeout = opts.timeout || 1500;
+  const timeout = opts.timeout || 2000;
   const dport = opts.discoveryPort === undefined ? DISCOVERY_PORT : opts.discoveryPort;
   return new Promise(resolve => {
-    if (typeof code !== 'string' || !CODE_RE.test(code)) return resolve(null);
-    let sock, done = false;
-    const timers = [];
+    if (typeof code !== 'string' || !CODE_RE.test(code)) return resolve({ url: null, why: 'bad-code', detail: '' });
+    const extra = Array.isArray(opts.hosts) ? [...new Set(opts.hosts.filter(isV4))].slice(0, 16) : [];
+    let sock, done = false, sent = 0, failed = 0;
+    const errs = {}, timers = [];
     const nonce = crypto.randomBytes(16).toString('hex');
+    const noteErr = e => { const c = (e && e.code) || 'ERR'; errs[c] = (errs[c] || 0) + 1; };
     const finish = r => {
       if (done) return; done = true;
       timers.forEach(clearTimeout);
       try { sock.close(); } catch (e) { /* già chiuso */ }
       resolve(r);
     };
-    try { sock = dgram.createSocket('udp4'); } catch (e) { return resolve(null); }
-    sock.on('error', () => finish(null));
+    const verdict = () => {
+      const top = Object.keys(errs).sort((a, b) => errs[b] - errs[a])[0] || '';
+      if (!localAddresses().length && !extra.length) return { url: null, why: 'no-network', detail: top };
+      if (sent > 0 && failed >= sent) return { url: null, why: 'blocked', detail: top };
+      return { url: null, why: 'no-reply', detail: '' }; // un errno sporadico della scansione non va mostrato
+    };
+    try { sock = dgram.createSocket('udp4'); } catch (e) { return resolve({ url: null, why: 'blocked', detail: (e && e.code) || 'ERR' }); }
+    sock.on('error', e => { noteErr(e); sent++; failed++; finish(verdict()); });
     sock.on('message', (buf, rinfo) => {
       try {
         if (buf.length > MAX_DGRAM) return;
@@ -180,15 +226,51 @@ function findGame(code, opts) {
       } catch (e) { /* datagramma non valido */ }
     });
     sock.bind(0, '0.0.0.0', () => {
-      try { sock.setBroadcast(true); } catch (e) { return finish(null); }
-      const targets = new Set(['255.255.255.255', '127.0.0.1']);
-      for (const i of localAddresses()) { const b = broadcastOf(i); if (b) targets.add(b); }
+      try { sock.setBroadcast(true); } catch (e) { noteErr(e); return finish({ url: null, why: 'blocked', detail: (e && e.code) || 'ERR' }); }
       const msg = Buffer.from(JSON.stringify({ q: APP_ID, v: PROTOCOL, d: DISC_VER, n: nonce, h: hmac(code, nonce) }));
-      const burst = () => { for (const t of targets) { try { sock.send(msg, dport, t, () => {}); } catch (e) { /* ignora */ } } };
-      for (const ms of [0, 300, 700]) timers.push(setTimeout(burst, ms));
-      timers.push(setTimeout(() => finish(null), timeout));
+      // l'invio a 127.0.0.1 (se non richiesto) non conta nella diagnosi: riesce sempre e non dice nulla sulla rete
+      const send = (ip, count) => {
+        if (count) sent++;
+        try { sock.send(msg, dport, ip, err => { if (count && err && !done) { failed++; noteErr(err); } }); }
+        catch (e) { if (count) { failed++; noteErr(e); } }
+      };
+      const direct = new Set(extra), bcast = new Set(), sweep = [];
+      if (!opts.noBroadcast) {
+        bcast.add('255.255.255.255');
+        const ifs = localAddresses();
+        for (const i of ifs) { const b = broadcastOf(i); if (b) bcast.add(b); }
+        for (const ip of sweepTargets(ifs, MAX_TARGETS - direct.size - bcast.size - 1)) if (!direct.has(ip)) sweep.push(ip);
+      }
+      const round = () => {
+        if (!direct.has('127.0.0.1')) send('127.0.0.1', false);
+        for (const t of direct) send(t, true);
+        for (const t of bcast) send(t, true);
+        // la scansione unicast va a gruppi, per non sparare centinaia di datagrammi insieme
+        for (let k = 0; k * SWEEP_CHUNK < sweep.length; k++) {
+          const part = sweep.slice(k * SWEEP_CHUNK, (k + 1) * SWEEP_CHUNK);
+          timers.push(setTimeout(() => { if (!done) for (const t of part) send(t, true); }, k * SWEEP_STEP));
+        }
+      };
+      for (const ms of [0, 300, 700]) timers.push(setTimeout(round, ms));
+      timers.push(setTimeout(() => finish(verdict()), timeout));
     });
   });
 }
 
-module.exports = { startHost, stopHost, findGame, defaultRouteAddress, CODE_RE };
+// prova la connessione TCP diretta all'host: { ok: true, ms } oppure { ok: false, code }
+function checkHost(ip, port, timeoutMs) {
+  return new Promise(resolve => {
+    if (!isV4(ip) || !Number.isInteger(port) || port < 1 || port > 65535) return resolve({ ok: false, code: 'EINVAL' });
+    let s, done = false, t;
+    const t0 = Date.now();
+    const end = r => { if (done) return; done = true; clearTimeout(t); try { s.destroy(); } catch (e) { /* già chiuso */ } resolve(r); };
+    try {
+      s = net.connect({ host: ip, port });
+      s.on('connect', () => end({ ok: true, ms: Date.now() - t0 }));
+      s.on('error', e => end({ ok: false, code: (e && e.code) || 'ERR' }));
+      t = setTimeout(() => end({ ok: false, code: 'ETIMEDOUT' }), timeoutMs > 0 ? timeoutMs : 3000);
+    } catch (e) { end({ ok: false, code: (e && e.code) || 'ERR' }); }
+  });
+}
+
+module.exports = { startHost, stopHost, findGame, checkHost, sweepTargets, broadcastOf, localAddresses, isV4, isPrivateV4, defaultRouteAddress, CODE_RE, WS_PORT, DISCOVERY_PORT, DISC_VER, APP_ID, hmac };

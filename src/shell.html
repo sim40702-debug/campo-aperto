@@ -306,6 +306,10 @@ body.pad-nav .mode:focus b { color: var(--flood); }
         <h3>Unisciti</h3>
         <p>Scrivi il codice che ti ha dato chi ha creato la partita.</p>
         <div class="codebox"><input type="text" id="on-code" maxlength="7" placeholder="ABC123" autocomplete="off" spellcheck="false" aria-label="Codice partita"></div>
+        <div id="on-host-row" hidden style="margin:-4px 0 14px">
+          <label for="on-host" style="display:block;font-size:14px;margin-bottom:4px">Indirizzo dell'host (solo se la ricerca non funziona)</label>
+          <input type="text" id="on-host" placeholder="172.20.10.9:8787" autocomplete="off" spellcheck="false" style="width:100%">
+        </div>
         <button class="primary" id="on-join">Entra</button>
       </div>
     </div>

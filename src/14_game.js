@@ -1095,6 +1095,8 @@ class Game {
     $('online-webonly').hidden = !blocked;
     $('on-create').disabled = blocked; $('on-join').disabled = blocked;
     $('on-lan').hidden = !window.campoLan;
+    $('on-host-row').hidden = !window.campoLan;
+    $('on-host').value = this.settings.lanHost || '';
     $('on-create-lan').disabled = blocked;
     $('on-status').textContent = ''; $('on-status').className = 'status';
   }
@@ -1149,20 +1151,31 @@ class Game {
     if (!NET.CODE_RE.test(code)) { this.onlineError(new Error('Il codice è di 6 caratteri, lettere e numeri')); return; }
     let link = null, cancelled = false, viaLan = false;
     const tryLan = !!window.campoLan && code[0] === 'L'; // i codici della rete locale iniziano con L: gli altri non vengono mai cercati in rete
+    // indirizzo dell'host scritto a mano (facoltativo, solo desktop)
+    let addr = null, addrFromSaved = false;
+    if (tryLan && $('on-host').value.trim()) {
+      addr = parseHostAddress($('on-host').value);
+      const saved = parseHostAddress(this.settings.lanHost || '');
+      addrFromSaved = !!addr && !!saved && addr.text === saved.text; // indirizzo ricordato e non modificato
+      if (!addr) { this.onlineError(Object.assign(new Error("Indirizzo dell'host non valido: scrivi quattro numeri da 0 a 255, per esempio 172.20.10.9 oppure 172.20.10.9:8787"), { lan: true })); return; }
+    }
     this.busy((tryLan ? 'Cerco la partita ' : 'Entro nella partita ') + code + '…', () => { cancelled = true; if (link) link.leave(); });
+    let f = null, target = null; // target: { ip, port } dell'host cercato con WebSocket, per spiegare un eventuale errore
     try {
       let url = this.settings.server;
       if (tryLan) {
-        // prima cerco l'host nella rete locale, poi ripiego sul server impostato
-        let f = null;
-        try { f = await window.campoLan.find(code); } catch (e) { f = null; }
+        // prima cerco l'host nella rete locale (anche con l'indirizzo dato), poi ripiego sull'indirizzo dato e infine sul server impostato
+        try { f = await window.campoLan.find(code, addr ? [addr.ip] : []); } catch (e) { f = null; }
         if (cancelled) return;
         if (f && typeof f.url === 'string' && /^ws:\/\/[0-9.]+:\d+$/.test(f.url)) { url = f.url; viaLan = true; }
+        else if (addr) { url = addr.url; viaLan = true; $('busy-text').textContent = 'Provo l\'indirizzo ' + addr.text + '…'; }
+        if (viaLan) { const m = /^ws:\/\/([0-9.]+):(\d+)$/.exec(url); target = { ip: m[1], port: +m[2] }; }
       }
-      link = new NetLink(url);
-      if (tryLan) $('busy-text').textContent = 'Entro nella partita ' + code + '…';
+      link = new NetLink(url, viaLan ? 3000 : 0); // indirizzo di rete locale: se non risponde in 3 secondi, inutile aspettare
+      if (tryLan && !(viaLan && !(f && f.url))) $('busy-text').textContent = 'Entro nella partita ' + code + '…';
       await link.join(code, name);
       if (cancelled) return;
+      if (viaLan && target) { this.settings.lanHost = target.ip + (target.port === 8787 ? '' : ':' + target.port); saveSettings(this.settings); }
       const client = new ClientSession(link, this.db, name);
       this.net = { link: link, client: client };
       client.onLobby = () => { if (this.screen === 'lobby') this.renderLobby(); };
@@ -1175,11 +1188,48 @@ class Game {
       this.showLobby();
     } catch (e) {
       if (cancelled) return;
-      // codice di rete locale non trovato né sul server: suggerimento sulla rete, non solo sull'indirizzo del server
-      if (tryLan && !viaLan && (!e.code || e.code === 'NOT_FOUND')) { e = new Error("Non trovo la partita nella rete locale. Siete sulla stessa rete? Sul computer dell'host il firewall deve consentire il gioco"); e.lan = true; }
-      if (viaLan) e.lan = true;
+      if (tryLan && !viaLan && (!e.code || e.code === 'NOT_FOUND')) {
+        // codice di rete locale non trovato né sul server: dico quale passo è fallito
+        e = new Error(this.lanFindMessage(f)); e.lan = true;
+      } else if (viaLan && target) {
+        if (!e.code) {
+          let msg = null;
+          try { msg = await this.lanConnectMessage(target, !!(f && f.url), addrFromSaved && !(f && f.url)); } catch (er) { /* resta l'errore originale */ }
+          if (cancelled) return;
+          if (msg) e = new Error(msg);
+        }
+        else if (e.code === 'NOT_FOUND') e = new Error('Ho trovato il computer ' + target.ip + ':' + target.port + ", ma lì non c'è nessuna partita con questo codice. Controlla il codice e che l'host sia ancora nella lobby");
+        e.lan = true;
+      } else if (viaLan) e.lan = true;
       this.onlineError(e);
     }
+  }
+
+  isMac() { return /Mac/i.test((navigator.platform || '') + ' ' + (navigator.userAgent || '')); }
+  macLocalNet() { return 'macOS sta bloccando l\'accesso alla rete locale. Apri Impostazioni di Sistema → Privacy e sicurezza → Rete locale e attiva il Terminale (o l\'app con cui avvii il gioco), poi riavvia il gioco.'; }
+  // la ricerca nella rete locale non ha trovato l'host: messaggio secondo il passo fallito
+  lanFindMessage(f) {
+    const why = f && f.why, det = f && f.detail ? ' (' + f.detail + ')' : '';
+    if (why === 'no-network') return 'Non sei collegato a nessuna rete: collegati al Wi-Fi o al cavo della stessa rete dell\'host' + det;
+    if (why === 'blocked') {
+      if (this.isMac() && /^(EHOSTUNREACH|EPERM)$/.test(f.detail)) return this.macLocalNet() + det;
+      return 'Questo computer non riesce a inviare messaggi nella rete locale: controlla firewall e antivirus, che devono consentire il gioco' + det;
+    }
+    return 'Nessuno ha risposto alla ricerca. Siete sulla stessa rete? L\'host è ancora nella lobby? Se sì, scrivi l\'indirizzo mostrato sul suo schermo nel campo "Indirizzo dell\'host"' + det;
+  }
+  // il collegamento WebSocket all'host è fallito: una prova TCP diretta ne distingue la causa
+  async lanConnectMessage(t, found, stale) {
+    const at = (found ? 'Ho trovato l\'host a ' + t.ip + ':' + t.port : stale ? 'Ho provato l\'ultimo indirizzo usato (' + t.ip + ':' + t.port + ')' : 'Ho provato l\'indirizzo ' + t.ip + ':' + t.port) + ', ma ';
+    let r = null;
+    try { r = await window.campoLan.check(t.ip, t.port); } catch (e) { r = null; }
+    const c = r && r.code !== 'EINVAL' ? r.code : null; // EINVAL: indirizzo non di rete locale, non provato
+    // indirizzo vecchio: non do la colpa al firewall, l'host può aver cambiato indirizzo
+    if (stale && c !== 'EHOSTUNREACH' && c !== 'EPERM') return at + (c === 'ECONNREFUSED' ? 'rifiuta la connessione' : 'non risponde') + (c ? ' (' + c + ')' : '') + '. Controlla l\'indirizzo mostrato ora sullo schermo dell\'host: potrebbe essere cambiato';
+    if (c === 'ECONNREFUSED') return at + 'rifiuta la connessione: non sta più ospitando oppure la porta è diversa (ECONNREFUSED)';
+    if (c === 'ETIMEDOUT') return at + 'non risponde (tempo scaduto): di solito il firewall del computer dell\'host blocca il gioco (ETIMEDOUT)';
+    if (c === 'EHOSTUNREACH' || c === 'EPERM') return this.isMac() ? this.macLocalNet() + ' (' + c + ')' : at + 'non è raggiungibile: controlla di essere sulla stessa rete e il firewall (' + c + ')';
+    if (c) return at + 'la connessione fallisce (' + c + ')';
+    return at + 'il collegamento al gioco non riesce. Riprova tra poco';
   }
 
   bindLinkEvents(link) {
