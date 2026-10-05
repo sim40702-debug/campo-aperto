@@ -233,6 +233,113 @@ body.pad-nav .mode:focus b { color: var(--flood); }
 #busy .sweep { margin: 16px 0; }
 #fatal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 30px; font-size: 20px; text-align: center; background: var(--night); z-index: 70; }
 
+
+/* ---------- economia: account, partite, scommesse, negozio, personaggio, profilo ---------- */
+input[type=password], input[type=number] { font: inherit; color: var(--chalk); background: rgba(243,245,238,0.06); border: 1px solid rgba(243,245,238,0.2); padding: 10px 12px; width: 100%; }
+input[type=password]:focus, input[type=number]:focus { border-color: var(--flood); outline: none; }
+.ecobar { display: flex; gap: 10px; align-items: center; margin: -16px 0 14px; flex-wrap: wrap; }
+.wallet { font-family: var(--display); font-weight: 800; font-size: 24px; color: var(--flood); background: var(--night-2); padding: 3px 22px 3px 12px; clip-path: var(--slant); border: 0; white-space: nowrap; }
+.wallet small { font-family: var(--text); font-weight: 400; font-size: 12px; color: var(--slate); margin-left: 6px; }
+.whoami { background: none; border: 1px solid rgba(243,245,238,0.25); padding: 5px 12px; font-size: 14px; }
+.ecogrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 0 16px; max-width: 470px; }
+.ecotile { background: rgba(243,245,238,0.06); border: 1px solid rgba(243,245,238,0.12); padding: 9px 6px; font-family: var(--display); font-weight: 700; font-size: 17px; text-transform: uppercase; letter-spacing: 0.03em; }
+.ecotile:hover, .ecotile:focus-visible { border-color: var(--flood); color: var(--flood); outline: none; }
+.sheet.wide { max-width: 1180px; }
+.ecohead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ecohead h2 { margin-bottom: 14px; }
+.ecomsg { background: rgba(255,216,74,0.1); border-left: 3px solid var(--flood); padding: 10px 14px; margin: 0 0 14px; line-height: 1.5; }
+.ecomsg.err { background: rgba(226,65,46,0.12); border-left-color: var(--signal); }
+.fxgroup { color: var(--slate); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 6px; }
+.fxrow { display: grid; grid-template-columns: 120px 1fr auto auto; gap: 12px; align-items: center; width: 100%; text-align: left; background: var(--night-2); padding: 11px 14px; margin-bottom: 6px; border: 0; border-left: 4px solid var(--slate); }
+.fxrow:hover, .fxrow:focus-visible { background: var(--night-3); outline: none; }
+.fxrow.live { border-left-color: var(--signal); } .fxrow.open { border-left-color: var(--turf-light); }
+.fxrow .when { font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--flood); }
+.fxrow .vs { font-family: var(--display); font-weight: 700; font-size: 21px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fxrow .sc { font-family: var(--display); font-weight: 800; font-size: 22px; background: var(--chalk); color: var(--night); padding: 0 10px; }
+.kitdot { display: inline-block; width: 12px; height: 12px; border: 1px solid rgba(255,255,255,0.3); flex: none; }
+.pill { font-size: 12px; padding: 2px 8px; background: rgba(243,245,238,0.12); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.pill.live { background: var(--signal); } .pill.open { background: var(--turf); } .pill.won { background: var(--turf); } .pill.lost { background: #8a2a20; } .pill.void { background: #4b5566; }
+.mc-top { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; background: var(--night-2); padding: 14px 16px; margin-bottom: 14px; border-left: 4px solid var(--flood); }
+.mc-teams { font-family: var(--display); font-weight: 800; font-size: clamp(24px, 3vw, 34px); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mc-teams .sc { background: var(--chalk); color: var(--night); padding: 0 12px; }
+.mc-state { color: var(--slate); font-size: 15px; }
+.mc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.mkt { margin-bottom: 14px; }
+.mkt h4 { margin: 0 0 6px; font-weight: 600; color: var(--slate); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+.sels { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 6px; }
+.sel { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: rgba(243,245,238,0.06); border: 1px solid rgba(243,245,238,0.12); padding: 7px 10px; text-align: left; font-size: 14px; }
+.sel b { font-family: var(--display); font-size: 19px; color: var(--flood); }
+.sel:hover:not(:disabled) { border-color: var(--flood); }
+.sel.on { background: var(--flood); color: var(--night); border-color: var(--flood); } .sel.on b { color: var(--night); }
+.side-card { background: var(--night-2); padding: 14px; margin-bottom: 12px; }
+.side-card h3 { font-size: 20px; margin-bottom: 8px; }
+.poprow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 6px 0; border-bottom: 1px solid rgba(243,245,238,0.07); font-size: 14px; }
+.poprow .bar { grid-column: 1 / -1; margin-top: 3px; } .poprow .bar div { background: var(--flood); }
+.statgrid { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 14px; }
+.statgrid b { font-family: var(--display); font-size: 18px; text-align: right; }
+.split { display: flex; height: 22px; margin: 6px 0 2px; font-size: 12px; font-weight: 600; }
+.split div { display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--night); }
+.betcard { background: var(--night-2); padding: 11px 14px; margin-bottom: 8px; border-left: 4px solid var(--slate); }
+.betcard.won { border-left-color: var(--turf-light); } .betcard.lost { border-left-color: var(--signal); } .betcard.open { border-left-color: var(--flood); }
+.betcard .who { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--slate); }
+.betcard .who b { font-size: 16px; color: var(--chalk); }
+.betcard .items { margin: 6px 0; font-size: 14px; line-height: 1.55; }
+.betcard .items .it { display: flex; gap: 6px; align-items: baseline; }
+.betcard .money { font-family: var(--display); font-weight: 700; font-size: 18px; }
+.betcard .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+.betcard .acts .ghost { padding: 4px 10px; font-size: 14px; }
+.react { background: none; border: 1px solid rgba(243,245,238,0.15); padding: 2px 8px; font-size: 14px; }
+.react.on { border-color: var(--flood); background: rgba(255,216,74,0.16); }
+.react:disabled { opacity: 0.6; }
+#slip { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: min(340px, calc(100vw - 28px)); max-height: 72vh; overflow: auto; z-index: 35; background: var(--night-3); border-top: 4px solid var(--flood); padding: 12px 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+#slip h3 { display: flex; justify-content: space-between; align-items: center; margin: 0 0 8px; font-size: 22px; }
+#slip.min .slip-body { display: none; }
+.slip-it { padding: 7px 0; border-bottom: 1px solid rgba(243,245,238,0.1); font-size: 14px; }
+.slip-it .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.slip-it .x { background: none; border: 0; color: var(--slate); font-size: 18px; padding: 0 4px; }
+.slip-it.bad { opacity: 0.6; }
+.chg { color: var(--flood); font-size: 13px; font-weight: 600; }
+.slip-tot { display: grid; grid-template-columns: 1fr auto; gap: 4px; margin: 10px 0; font-size: 15px; }
+.slip-tot b { font-family: var(--display); font-size: 20px; text-align: right; }
+.shopgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 10px; }
+.item { background: var(--night-2); padding: 10px; border-top: 4px solid #8a96a8; display: flex; flex-direction: column; gap: 5px; }
+.item.raro { border-top-color: #3d8bff; } .item.epico { border-top-color: #b05cff; } .item.leggendario { border-top-color: var(--flood); }
+.item canvas { width: 100%; height: 118px; background: radial-gradient(circle at 50% 40%, #24406a, #0f1d31); }
+.item b { font-size: 15px; }
+.rar { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate); }
+.item .price { font-family: var(--display); font-weight: 800; font-size: 20px; color: var(--flood); }
+.item .seg { width: 100%; }
+.char-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+#ch-preview { width: 300px; height: 380px; background: radial-gradient(circle at 50% 35%, #2a4a78, #0c1a2b); display: block; }
+.invrow { display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: start; padding: 8px 0; border-bottom: 1px solid rgba(243,245,238,0.08); }
+.invrow .lbl { color: var(--slate); font-size: 14px; text-transform: capitalize; padding-top: 6px; }
+.invrow .segs .seg small { color: inherit; opacity: 0.7; margin-left: 4px; }
+.lbtable { width: 100%; border-collapse: collapse; font-size: 15px; }
+.lbtable th { text-align: left; color: var(--slate); font-weight: 400; font-size: 13px; padding: 6px 8px; }
+.lbtable td { padding: 7px 8px; border-bottom: 1px solid rgba(243,245,238,0.08); }
+.lbtable td.n { font-family: var(--display); font-weight: 700; font-size: 18px; text-align: right; }
+.txrow { display: grid; grid-template-columns: 140px 1fr auto auto; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(243,245,238,0.07); font-size: 14px; }
+.txrow .amt { font-family: var(--display); font-weight: 700; font-size: 17px; text-align: right; }
+.txrow .amt.pos { color: var(--turf-light); } .txrow .amt.neg { color: #ffb1a6; }
+.achv { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.achv div { background: var(--night-2); padding: 10px 12px; font-size: 14px; opacity: 0.55; }
+.achv div.got { opacity: 1; border-left: 3px solid var(--flood); }
+.more { margin-top: 8px; }
+#fxside { position: fixed; right: 12px; top: calc(56px + env(safe-area-inset-top, 0px)); width: min(320px, 38vw); max-height: calc(100vh - 230px); overflow: auto; z-index: 30; background: rgba(12,26,43,0.9); padding: 10px 12px; font-size: 14px; }
+#fxside h4 { margin: 0 0 6px; font-family: var(--display); font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
+#fxside .ev { padding: 3px 0; border-bottom: 1px solid rgba(243,245,238,0.07); }
+#fxside .betcard { padding: 8px 10px; font-size: 13px; }
+#fxside.min .fx-body { display: none; }
+/* schedina aperta su schermi larghi: il pannello lascia lo spazio a destra invece di finirci sotto */
+@media (min-width: 1100px) { body.slip-open .panel { padding-right: 372px; } }
+@media (max-width: 980px) {
+  .mc-grid, .char-grid { grid-template-columns: 1fr; }
+  .fxrow { grid-template-columns: 1fr auto; }
+  .fxrow .when { grid-column: 1 / -1; }
+  #ch-preview { width: 100%; max-width: 300px; }
+  .txrow { grid-template-columns: 1fr auto; }
+}
+
 @media (max-width: 820px) {
   .teams, .online-grid, .lobby-grid { grid-template-columns: 1fr; }
   .opts { grid-template-columns: 1fr; }
@@ -266,10 +373,19 @@ body.pad-nav .mode:focus b { color: var(--flood); }
   <div class="menu-col">
     <h1 class="title"><span>Campo</span><span>Aperto</span></h1>
     <p class="tagline">Calcio 3D, undici contro undici. Dietro questo menu si sta giocando una partita vera.</p>
+    <div class="ecobar"><button class="wallet" id="eco-wallet" title="Saldo (dal server)">🪙 <span data-balance>—</span></button><button class="whoami" id="eco-user">Accedi</button></div>
+    <div class="ecogrid" id="ecogrid">
+      <button class="ecotile" data-eco="fixtures">Partite</button>
+      <button class="ecotile" data-eco="bets">Scommesse</button>
+      <button class="ecotile" data-eco="shop">Negozio</button>
+      <button class="ecotile" data-eco="character">Personaggio</button>
+      <button class="ecotile" data-eco="inventory">Inventario</button>
+      <button class="ecotile" data-eco="profile">Profilo</button>
+    </div>
     <ul class="modes">
       <li><button class="mode" id="btn-quick"><b>Nuova partita</b><small>Scegli le squadre e gioca contro l'IA</small></button></li>
       <li><button class="mode" id="btn-online"><b>Gioca online</b><small>Crea una partita o entra con un codice</small></button></li>
-      <li><button class="mode" id="btn-watch"><b>Guarda una partita</b><small>Due squadre guidate dall'IA</small></button></li>
+      <li><button class="mode" id="btn-watch"><b>Guarda partita</b><small>Partite del server con le scommesse dei giocatori</small></button></li>
       <li><button class="mode" id="btn-settings"><b>Impostazioni</b><small>Grafica, audio, tasti</small></button></li>
       <li><button class="mode" id="btn-controls"><b>Comandi</b><small>Tastiera, controller e regole</small></button></li>
       <li id="li-quit" hidden><button class="mode" id="btn-quit"><b>Esci</b><small>Chiudi il gioco</small></button></li>
@@ -423,11 +539,173 @@ body.pad-nav .mode:focus b { color: var(--flood); }
       <label for="st-server">Server online (facoltativo)</label><input type="text" id="st-server" spellcheck="false" placeholder="wss://calcio.tuodominio.ch">
       <span></span><div><button class="ghost" id="st-server-test">Prova collegamento</button> <span class="status" id="st-server-status" style="margin-left:10px"></span></div>
       <span></span><p class="small" style="margin:0">Serve solo per giocare via internet. Per giocare sulla stessa rete (Wi-Fi o cavo) lascia vuoto: chi crea la partita fa anche da server.</p>
+      <label for="st-api">Server dell'economia</label><input type="text" id="st-api" spellcheck="false">
+      <span></span><div><button class="ghost" id="st-api-test">Prova collegamento</button> <span class="status" id="st-api-status" style="margin-left:10px"></span></div>
+      <span></span><p class="small" style="margin:0">Account, monete, scommesse e negozio. Lascia vuoto per usare quello incluso nel gioco.</p>
       <span class="lbl">Diagnostica di rete</span><label class="check"><input type="checkbox" id="st-netdebug"> Pannello con ruolo, IP, porta, stato, ping ed eventi (anche Ctrl+Maiusc+D)</label>
     </div>
     <div class="actions"><button class="primary" id="st-back">Fatto</button></div>
   </div>
 </section>
+
+
+<section id="account" class="panel" hidden>
+  <div class="sheet">
+    <h2>Account</h2>
+    <p class="sub">Saldo, scommesse e oggetti sono salvati sul server: con lo stesso account li ritrovi su ogni computer e browser. La password non viene mai salvata in chiaro.</p>
+    <div class="ecomsg err" id="ac-noserver" hidden></div>
+    <div class="online-grid">
+      <div class="card">
+        <h3>Accedi</h3>
+        <div class="field"><span>Nome utente</span><input type="text" id="ac-user" maxlength="16" autocomplete="username" spellcheck="false"></div>
+        <div class="field"><span>Password</span><input type="password" id="ac-pass" maxlength="128" autocomplete="current-password"></div>
+        <button class="primary" id="ac-login">Accedi</button>
+      </div>
+      <div class="card">
+        <h3>Crea account</h3>
+        <p>Da 3 a 16 caratteri tra lettere, numeri e _. Password di almeno 8 caratteri. Parti con le monete di benvenuto.</p>
+        <div class="field"><span>Nome utente (pubblico)</span><input type="text" id="ac-new-user" maxlength="16" autocomplete="username" spellcheck="false"></div>
+        <div class="field"><span>Password</span><input type="password" id="ac-new-pass" maxlength="128" autocomplete="new-password"></div>
+        <div class="field"><span>Ripeti la password</span><input type="password" id="ac-new-pass2" maxlength="128" autocomplete="new-password"></div>
+        <button class="primary" id="ac-register">Crea account</button>
+      </div>
+    </div>
+    <div class="status" id="ac-status" role="status" aria-live="polite"></div>
+    <p class="hintline">Server dell'economia: <span id="ac-server"></span> <button class="ghost" id="ac-server-edit" style="padding:4px 10px;font-size:14px;margin-left:6px">Cambia</button></p>
+    <div class="actions"><button class="ghost" id="ac-back">Indietro</button></div>
+  </div>
+</section>
+
+<section id="fixtures" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2>Partite</h2><span class="wallet">🪙 <span data-balance>—</span></span></div>
+    <p class="sub">Partite del server, calcolate con lo stesso motore del gioco. Le scommesse chiudono 10 secondi prima del calcio d'inizio; il risultato si scopre solo guardando.</p>
+    <div class="ecomsg" id="fx-msg" hidden></div>
+    <div id="fx-list"></div>
+    <div class="actions">
+      <button class="ghost" id="fx-refresh">Aggiorna</button>
+      <button class="ghost" id="fx-ai">Partita libera tra IA (senza scommesse)</button>
+      <button class="ghost" id="fx-back">Indietro</button>
+    </div>
+  </div>
+</section>
+
+<section id="center" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2 id="mc-title">Partita</h2><span class="wallet">🪙 <span data-balance>—</span></span></div>
+    <div class="mc-top">
+      <div class="mc-teams" id="mc-teams"></div>
+      <div class="mc-state" id="mc-state"></div>
+      <button class="primary" id="mc-watch">Guarda partita</button>
+    </div>
+    <div class="ecomsg" id="mc-msg" hidden></div>
+    <div class="mc-grid">
+      <div>
+        <div class="tabs" id="mc-tabs" role="tablist"></div>
+        <div id="mc-markets"></div>
+        <h3 style="margin-top:22px">Scommesse dei giocatori</h3>
+        <p class="small" style="margin:-4px 0 10px">Scommesse pubbliche di persone vere, dal server. Copiarne una la mette in schedina: la giocata parte solo quando confermi.</p>
+        <div id="mc-feed"></div>
+        <button class="ghost more" id="mc-more" hidden>Mostra altre</button>
+      </div>
+      <div>
+        <div class="side-card"><h3>Più scommesse</h3><div id="mc-popular"></div></div>
+        <div class="side-card"><h3>Statistiche scommesse</h3><p class="small" style="margin:-4px 0 8px">Cosa hanno giocato le persone, non probabilità.</p><div id="mc-stats"></div></div>
+        <div class="side-card" id="mc-events-card"><h3>Cronaca</h3><div id="mc-events"></div></div>
+      </div>
+    </div>
+    <div class="actions"><button class="ghost" id="mc-back">Partite</button></div>
+  </div>
+</section>
+
+<section id="bets" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2>Scommesse</h2><span class="wallet">🪙 <span data-balance>—</span></span></div>
+    <div class="tabs" id="bt-tabs" role="tablist">
+      <button class="tab" data-bt="open">In corso</button>
+      <button class="tab" data-bt="settled">Storico</button>
+      <button class="tab" data-bt="feed">Dai giocatori</button>
+      <button class="tab" data-bt="top">Top scommettitori</button>
+      <button class="tab" data-bt="today">Oggi</button>
+    </div>
+    <div class="codebox" style="max-width:420px"><input type="text" id="bt-code" maxlength="9" placeholder="BET-XXXXX" autocomplete="off" spellcheck="false" aria-label="Codice scommessa"><button class="ghost" id="bt-open">Apri</button></div>
+    <div class="ecomsg" id="bt-msg" hidden></div>
+    <div id="bt-filters" class="segs" style="margin-bottom:12px" hidden></div>
+    <div id="bt-list"></div>
+    <button class="ghost more" id="bt-more" hidden>Mostra altre</button>
+    <div class="actions"><button class="ghost" id="bt-back">Indietro</button></div>
+  </div>
+</section>
+
+<section id="shop" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2>Negozio</h2><span class="wallet">🪙 <span data-balance>—</span></span></div>
+    <p class="sub">Prezzi decisi dal server. Gli oggetti comprati restano nel tuo inventario per sempre e si vedono sul tuo calciatore, anche dagli altri giocatori online.</p>
+    <div class="tabs" id="sh-tabs" role="tablist"></div>
+    <div class="ecomsg" id="sh-msg" hidden></div>
+    <div class="shopgrid" id="sh-grid"></div>
+    <div class="actions"><button class="ghost" id="sh-char">Personaggio</button><button class="ghost" id="sh-back">Indietro</button></div>
+  </div>
+</section>
+
+<section id="character" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2>Personaggio</h2><span class="wallet">🪙 <span data-balance>—</span></span></div>
+    <p class="sub">Il tuo calciatore: in partita è un attaccante della tua squadra. Gli altri vedono quello che hai indossato (letto dal server, non dal tuo computer).</p>
+    <div class="ecomsg" id="ch-msg" hidden></div>
+    <div class="char-grid">
+      <div>
+        <canvas id="ch-preview" width="300" height="380"></canvas>
+        <div class="opts" style="grid-template-columns: 110px 1fr; margin-top:12px">
+          <label for="ch-number">Numero</label><input type="number" id="ch-number" min="1" max="99">
+          <label for="ch-name">Nome</label><input type="text" id="ch-name" maxlength="12" spellcheck="false">
+        </div>
+        <div class="actions" style="margin-top:12px"><button class="primary" id="ch-save">Salva numero e nome</button></div>
+      </div>
+      <div>
+        <h3 id="inventory-title">Inventario</h3>
+        <div id="ch-inv"></div>
+      </div>
+    </div>
+    <div class="actions"><button class="ghost" id="ch-shop">Negozio</button><button class="ghost" id="ch-back">Indietro</button></div>
+  </div>
+</section>
+
+<section id="profile" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2 id="pf-title">Profilo</h2><span class="wallet">🪙 <span data-balance>—</span></span></div>
+    <div class="ecomsg" id="pf-msg" hidden></div>
+    <div class="mc-grid">
+      <div>
+        <div class="side-card"><h3>Statistiche</h3><div class="statgrid" id="pf-stats"></div></div>
+        <div class="side-card">
+          <h3>Privacy</h3>
+          <label class="check"><input type="checkbox" id="pf-public"> Mostra pubblicamente le mie scommesse</label>
+          <p class="small">Se lo togli, le tue scommesse spariscono dal feed, dalle statistiche con nome e dalle classifiche. Si vedono solo quelle che condividi con il codice.</p>
+        </div>
+        <div class="side-card"><h3>Obiettivi</h3><div class="achv" id="pf-ach"></div></div>
+        <div class="side-card"><h3>Movimenti</h3><div id="pf-tx"></div><button class="ghost more" id="pf-tx-more" hidden>Mostra altri</button></div>
+      </div>
+      <div>
+        <div class="side-card"><h3>Bonus giornaliero</h3><div id="pf-daily"></div></div>
+        <div class="side-card"><h3>Account</h3><p class="small" id="pf-since"></p><button class="ghost danger" id="pf-logout">Esci dall'account</button></div>
+      </div>
+    </div>
+    <div class="actions"><button class="ghost" id="pf-back">Indietro</button></div>
+  </div>
+</section>
+
+<aside id="slip" hidden aria-label="Schedina">
+  <h3><span>Schedina <small class="small" id="slip-count"></small></span><button class="ghost" id="slip-min" style="padding:2px 10px;font-size:14px">Riduci</button></h3>
+  <div class="slip-body">
+    <div id="slip-items"></div>
+    <div class="field" style="margin-top:10px"><span>Puntata (monete)</span><input type="number" id="slip-stake" min="1" max="10000" step="1" value="10"></div>
+    <label class="check small"><input type="checkbox" id="slip-public"> Pubblica (visibile agli altri giocatori)</label>
+    <div class="slip-tot"><span>Quota totale</span><b id="slip-odds">—</b><span>Vincita possibile</span><b id="slip-win">—</b></div>
+    <div class="status" id="slip-status" role="status" aria-live="polite"></div>
+    <div class="actions" style="margin-top:8px"><button class="primary" id="slip-confirm">Conferma scommessa</button><button class="ghost" id="slip-clear">Svuota</button></div>
+  </div>
+</aside>
 
 <div id="hud" hidden>
   <div class="scoreboard" role="status" aria-live="polite">
@@ -446,6 +724,15 @@ body.pad-nav .mode:focus b { color: var(--flood); }
   <div class="chips" id="chips"></div>
   <canvas id="minimap" width="210" height="136"></canvas>
   <div id="note" hidden></div>
+  <aside id="fxside" hidden aria-label="Partita del server">
+    <h4><span id="fxs-title">Cronaca</span><button class="ghost" id="fxs-min" style="padding:1px 8px;font-size:13px">Riduci</button></h4>
+    <div class="fx-body">
+      <div class="tabs" style="margin-bottom:8px"><button class="tab on" data-fxs="ev" style="font-size:16px">Eventi</button><button class="tab" data-fxs="bets" style="font-size:16px">Scommesse</button></div>
+      <div id="fxs-ev"></div>
+      <div id="fxs-bets" hidden></div>
+      <button class="ghost" id="fxs-reward" hidden style="margin-top:8px;width:100%">Premio spettatore</button>
+    </div>
+  </aside>
 </div>
 
 <section id="help" class="panel" hidden>

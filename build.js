@@ -1,9 +1,10 @@
 // ============================================================
-// BUILD — unisce src/01..12 dentro shell.html
+// BUILD — unisce src/01..17 dentro shell.html
 // uso:
 //   node build.js web      -> dist/index.html   (browser, three.js e font da internet)
 //   node build.js test     -> dist/test.html    (test locali con node_modules/three)
 //   node build.js desktop  -> desktop/app/      (app desktop, tutto offline)
+//   node build.js engine   -> cloud/src/engine.gen.js (motore della partita per il server)
 // ============================================================
 const fs = require('fs');
 const path = require('path');
@@ -13,10 +14,35 @@ const root = __dirname;
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const version = pkg.version;
 
-// 1. codice del gioco: tutti i file src che iniziano con due cifre, in ordine
 const srcDir = path.join(root, 'src');
+const crypto = require('crypto');
+
+// impronta del motore: SHA-256 dei file della simulazione (01..08). Uguale nel gioco e nel server se e solo se
+// la simulazione è la stessa: una partita del server si può rigiocare nel gioco solo con la stessa impronta
+const simFiles = fs.readdirSync(srcDir).filter(f => /^0[1-8]_.*\.js$/.test(f)).sort();
+const engineId = crypto.createHash('sha256').update(simFiles.map(f => f + '\n' + fs.readFileSync(path.join(srcDir, f), 'utf8')).join('\n')).digest('hex').slice(0, 12);
+
+// motore per il server (cloud/): gli stessi file della simulazione del gioco (01..08) in un modulo ES.
+// Il server non ha una seconda simulazione: calcola le partite con questo codice.
+if (target === 'engine') {
+  let mod = '// GENERATO da "node build.js engine": motore di Campo Aperto per il server. Non modificare a mano.\n' +
+    'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = "engine";\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
+  for (const f of simFiles) mod += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
+  mod += 'export { Match, buildDatabase, setSeed, makeRng, CONFIG, GAME_VERSION, ENGINE_ID };\n';
+  const out = path.join(root, 'cloud', 'src', 'engine.gen.js');
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, mod);
+  console.log('build engine -> ' + path.relative(root, out) + ' (versione ' + version + ', motore ' + engineId + ')');
+  process.exit(0);
+}
+
+// 1. codice del gioco: tutti i file src che iniziano con due cifre, in ordine
 const files = fs.readdirSync(srcDir).filter(f => /^\d\d_.*\.js$/.test(f)).sort();
-let code = 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = ' + JSON.stringify(target) + ';\n';
+// server dell'economia incluso nella versione: variabile d'ambiente CAMPO_API_URL (es. nella release) oppure
+// "campoApiUrl" in package.json; il giocatore può sempre cambiarlo nelle impostazioni
+const apiUrl = String(process.env.CAMPO_API_URL || pkg.campoApiUrl || '').trim();
+if (apiUrl && !/^https?:\/\/[^\s"'<>]+$/i.test(apiUrl)) { console.error('CAMPO_API_URL non valido: ' + apiUrl); process.exit(1); }
+let code = 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = ' + JSON.stringify(target) + ';\nvar DEFAULT_API_URL = ' + JSON.stringify(apiUrl) + ';\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
 for (const f of files) code += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
 
 // 2. three.js e font: da internet (web) oppure file locali (test, desktop)
@@ -34,8 +60,9 @@ if (target === 'web') {
   // nell'app desktop si caricano solo file locali (regole di sicurezza consigliate da Electron)
   fontsTag = '<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\' \'unsafe-inline\'; ' +
     'style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: blob:; font-src \'self\'; media-src \'self\' data: blob:; ' +
-    // connect-src: solo WebSocket, verso il server lobby scelto nelle impostazioni
-    'connect-src \'self\' ws: wss:">\n' +
+    // connect-src: WebSocket verso il server lobby e HTTPS verso il server dell'economia (scelti nelle impostazioni);
+    // http solo verso questo computer (server di prova in locale)
+    'connect-src \'self\' ws: wss: https: http://localhost:* http://127.0.0.1:*">\n' +
     '<link href="fonts/fonts.css" rel="stylesheet">';
 } else {
   console.error('Target sconosciuto: ' + target + ' (usa web, test o desktop)');

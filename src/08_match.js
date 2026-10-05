@@ -8,7 +8,20 @@ const SETPIECE_NAMES = {
 };
 
 class Match {
+  // opts.rng: generatore casuale proprio della partita (makeRng(seme)). Con lo stesso seme la partita si ripete
+  // identica, anche se intanto altro codice usa rand(): così il server la calcola e i client la rivedono uguale.
   constructor(homeData, awayData, opts) {
+    this.rng = (opts && opts.rng) || null;
+    this.withRng(() => this.setup(homeData, awayData, opts));
+  }
+  withRng(fn) {
+    if (!this.rng) return fn();
+    const prev = rand;
+    rand = this.rng;
+    try { return fn(); } finally { rand = prev; }
+  }
+
+  setup(homeData, awayData, opts) {
     opts = opts || {};
     this.ball = new Ball();
     this.halfSeconds = opts.halfSeconds || CONFIG.HALF_REAL_SECONDS;
@@ -120,6 +133,7 @@ class Match {
       team: info.team ? info.team.index : info.player ? info.player.team.index : -1,
       player: who(info.player), victim: who(info.victim),
       x: r1(info.x !== undefined ? info.x : this.ball.x), z: r1(info.z !== undefined ? info.z : this.ball.z),
+      t: Math.round(this.realTime * 1000) / 1000,   // secondi reali dal calcio d'inizio (per rivelare gli eventi al momento giusto)
       reason: info.reason || '', severity: info.severity || 0, consequence: info.consequence || '',
     };
     this.timeline.push(ev);
@@ -334,6 +348,7 @@ class Match {
     // la squadra che ha avuto il vantaggio arriva al tiro: il vantaggio si è concretizzato
     if (this.advantage && kind === 'shot' && p.team === this.advantage.team) this.advantage = null;
     this.lastKick = { player: p, kind: kind, time: this.realTime };
+    if (kind === 'shot') this.matchEvent('SHOT', { player: p, x: p.x, z: p.z });
   }
 
   // chiamata ad ogni tocco di palla: restituisce false se il gioco si ferma (fuorigioco, vantaggio non concretizzato).
@@ -599,7 +614,11 @@ class Match {
     if (!this.onTouch(gk, true)) return;
     b.lastTouch = gk;
     if (rand() < chance) {
-      if (lastShot) { gk.team.opponent().stats.onTarget++; this.emit('save', {}); this.showBanner('Parata!', 1.2); }
+      if (lastShot) {
+        gk.team.opponent().stats.onTarget++;
+        this.matchEvent('SHOT_ON_TARGET', { player: this.lastKick.player, reason: 'Parata', consequence: 'SAVE' });
+        this.emit('save', {}); this.showBanner('Parata!', 1.2);
+      }
       if (!fast || rand() < 0.35) {
         b.owner = gk; b.vx = 0; b.vy = 0; b.vz = 0;
         this.possessionTeam = gk.team;
@@ -653,7 +672,10 @@ class Match {
     if (scorerP && scorerP.team !== team && lk && lk.team === team) scorerP = lk;
     const own = !!scorerP && scorerP.team !== team;
     if (scorerP && !own) { scorerP.stats.goals++; }
-    if (this.lastKick && this.lastKick.kind === 'shot' && !own) team.stats.onTarget++;
+    if (this.lastKick && this.lastKick.kind === 'shot' && !own) {
+      team.stats.onTarget++;
+      this.matchEvent('SHOT_ON_TARGET', { player: this.lastKick.player, consequence: 'GOAL' });
+    }
     const name = scorerP ? scorerP.data.name : '';
     this.lastGoal = { team: team, scorer: name, own: own, minute: this.minute() };
     this.log.push(this.lastGoal);
@@ -905,7 +927,9 @@ class Match {
 
   // ---------- CICLO PRINCIPALE ----------
   // input: (compatibilità) comandi del primo umano; per più umani si imposta h.input su ognuno
-  update(dt, input) {
+  update(dt, input) { return this.withRng(() => this.step(dt, input)); }
+
+  step(dt, input) {
     if (input && this.humans.length) this.humans[0].input = input;
     // posizioni del passo precedente: la grafica disegna a metà tra i due passi (movimento fluido a ogni fps)
     const b0 = this.ball;
