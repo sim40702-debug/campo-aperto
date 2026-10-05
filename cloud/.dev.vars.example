@@ -1,0 +1,4 @@
+# copiare in .dev.vars per lo sviluppo locale (wrangler dev). MAI in produzione: TEST_MODE abilita /api/_test/*
+TEST_MODE=1
+SIGNUP_PER_DAY=1000
+SIGNUP_SALT=solo-in-locale

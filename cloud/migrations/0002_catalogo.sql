@@ -1,0 +1,42 @@
+-- Catalogo del negozio e obiettivi. Prezzi e premi si cambiano con una nuova migrazione (UPDATE), mai nel client.
+
+INSERT INTO shop_items (id, category, name, rarity, price, data, sort) VALUES
+ ('maglia_colletto', 'maglia', 'Colletto a contrasto', 'comune', 150, '{"pattern":"colletto","color":"#f3f5ee"}', 1),
+ ('maglia_maniche', 'maglia', 'Maniche bicolore', 'comune', 200, '{"pattern":"maniche","color":"#1b1f2a"}', 2),
+ ('maglia_righe', 'maglia', 'Righe verticali', 'raro', 450, '{"pattern":"righe","color":"#f3f5ee"}', 3),
+ ('maglia_fascia', 'maglia', 'Fascia diagonale', 'raro', 500, '{"pattern":"fascia","color":"#e2412e"}', 4),
+ ('maglia_oro', 'maglia', 'Bordi dorati', 'epico', 1200, '{"pattern":"bordi","color":"#ffd84a"}', 5),
+ ('maglia_notte', 'maglia', 'Notte stellata', 'leggendario', 3000, '{"pattern":"fascia","color":"#9fd8ff"}', 6),
+ ('pant_bianchi', 'pantaloncini', 'Pantaloncini bianchi', 'comune', 100, '{"color":"#f3f5ee"}', 1),
+ ('pant_neri', 'pantaloncini', 'Pantaloncini neri', 'comune', 100, '{"color":"#16181f"}', 2),
+ ('pant_rossi', 'pantaloncini', 'Pantaloncini rossi', 'raro', 300, '{"color":"#c8202f"}', 3),
+ ('pant_oro', 'pantaloncini', 'Pantaloncini oro', 'epico', 900, '{"color":"#d9a520"}', 4),
+ ('calze_bianche', 'calzettoni', 'Calzettoni bianchi', 'comune', 80, '{"color":"#f3f5ee"}', 1),
+ ('calze_righe', 'calzettoni', 'Calzettoni a righe', 'raro', 260, '{"color":"#1e56c8","stripe":"#f3f5ee"}', 2),
+ ('calze_fluo', 'calzettoni', 'Calzettoni fluo', 'epico', 700, '{"color":"#b6ff3a"}', 3),
+ ('scarpe_nere', 'scarpe', 'Scarpe classiche nere', 'comune', 120, '{"color":"#111111"}', 1),
+ ('scarpe_bianche', 'scarpe', 'Scarpe bianche', 'comune', 150, '{"color":"#f2f2f2"}', 2),
+ ('scarpe_fuoco', 'scarpe', 'Scarpe fuoco', 'raro', 450, '{"color":"#ff5a1f"}', 3),
+ ('scarpe_lime', 'scarpe', 'Scarpe lime', 'raro', 450, '{"color":"#9cff2e"}', 4),
+ ('scarpe_oro', 'scarpe', 'Scarpe d''oro', 'leggendario', 2500, '{"color":"#ffcf33"}', 5),
+ ('guanti_neri', 'guanti', 'Guanti neri', 'comune', 100, '{"color":"#14161c"}', 1),
+ ('guanti_blu', 'guanti', 'Guanti blu', 'raro', 280, '{"color":"#1e56c8"}', 2),
+ ('guanti_arancio', 'guanti', 'Guanti arancioni', 'epico', 650, '{"color":"#ff8a3d"}', 3),
+ ('capelli_cresta', 'capelli', 'Cresta', 'comune', 150, '{"style":"cresta","color":"#2a1a10"}', 1),
+ ('capelli_ricci', 'capelli', 'Ricci', 'comune', 150, '{"style":"ricci","color":"#1a1210"}', 2),
+ ('capelli_biondi', 'capelli', 'Biondo platino', 'raro', 400, '{"style":"medi","color":"#efe2b0"}', 3),
+ ('capelli_rasati', 'capelli', 'Rasati', 'comune', 100, '{"style":"rasati","color":"#2a1a10"}', 4),
+ ('capelli_blu', 'capelli', 'Ciuffo blu', 'epico', 900, '{"style":"cresta","color":"#2d6bff"}', 5),
+ ('acc_fascia_capelli', 'accessori', 'Fascia per capelli', 'comune', 120, '{"kind":"fascia","color":"#f3f5ee"}', 1),
+ ('acc_polsini', 'accessori', 'Polsini', 'comune', 120, '{"kind":"polsini","color":"#f3f5ee"}', 2),
+ ('acc_capitano', 'accessori', 'Fascia da capitano', 'raro', 500, '{"kind":"capitano","color":"#ffd84a"}', 3),
+ ('acc_fascia_rossa', 'accessori', 'Fascia per capelli rossa', 'raro', 300, '{"kind":"fascia","color":"#e2412e"}', 4);
+
+INSERT INTO achievements (id, name, description, reward) VALUES
+ ('FIRST_BET', 'Prima giocata', 'Piazza la tua prima scommessa', 50),
+ ('FIRST_WIN', 'Prima vittoria', 'Vinci la tua prima scommessa', 100),
+ ('BETS_10', 'Habitué', 'Piazza 10 scommesse', 150),
+ ('STREAK_5', 'In serie', 'Vinci 5 scommesse di fila', 300),
+ ('BIG_ODDS', 'Colpo grosso', 'Vinci una scommessa con quota 5 o più', 250),
+ ('FIRST_PURCHASE', 'Nuovo look', 'Compra il primo articolo del negozio', 50),
+ ('DAILY_7', 'Fedelissimo', 'Ritira il bonus giornaliero 7 giorni di fila', 200);
