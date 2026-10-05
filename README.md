@@ -96,45 +96,23 @@ Chi crea la partita fa da host: la partita gira sul suo computer. Tutti si colle
 server "lobby" (`server/relay.js`) che trova la partita dal codice e inoltra i messaggi.
 Così nessuno deve aprire porte sul proprio computer.
 
-### Provare su un solo computer
-Terminale 1:
-
-    npm run server
-
-Terminale 2 (prima finestra del gioco, compila e avvia):
-
-    npm start
-
-Terminale 3 (seconda finestra, senza ricompilare, con impostazioni separate):
-
-    npx electron . --profilo=2
-
-Nella prima finestra: Gioca online, Crea partita. Nella seconda: Gioca online, scrivi il codice, Entra.
-Su Mac, per aprire una seconda finestra dell'app pacchettizzata: `open -n "/Applications/Campo Aperto.app" --args --profilo=2`.
-
-### Giocare in rete locale
-Nell'app desktop, senza terminale né indirizzi IP: chi ospita sceglie Gioca online, Ospita in rete locale e dà agli amici
-il codice di 6 caratteri (inizia sempre con L). Gli amici (stessa rete Wi-Fi o cavo) scrivono solo il codice in Unisciti e premono Entra: il gioco
-cerca l'host da solo. Al primo avvio Windows può mostrare l'avviso del firewall: scegli Consenti (rete privata).
-Se la rete blocca la ricerca (alcuni Wi-Fi pubblici o di scuola), nella lobby dell'host c'è l'indirizzo, per esempio
-192.168.1.23:8787: gli amici lo inseriscono in Impostazioni, Online come `ws://192.168.1.23:8787`.
-Il codice non viaggia in chiaro nella rete (nonce e HMAC), ma essendo di 6 caratteri non protegge da un attaccante deciso sulla stessa rete: gioca solo su reti fidate.
-Usano le porte 8787 (TCP, partita) e 8788 (UDP, ricerca). Tutti devono avere la stessa versione del gioco.
+### Giocare in rete locale (stessa Wi-Fi o cavo)
+Nell'app desktop, senza terminale né indirizzi IP: chi ospita sceglie Gioca online, **Crea partita** e dà agli amici
+il codice di 6 caratteri (inizia sempre con L). La partita e il suo piccolo server girano sul computer di chi ospita.
+Gli amici scrivono solo il codice in Unisciti e premono Entra: il gioco trova l'host da solo (ricerca UDP sulla porta 8788,
+broadcast più scansione della sottorete fino a /22) e si collega in WebSocket alla porta 8787 dell'host.
+Nella lobby ognuno sceglie la squadra: si può giocare anche 2 contro 1, 3 contro 1 ecc. (fino a 4 umani per squadra, gli altri calciatori li muove l'IA).
 
 Se non funziona:
-- Scrivi l'indirizzo dell'host (quello grande nella sua lobby, per esempio 172.20.10.9:8787) nel campo "Indirizzo dell'host" sotto il codice: funziona anche quando la rete non inoltra la ricerca (per esempio l'hotspot di un telefono). Dopo il primo ingresso il gioco lo ricorda.
-- Per vedere quale passo fallisce: `npm run prova-lan -- IP-DELL-HOST CODICE` (per esempio `npm run prova-lan -- 172.20.10.9 LABC23`) controlla rete, invii, ricerca, connessione e ingresso e dà una conclusione.
-- Mac: Impostazioni di Sistema, Privacy e sicurezza, Rete locale, attiva il Terminale (o l'app con cui avvii il gioco), poi riavvia il gioco.
-- Windows: nel firewall consenti Campo Aperto (electron.exe) per TCP e UDP sulle reti private e pubbliche.
+- Ctrl+Maiusc+D apre la diagnostica di rete (ruolo, IP, porte, stato, ping, eventi). Sull'host la riga "Ricerche" dice se le richieste degli amici arrivano.
+- In Unisciti, «La partita non viene trovata?»: scrivi l'indirizzo mostrato in grande nella lobby dell'host (per esempio 192.168.1.23:8787).
+- Windows (host): consenti Campo Aperto nel firewall anche per le reti pubbliche (Windows considera "pubblica" ogni nuova rete Wi-Fi).
+  L'installatore per tutti gli utenti aggiunge da solo questa regola, limitata alla sottorete locale.
+- Mac: Impostazioni di Sistema, Privacy e sicurezza, Rete locale: attiva Campo Aperto (o il Terminale se avvii da lì).
+- Reti ospiti, Wi-Fi pubblici e VPN spesso isolano i dispositivi tra loro: lì la rete locale non può funzionare.
+- `npm run prova-lan -- IP-DELL-HOST CODICE` controlla passo per passo rete, invii, ricerca, connessione e ingresso.
 
-### Rete di casa (due computer)
-Sul computer che fa da server:
-
-    npm run server:lan
-
-Il server ascolta sulla porta 8787 di tutte le schede di rete. Negli altri computer:
-Impostazioni, scheda Online, indirizzo `ws://IP-DEL-COMPUTER:8787` (per esempio `ws://192.168.1.20:8787`).
-Su Mac, il firewall può chiedere se permettere le connessioni in entrata a "node": rispondi Consenti.
+Per provare su un solo computer: `npm start` e poi `npx electron . --profilo=2` per una seconda finestra con impostazioni separate.
 
 ### Server di casa raggiungibile da internet
 Copia la cartella `server/` sul server Ubuntu e:
@@ -154,7 +132,7 @@ Metti davanti un reverse proxy con HTTPS (nginx o Caddy) che inoltri un dominio,
       proxy_read_timeout 60s;
     }
 
-Nel gioco l'indirizzo diventa `wss://calcio.tuodominio.ch`. Il server risponde anche a `/health` per i controlli.
+Nel gioco l'indirizzo va in Impostazioni, Online, Server online: `wss://calcio.tuodominio.ch`; compare il pulsante "Crea sul server online". Il server risponde anche a `/health` per i controlli.
 Opzioni del server: `--port`, `--host` (o le variabili PORT e HOST).
 
 ### Cosa succede se cade la rete
@@ -167,7 +145,7 @@ Opzioni del server: `--port`, `--host` (o le variabili PORT e HOST).
 - Il codice partita è casuale e serve solo a trovare la lobby. Non contiene indirizzi o dati personali.
 - Il server limita i tentativi di codice (30 al minuto per indirizzo), i messaggi al secondo e la dimensione dei messaggi.
 - Solo l'host può inviare lo stato della partita. I client mandano soltanto i propri comandi, che l'host controlla.
-- Per impostazione il server ascolta solo su questo computer (127.0.0.1). La rete locale si apre solo con `server:lan`.
+- Il server autonomo (`npm run server`) ascolta solo su 127.0.0.1, adatto dietro un reverse proxy. In rete locale il server è quello integrato nell'app di chi ospita: accetta la creazione della partita solo dal computer stesso.
 
 ## Struttura
 - `src/` codice del gioco (01-08 simulazione, 09 grafica, 10 audio, 11 input, 12 rete, 13 impostazioni, 14 gioco, shell.html interfaccia)

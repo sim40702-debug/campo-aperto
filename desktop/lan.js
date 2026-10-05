@@ -53,14 +53,19 @@ function defaultRouteAddress() {
   });
 }
 
-// indirizzi locali senza duplicati, con quello della rotta predefinita per primo
-async function orderedAddresses() {
-  const list = [...new Set(localAddresses().map(i => i.address))];
+// interfacce IPv4 con quella della rotta predefinita per prima: adattatori virtuali (VPN, macchine virtuali) vengono dopo
+async function orderedInterfaces() {
+  const list = localAddresses();
   try {
     const d = await defaultRouteAddress();
-    if (d && list.includes(d)) return [d, ...list.filter(a => a !== d)];
+    if (d) return list.filter(i => i.address === d).concat(list.filter(i => i.address !== d));
   } catch (e) { /* tengo l'ordine di sistema */ }
   return list;
+}
+
+// indirizzi locali senza duplicati, con quello della rotta predefinita per primo
+async function orderedAddresses() {
+  return [...new Set((await orderedInterfaces()).map(i => i.address))];
 }
 
 // indirizzo di broadcast diretto: indirizzo OR maschera invertita
@@ -84,7 +89,8 @@ function parseQuery(buf) {
   return m;
 }
 
-function openResponder(relay, discoveryPort) {
+// stats: richieste di ricerca ricevute (valide), con il codice di questa partita, ultimo mittente
+function openResponder(relay, discoveryPort, stats) {
   const rate = new Map(); // indirizzo -> { n, t }, limitato e ripulito
   const limited = addr => {
     const now = Date.now();
@@ -103,9 +109,11 @@ function openResponder(relay, discoveryPort) {
         if (limited(rinfo.address)) return;
         const m = parseQuery(buf);
         if (!m) return;
+        stats.queries++; stats.lastFrom = rinfo.address; stats.lastAt = Date.now();
         let hit = null;
         for (const code of relay.rooms.keys()) { if (sameHex(m.h, hmac(code, m.n))) { hit = code; break; } }
         if (!hit) return;
+        stats.answered++;
         const reply = Buffer.from(JSON.stringify({ a: APP_ID, v: PROTOCOL, d: DISC_VER, port: relay.port, h2: hmac(hit, m.n + ':' + relay.port) }));
         sock.send(reply, rinfo.port, rinfo.address, () => {});
       } catch (e) { /* ignora */ }
@@ -130,9 +138,18 @@ async function doStart(opts) {
     if (wsPort === 0) throw e;
     relay = await createRelay(Object.assign({ host: bindHost, port: 0, maxRooms: 1, quiet: true }, LAN_RELAY, opts.relayOpts)); // porta occupata: una libera
   }
-  const sock = await openResponder(relay, opts.discoveryPort === undefined ? DISCOVERY_PORT : opts.discoveryPort);
-  host = { relay, sock, port: relay.port, addresses: await orderedAddresses() };
+  const stats = { queries: 0, answered: 0, lastFrom: '', lastAt: 0 };
+  const discoveryPort = opts.discoveryPort === undefined ? DISCOVERY_PORT : opts.discoveryPort;
+  const sock = await openResponder(relay, discoveryPort, stats);
+  host = { relay, sock, stats, discoveryPort, port: relay.port, addresses: await orderedAddresses() };
   return { port: host.port, addresses: host.addresses.slice(), discovery: !!sock };
+}
+
+// stato per la diagnostica: indirizzi locali sempre, dati del server solo se questo computer ospita
+async function status() {
+  const addresses = host ? host.addresses.slice() : await orderedAddresses();
+  if (!host) return { hosting: false, addresses, discoveryPort: DISCOVERY_PORT };
+  return Object.assign({ hosting: true, addresses, port: host.port, discovery: !!host.sock, discoveryPort: host.discoveryPort, conns: host.relay.conns() }, host.stats);
 }
 
 function startHost(opts) {
@@ -152,7 +169,7 @@ function stopHost() {
   });
 }
 
-const MAX_TARGETS = 1024, SWEEP_CHUNK = 64, SWEEP_STEP = 15;
+const MAX_TARGETS = 1024, SWEEP_CHUNK = 64, SWEEP_STEP = 15, MIN_PREFIX = 22;
 const isV4 = a => typeof a === 'string' && /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(a) && a.split('.').every(x => +x <= 255 && (x.length === 1 || x[0] !== '0'));
 // indirizzi di rete locale: privati, loopback, link-local e CGNAT (hotspot); gli altri non vengono contattati dal gioco
 const isPrivateV4 = a => {
@@ -164,8 +181,8 @@ const ipToInt = a => a.split('.').reduce((n, x) => n * 256 + +x, 0);
 const intToIp = n => [n >>> 24 & 255, n >>> 16 & 255, n >>> 8 & 255, n & 255].join('.');
 const prefixOf = m => (isV4(m) ? ipToInt(m).toString(2).replace(/0/g, '').length : -1);
 
-// indirizzi dei dispositivi di ogni sottorete piccola (prefisso da /24 a /30), senza il proprio, la rete e il broadcast;
-// niente 169.254.x.x (link-local) né sottoreti grandi. Totale limitato a "max".
+// indirizzi dei dispositivi di ogni sottorete (prefisso da /22 a /30: reti di casa, hotspot, Wi-Fi mesh), senza il proprio,
+// la rete e il broadcast; niente 169.254.x.x (link-local) né sottoreti più grandi. Totale limitato a "max", nell'ordine delle interfacce.
 function sweepTargets(ifaces, max) {
   const out = [], seen = new Set();
   if (max === undefined) max = MAX_TARGETS;
@@ -173,7 +190,7 @@ function sweepTargets(ifaces, max) {
     try {
       if (!i || !isV4(i.address) || !isV4(i.netmask) || i.address.startsWith('169.254.')) continue;
       const p = prefixOf(i.netmask);
-      if (p < 24 || p > 30) continue;
+      if (p < MIN_PREFIX || p > 30) continue;
       const mask = (0xFFFFFFFF << (32 - p)) >>> 0, net = (ipToInt(i.address) & mask) >>> 0, bc = (net | ~mask) >>> 0;
       for (let n = net + 1; n < bc; n++) {
         const ip = intToIp(n);
@@ -190,32 +207,33 @@ function sweepTargets(ifaces, max) {
 //   why: 'no-network' (nessuna rete), 'blocked' (tutti gli invii falliti, detail = errno più frequente), 'no-reply' (nessuno risponde)
 // opts: timeout, discoveryPort, hosts (indirizzi IPv4 extra a cui scrivere direttamente),
 //       noBroadcast (solo prove: niente broadcast né scansione della sottorete)
-function findGame(code, opts) {
+async function findGame(code, opts) {
   opts = opts || {};
   const timeout = opts.timeout || 2000;
   const dport = opts.discoveryPort === undefined ? DISCOVERY_PORT : opts.discoveryPort;
+  const ifs = opts.noBroadcast ? [] : await orderedInterfaces();
   return new Promise(resolve => {
     if (typeof code !== 'string' || !CODE_RE.test(code)) return resolve({ url: null, why: 'bad-code', detail: '' });
     const extra = Array.isArray(opts.hosts) ? [...new Set(opts.hosts.filter(isV4))].slice(0, 16) : [];
     let sock, done = false, sent = 0, failed = 0;
-    const errs = {}, timers = [];
+    const errs = {}, timers = [], groupSocks = [];
     const nonce = crypto.randomBytes(16).toString('hex');
     const noteErr = e => { const c = (e && e.code) || 'ERR'; errs[c] = (errs[c] || 0) + 1; };
     const finish = r => {
       if (done) return; done = true;
       timers.forEach(clearTimeout);
-      try { sock.close(); } catch (e) { /* già chiuso */ }
+      for (const s of [sock, ...groupSocks]) { try { s.close(); } catch (e) { /* già chiuso */ } }
       resolve(r);
     };
     const verdict = () => {
       const top = Object.keys(errs).sort((a, b) => errs[b] - errs[a])[0] || '';
-      if (!localAddresses().length && !extra.length) return { url: null, why: 'no-network', detail: top };
+      if (!opts.noBroadcast && !ifs.length && !extra.length) return { url: null, why: 'no-network', detail: top };
       if (sent > 0 && failed >= sent) return { url: null, why: 'blocked', detail: top };
       return { url: null, why: 'no-reply', detail: '' }; // un errno sporadico della scansione non va mostrato
     };
     try { sock = dgram.createSocket('udp4'); } catch (e) { return resolve({ url: null, why: 'blocked', detail: (e && e.code) || 'ERR' }); }
     sock.on('error', e => { noteErr(e); sent++; failed++; finish(verdict()); });
-    sock.on('message', (buf, rinfo) => {
+    const onReply = (buf, rinfo) => {
       try {
         if (buf.length > MAX_DGRAM) return;
         const m = JSON.parse(buf.toString('utf8'));
@@ -224,34 +242,48 @@ function findGame(code, opts) {
         if (typeof m.h2 !== 'string' || !HMAC_RE.test(m.h2) || !sameHex(m.h2, hmac(code, nonce + ':' + m.port))) return;
         finish({ url: 'ws://' + rinfo.address + ':' + m.port });
       } catch (e) { /* datagramma non valido */ }
-    });
+    };
+    sock.on('message', onReply);
+    // ogni gruppo della scansione ha il suo socket: un datagramma verso un indirizzo senza dispositivo aspetta l'ARP
+    // (fino a 3 s) occupando il buffer di invio del socket; con un socket solo, dopo circa 250 indirizzi vuoti
+    // gli invii successivi (magari proprio quello per l'host) restano fermi fino alla fine della ricerca
+    const groupSocket = k => {
+      if (groupSocks[k]) return groupSocks[k];
+      try {
+        const s = dgram.createSocket('udp4');
+        s.on('error', noteErr); s.on('message', onReply);
+        s.bind(0, '0.0.0.0');
+        return (groupSocks[k] = s);
+      } catch (e) { noteErr(e); return sock; }
+    };
     sock.bind(0, '0.0.0.0', () => {
       try { sock.setBroadcast(true); } catch (e) { noteErr(e); return finish({ url: null, why: 'blocked', detail: (e && e.code) || 'ERR' }); }
       const msg = Buffer.from(JSON.stringify({ q: APP_ID, v: PROTOCOL, d: DISC_VER, n: nonce, h: hmac(code, nonce) }));
       // l'invio a 127.0.0.1 (se non richiesto) non conta nella diagnosi: riesce sempre e non dice nulla sulla rete
-      const send = (ip, count) => {
+      const send = (ip, count, via) => {
         if (count) sent++;
-        try { sock.send(msg, dport, ip, err => { if (count && err && !done) { failed++; noteErr(err); } }); }
+        try { (via || sock).send(msg, dport, ip, err => { if (count && err && !done) { failed++; noteErr(err); } }); }
         catch (e) { if (count) { failed++; noteErr(e); } }
       };
       const direct = new Set(extra), bcast = new Set(), sweep = [];
       if (!opts.noBroadcast) {
         bcast.add('255.255.255.255');
-        const ifs = localAddresses();
         for (const i of ifs) { const b = broadcastOf(i); if (b) bcast.add(b); }
-        for (const ip of sweepTargets(ifs, MAX_TARGETS - direct.size - bcast.size - 1)) if (!direct.has(ip)) sweep.push(ip);
+        for (const ip of sweepTargets(ifs, MAX_TARGETS)) if (!direct.has(ip)) sweep.push(ip);
       }
-      const round = () => {
+      // broadcast e indirizzi dati a ogni giro (sul Wi-Fi i broadcast non vengono ritrasmessi se si perdono);
+      // la scansione unicast solo al primo e all'ultimo giro: i pacchetti unicast il Wi-Fi li ritrasmette da sé
+      const round = withSweep => {
         if (!direct.has('127.0.0.1')) send('127.0.0.1', false);
         for (const t of direct) send(t, true);
         for (const t of bcast) send(t, true);
         // la scansione unicast va a gruppi, per non sparare centinaia di datagrammi insieme
-        for (let k = 0; k * SWEEP_CHUNK < sweep.length; k++) {
+        for (let k = 0; withSweep && k * SWEEP_CHUNK < sweep.length; k++) {
           const part = sweep.slice(k * SWEEP_CHUNK, (k + 1) * SWEEP_CHUNK);
-          timers.push(setTimeout(() => { if (!done) for (const t of part) send(t, true); }, k * SWEEP_STEP));
+          timers.push(setTimeout(() => { if (!done) { const via = groupSocket(k); for (const t of part) send(t, true, via); } }, k * SWEEP_STEP));
         }
       };
-      for (const ms of [0, 300, 700]) timers.push(setTimeout(round, ms));
+      for (const [ms, withSweep] of [[0, true], [300, false], [700, true]]) timers.push(setTimeout(() => round(withSweep), ms));
       timers.push(setTimeout(() => finish(verdict()), timeout));
     });
   });
@@ -273,4 +305,4 @@ function checkHost(ip, port, timeoutMs) {
   });
 }
 
-module.exports = { startHost, stopHost, findGame, checkHost, sweepTargets, broadcastOf, localAddresses, isV4, isPrivateV4, defaultRouteAddress, CODE_RE, WS_PORT, DISCOVERY_PORT, DISC_VER, APP_ID, hmac };
+module.exports = { startHost, stopHost, status, findGame, checkHost, sweepTargets, broadcastOf, localAddresses, isV4, isPrivateV4, defaultRouteAddress, CODE_RE, WS_PORT, DISCOVERY_PORT, DISC_VER, APP_ID, hmac };

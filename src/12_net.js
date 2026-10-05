@@ -40,6 +40,11 @@ function parseHostAddress(s) {
 }
 
 // ---------- COLLEGAMENTO AL SERVER ----------
+// errore con un codice: quelli del server (NOT_FOUND, FULL, VERSION...) oppure quelli del collegamento:
+//   TIMEOUT (il server non apre il socket in tempo), UNREACHABLE (connessione rifiutata o rete assente),
+//   NO_REPLY (socket aperto ma nessuna risposta), BAD_CODE, BAD_REPLY
+function netError(code, msg) { const e = new Error(msg); e.code = code; return e; }
+
 class NetLink {
   constructor(url, openMs) {
     this.url = url;
@@ -58,45 +63,56 @@ class NetLink {
   open(ms) {
     return new Promise((resolve, reject) => {
       let ws;
-      try { ws = new WebSocket(this.url); } catch (e) { reject(new Error('Indirizzo del server non valido')); return; }
+      try { ws = new WebSocket(this.url); } catch (e) { reject(netError('UNREACHABLE', 'Indirizzo del server non valido')); return; }
       ws.binaryType = 'arraybuffer';
-      const timer = setTimeout(() => { try { ws.close(); } catch (e) { /* */ } reject(new Error('Il server non risponde')); }, ms || 6000);
+      const timer = setTimeout(() => { try { ws.close(); } catch (e) { /* */ } reject(netError('TIMEOUT', 'Connessione scaduta: il server non risponde')); }, ms || 6000);
       ws.onopen = () => { clearTimeout(timer); resolve(ws); };
-      ws.onerror = () => { clearTimeout(timer); reject(new Error('Impossibile collegarsi al server')); };
+      ws.onerror = () => { clearTimeout(timer); reject(netError('UNREACHABLE', 'Impossibile collegarsi al server')); };
     });
   }
 
   attach(ws) {
     this.ws = ws;
+    let missed = 0;               // ping partiti senza ricevere più nulla
     ws.onmessage = ev => {
+      missed = 0;
       if (typeof ev.data !== 'string') { this.emit('binary', ev.data); return; }
       let msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
       if (msg.t === 'pong') { this.rtt = Math.round(performance.now() - msg.n); return; }
       if (msg.t === 'closed') { this.state = 'closed'; this.left = true; }
       this.emit(msg.t, msg);
     };
-    ws.onclose = () => {
-      if (this.ws !== ws) return;
-      this.ws = null;
-      if (this.left || this.state === 'closed') { this.state = 'closed'; this.emit('close', {}); return; }
-      if (this.code && this.token) this.reconnect();
-      else { this.state = 'closed'; this.emit('close', {}); }
-    };
+    ws.onclose = () => this.socketLost(ws);
     clearInterval(this.pingTimer);
-    this.pingTimer = setInterval(() => this.sendRaw({ t: 'ping', n: performance.now() }), 2000);
+    // un collegamento può morire senza chiudersi (Wi-Fi caduto, PC dell'altro spento): dopo 4 ping
+    // senza risposta (circa 8 secondi) il socket si considera perso e parte il rientro automatico
+    this.pingTimer = setInterval(() => {
+      if (this.ws !== ws) return;
+      if (++missed > 4) { ws.onclose = null; try { ws.close(); } catch (e) { /* */ } this.socketLost(ws); return; }
+      this.sendRaw({ t: 'ping', n: performance.now() });
+    }, 2000);
+  }
+
+  socketLost(ws) {
+    if (this.ws !== ws) return;
+    this.ws = null;
+    clearInterval(this.pingTimer);
+    if (this.left || this.state === 'closed') { this.state = 'closed'; this.emit('close', {}); return; }
+    if (this.code && this.token) this.reconnect();
+    else { this.state = 'closed'; this.emit('close', {}); }
   }
 
   // invia una richiesta e aspetta una delle risposte indicate (o un errore)
   request(msg, okTypes) {
     return new Promise((resolve, reject) => {
       const ws = this.ws;
-      const timer = setTimeout(() => { cleanup(); reject(new Error('Il server non ha risposto')); }, 8000);
+      const timer = setTimeout(() => { cleanup(); reject(netError('NO_REPLY', 'Il server non ha risposto')); }, 8000);
       const prev = ws.onmessage;
       const cleanup = () => { clearTimeout(timer); ws.onmessage = prev; };
       ws.onmessage = ev => {
         if (typeof ev.data !== 'string') return;
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-        if (m.t === 'error') { cleanup(); const er = new Error(m.msg || 'Errore del server'); er.code = m.code; reject(er); return; }
+        if (m.t === 'error') { cleanup(); reject(netError(m.code, m.msg || 'Errore del server')); return; }
         if (okTypes.indexOf(m.t) >= 0) { cleanup(); resolve(m); }
       };
       ws.send(JSON.stringify(msg));
@@ -109,7 +125,7 @@ class NetLink {
     this.ws = ws;
     try {
       const r = await this.request({ t: 'create', v: NET.PROTOCOL, name: name }, ['created']);
-      if (typeof r.code !== 'string' || !NET.CODE_RE.test(r.code) || typeof r.id !== 'string' || typeof r.token !== 'string') throw new Error('Risposta del server non valida');
+      if (typeof r.code !== 'string' || !NET.CODE_RE.test(r.code) || typeof r.id !== 'string' || typeof r.token !== 'string') throw netError('BAD_REPLY', 'Risposta del server non valida');
       this.code = r.code; this.id = r.id; this.token = r.token; this.isHost = true; this.hostId = r.id;
       this.state = 'online'; this.attach(ws);
       return r;
@@ -118,13 +134,13 @@ class NetLink {
 
   async join(code, name) {
     code = normalizeCode(code);
-    if (!NET.CODE_RE.test(code)) throw new Error('Il codice è di 6 caratteri (lettere e numeri)');
+    if (!NET.CODE_RE.test(code)) throw netError('BAD_CODE', 'Codice partita non valido: sono 6 caratteri, lettere e numeri');
     this.state = 'connecting';
     const ws = await this.open(this.openMs || undefined);
     this.ws = ws;
     try {
       const r = await this.request({ t: 'join', v: NET.PROTOCOL, code: code, name: name }, ['joined']);
-      if (r.code !== code || typeof r.id !== 'string' || typeof r.token !== 'string' || typeof r.hostId !== 'string') throw new Error('Risposta del server non valida');
+      if (r.code !== code || typeof r.id !== 'string' || typeof r.token !== 'string' || typeof r.hostId !== 'string') throw netError('BAD_REPLY', 'Risposta del server non valida');
       this.code = r.code; this.id = r.id; this.token = r.token; this.isHost = false; this.hostId = r.hostId;
       this.state = 'online'; this.attach(ws);
       return r;
