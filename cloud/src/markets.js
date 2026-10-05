@@ -156,10 +156,11 @@ export function labelOf(marketsJson, market, selection) {
   return { market: m ? m.label : market, selection: s ? s.label : selection };
 }
 
-// esito di una scommessa dalle sue selezioni: tutte vinte (le annullate contano 1) = vinta, una persa = persa
+// esito di una scommessa dalle sue selezioni: una persa = persa subito (anche se altre partite non sono finite);
+// altrimenti aperta finché manca qualcosa; poi tutte vinte (le annullate contano 1) = vinta
 export function settleBet(stake, items) {
-  if (items.some(i => i.status === 'OPEN')) return null;
   if (items.some(i => i.status === 'LOST')) return { status: 'LOST', payout: 0 };
+  if (items.some(i => i.status === 'OPEN')) return null;
   if (items.every(i => i.status === 'VOID')) return { status: 'VOID', payout: stake };
   return { status: 'WON', payout: payoutOf(stake, items.filter(i => i.status === 'WON').map(i => i.odds)) };
 }

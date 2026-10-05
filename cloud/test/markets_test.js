@@ -61,6 +61,7 @@ if (tc) {
 check('singola vinta', JSON.stringify(settleBet(100, [{ status: 'WON', odds: 1.85 }])) === JSON.stringify({ status: 'WON', payout: 185 }));
 check('singola persa', settleBet(100, [{ status: 'LOST', odds: 1.85 }]).status === 'LOST' && settleBet(100, [{ status: 'LOST', odds: 1.85 }]).payout === 0);
 check('multipla: una persa = persa', settleBet(50, [{ status: 'WON', odds: 2 }, { status: 'LOST', odds: 3 }]).status === 'LOST');
+check('multipla: una persa = persa anche con altre partite da giocare', settleBet(50, [{ status: 'LOST', odds: 2 }, { status: 'OPEN', odds: 3 }]).status === 'LOST');
 check('multipla: aperta finché manca una partita', settleBet(50, [{ status: 'WON', odds: 2 }, { status: 'OPEN', odds: 3 }]) === null);
 check('multipla vinta: prodotto delle quote', settleBet(50, [{ status: 'WON', odds: 2 }, { status: 'WON', odds: 3.1 }]).payout === 310);
 check('multipla con una annullata: quota 1 per quella', settleBet(50, [{ status: 'WON', odds: 2 }, { status: 'VOID', odds: 3.1 }]).payout === 100);
