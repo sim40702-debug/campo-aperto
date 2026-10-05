@@ -9,6 +9,8 @@ class CompetitionsUI {
   constructor(game) {
     this.g = game;
     this.career = new Career(game.db, i => game.teamName(i));
+    // con l'account ogni modifica va anche sul server (dopo 2 secondi, una volta sola)
+    this.career.onChange(() => { if (game.eco) game.eco.careerChanged(); });
     this.compId = null; this.tab = 'over'; this.calRound = null;
     this.draft = null;
     this.bind();
