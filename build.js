@@ -29,7 +29,7 @@ if (target === 'engine') {
   let mod = '// GENERATO da "node build.js engine": motore di Campo Aperto per il server. Non modificare a mano.\n' +
     'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = "engine";\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
   for (const f of simFiles) mod += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
-  mod += 'export { Match, buildDatabase, setSeed, makeRng, CONFIG, GAME_VERSION, ENGINE_ID };\n';
+  mod += 'export { Match, KnockoutMatch, buildDatabase, setSeed, makeRng, CONFIG, GAME_VERSION, ENGINE_ID };\n';
   const out = path.join(root, 'cloud', 'src', 'engine.gen.js');
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, mod);
