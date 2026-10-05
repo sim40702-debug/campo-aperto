@@ -18,10 +18,14 @@ class Player {
     this.runTimer = rand() * 1.5;
     this.runOffX = 0; this.runOffZ = 0;
     this.sprinting = false;
-    this.anim = { phase: rand() * 6, kick: 0, tackle: 0, dive: 0, diveDir: 0, header: 0, celebrate: 0 };
+    this.anim = { phase: rand() * 6, kick: 0, tackle: 0, dive: 0, diveDir: 0, header: 0, celebrate: 0, fall: 0 };
+    this.cards = { yellow: 0, red: false };
+    this.sentOff = false;        // espulso: esce dal campo e non gioca più
     this.stats = { passes: 0, passesOk: 0, shots: 0, goals: 0, tackles: 0 };
   }
   get attr() { return this.data.attr; }
+  // massa in kg (fisico e altezza): decide chi sposta chi negli scontri
+  mass() { return 68 + this.data.attr.physical * 0.16 + (this.data.look.height - 1.8) * 45; }
   speed() { return len(this.vx, this.vz); }
 
   // velocità massima in base ad attributi, energia e possesso palla
@@ -62,15 +66,28 @@ class Player {
     this.steer(desiredX, desiredZ, dt, 1.3);
     this.sprinting = sprint && l > 0.5;
   }
+  // dinamica del movimento: la variazione di velocità è limitata dall'accelerazione del giocatore.
+  // La spinta cala avvicinandosi alla velocità massima (accelerazione progressiva, e in piena corsa si curva più
+  // largo), in sprint il controllo è un po' minore, e frenare è più rapido che accelerare (inerzia credibile
+  // senza perdere velocità a ogni correzione). response > 1: risposta più pronta (calciatori guidati da un umano).
   steer(desiredX, desiredZ, dt, response) {
     if (this.stunned > 0) { desiredX *= 0.2; desiredZ *= 0.2; }
-    const dvx = desiredX - this.vx, dvz = desiredZ - this.vz;
+    const sp = this.speed(), want = len(desiredX, desiredZ);
+    const ratio = Math.min(1, sp / this.maxSpeed(true));
+    const braking = want < sp - 0.1;
+    const k = braking ? 2 : (1 - 0.45 * ratio * ratio) * (this.sprinting ? 0.9 : 1);
+    const maxDv = this.accel() * k * (response || 1) * dt;
+    let dvx = desiredX - this.vx, dvz = desiredZ - this.vz;
     const dl = len(dvx, dvz);
-    // frenare è più facile che accelerare
-    const braking = len(desiredX, desiredZ) < this.speed();
-    const maxDv = this.accel() * (braking ? 1.6 : 1) * (response || 1) * dt;
-    if (dl > maxDv) { this.vx += dvx / dl * maxDv; this.vz += dvz / dl * maxDv; }
-    else { this.vx = desiredX; this.vz = desiredZ; }
+    if (dl > maxDv) { dvx *= maxDv / dl; dvz *= maxDv / dl; }
+    // la parte che aumenta la velocità cala forte verso il massimo: si arriva al 90% in poco più di un secondo,
+    // l'ultimo tratto è il più lento (le curve non ne risentono)
+    if (sp > 0.3) {
+      const ux = this.vx / sp, uz = this.vz / sp, up = dvx * ux + dvz * uz;
+      const cap = this.accel() * (response || 1) * (1 - 0.8 * Math.pow(ratio, 1.5)) * dt;
+      if (up > cap) { dvx -= ux * (up - cap); dvz -= uz * (up - cap); }
+    }
+    this.vx += dvx; this.vz += dvz;
   }
   // gira lo sguardo verso un punto
   faceTo(x, z, dt, rate) {
@@ -103,7 +120,7 @@ class Player {
     if (this.kickCooldown > 0) this.kickCooldown -= dt;
     if (this.tackleCooldown > 0) this.tackleCooldown -= dt;
     if (this.stunned > 0) this.stunned -= dt;
-    for (const k of ['kick', 'tackle', 'dive', 'header']) if (this.anim[k] > 0) this.anim[k] -= dt;
+    for (const k of ['kick', 'tackle', 'dive', 'header', 'fall']) if (this.anim[k] > 0) this.anim[k] -= dt;
     this.anim.phase += sp * dt * 1.9;
   }
 }

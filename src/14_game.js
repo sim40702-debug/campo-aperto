@@ -297,7 +297,8 @@ class Game {
     this.segmented('pt-press', [{ label: 'Attesa', value: 0.3 }, { label: 'Normale', value: 0.6 }, { label: 'Alto', value: 0.9 }], team.tactics.pressing, v => { team.tactics.pressing = v; this.renderPauseTactics(); });
     this.segmented('pt-form', Object.keys(FORMATIONS).map(f => ({ label: f, value: f })), team.formation, v => {
       team.formation = v;
-      team.players.forEach((p, i) => { p.slot = FORMATIONS[v][i]; });
+      // la rosa resta nell'ordine dei ruoli anche dopo un'espulsione; chi è in porta tiene il ruolo del portiere
+      team.roster.forEach((p, i) => { if (!p.sentOff) p.slot = FORMATIONS[v][p.isGK ? 0 : i]; });
       this.renderPauseTactics();
     });
   }
@@ -511,11 +512,13 @@ class Game {
         ['Passaggio rasoterra: verso la direzione; senza direzione al compagno più libero', k('pass') + (mouse ? ' / Clic sx' : ''), g('pass')],
         ['Lancio lungo o cross', k('long'), g('long')],
         ['Passaggio filtrante (nello spazio davanti al compagno)', k('through'), g('through')],
-        ['Tiro: tieni premuto per caricare, rilascia per calciare. Su o giù scelgono il palo, senza direzione l\'angolo lontano dal portiere', k('shoot') + (mouse ? ' / Clic dx' : ''), g('shoot')],
+        ['Tiro: tieni premuto per caricare, rilascia per calciare. Carica corta = piatto rasoterra, piena = tiro potente (rischia di andare alto). Su o giù scelgono il palo', k('shoot') + (mouse ? ' / Clic dx' : ''), g('shoot')],
+        ['Tiro a giro: tieni premuto anche questo tasto mentre tiri', k('press') + ' + ' + k('shoot'), g('press') + ' + ' + g('shoot')],
+        ['Passaggio teso (più veloce) e filtrante alto', k('press') + ' + ' + k('pass') + ' / ' + k('through'), g('press') + ' + ' + g('pass') + ' / ' + g('through')],
       ]],
       ['Senza palla', [
-        ['Contrasto (da vicino, senza penalità se sei lontano)', k('pass'), g('pass')],
-        ['Scivolata (rischiosa, possibile fallo)', k('shoot'), g('shoot')],
+        ['Contrasto: regolare se prendi il pallone (di fronte o di lato); da dietro, attraverso le gambe, è fallo', k('pass'), g('pass')],
+        ['Scivolata: se manchi il pallone travolgi l\'avversario (fallo, spesso cartellino)', k('shoot'), g('shoot')],
         ['Pressing: tieni premuto e il calciatore va da solo sul portatore o sulla palla', k('press'), g('press')],
         ['Cambio giocatore: il più vicino alla palla, o chi deve ricevere il tuo passaggio', k('switch'), g('switch')],
         ['Cambio verso una direzione', '—', 'Levetta destra (colpetto)'],
@@ -898,13 +901,7 @@ class Game {
   }
 
   // evento della simulazione locale -> stesso formato degli eventi di rete
-  eventFromMatch(m, e) {
-    const ev = { type: e.type, x: m.ball.x, z: m.ball.z };
-    if (e.type === 'kick') ev.power = e.data.power;
-    if (e.type === 'whistle') ev.kind = e.data.type;
-    if (e.type === 'goal') ev.team = e.data.team;
-    return ev;
-  }
+  eventFromMatch(m, e) { return matchEventForNet(m, e); }
 
   // vibrazione del controller (solo se lo si sta usando)
   rumble(ms, strong, weak) {
@@ -920,7 +917,14 @@ class Game {
         if (me && dist2(me.x, me.z, e.x, e.z) < 1.6) this.rumble(e.power > 20 ? 110 : 60, e.power > 20 ? 0.45 : 0.15, 0.5);
         break;
       }
-      case 'tackle': { R.burst('dust', e.x, e.z); const me = this.localPlayer(); if (me && dist2(me.x, me.z, e.x, e.z) < 3) this.rumble(140, 0.7, 0.3); break; }
+      case 'tackle': {
+        // contrasto: polvere ed erba proporzionate alla durezza, una striscia d'erba per la scivolata
+        R.burst('dust', e.x, e.z, { amount: 0.8 + (e.sev || 0) });
+        if (e.slide) R.burst('grass', e.x, e.z, { amount: 1.4 });
+        const me = this.localPlayer(); if (me && dist2(me.x, me.z, e.x, e.z) < 3) this.rumble(140, 0.7, 0.3);
+        break;
+      }
+      case 'ref': this.refereeFeedback(e.r); break;
       case 'whistle': this.audio.whistle(e.kind === 'END' ? 3 : e.kind === 'HALF' ? 2 : 1); break;
       case 'post': this.audio.post(); this.rumble(160, 0.3, 0.8); if (m && this.mode !== 'client') m.showBanner('Palo!', 1.2); else if (m) m.banner = { text: 'Palo!', t: 1.2 }; break;
       case 'save': this.audio.roar(false); break;
@@ -929,10 +933,25 @@ class Game {
         this.replayPending = true;
         const team = m && m.teams[e.team];
         R.burst('confetti', Math.sign(e.x || 1) * 46, 0, { colors: team ? [team.kit[0], team.kit[1]] : null });
+        R.netBulge(Math.sign(e.x || 1), e.y || 1, e.z || 0, e.power || 15);
         R.shake = 0.6;
         this.rumble(450, 1, 0.7);
         break;
       }
+    }
+  }
+
+  // decisioni dell'arbitro: suoni e piccoli effetti (le scritte arrivano dal banner della partita)
+  refereeFeedback(r) {
+    if (!r) return;
+    const R = this.renderer, me = this.localPlayer();
+    switch (r.type) {
+      case 'FOUL':
+        R.burst('dust', r.x, r.z, { amount: 1 + r.severity * 1.5 });
+        if (me && dist2(me.x, me.z, r.x, r.z) < 3) this.rumble(220, 0.9, 0.4);
+        break;
+      case 'RED_CARD': case 'PENALTY': this.audio.roar(false); break;
+      case 'YELLOW_CARD': this.audio.whistle(1); break;
     }
   }
 
@@ -998,10 +1017,14 @@ class Game {
     this.setText('sb-score', m.teams[0].score + ' – ' + m.teams[1].score);
     const min = m.minute();
     this.setText('sb-time', m.state === 'HALFTIME' ? 'Int.' : m.state === 'FULLTIME' ? 'Fine' : (min + 1) + "'");
+    // espulsioni: un rettangolo rosso per ogni giocatore in meno
+    for (const i of [0, 1]) { const n = m.teams[i].stats.red || 0; this.setHidden('sb-red-' + i, !n); this.setText('sb-red-' + i, '▮'.repeat(Math.min(n, 4))); }
+    this.setHidden('sb-adv', !m.advantage);
     const bn = $('banner');
     if (m.banner && !this.replay) {
-      const cls = m.state === 'GOAL' ? 'banner goal' : 'banner';
-      if (bn.hidden || bn.textContent !== m.banner.text) { bn.textContent = m.banner.text; bn.className = cls; }
+      const k = m.banner.kind || 'info';
+      const cls = m.state === 'GOAL' || k === 'goal' ? 'banner goal' : k === 'info' ? 'banner' : 'banner ref ' + k;
+      if (bn.hidden || bn.textContent !== m.banner.text || bn.className !== cls) { bn.textContent = m.banner.text; bn.className = cls; }
       bn.hidden = false;
     } else if (!bn.hidden) bn.hidden = true;
     if (m.state === 'GOAL' && m.lastGoal && !this.replay && m.stateTime > 0.6) {
@@ -1060,6 +1083,7 @@ class Game {
     g.strokeRect(0.5, (34 - 20.16) * sz, 16.5 * sx, 40.32 * sz);
     g.strokeRect(W - 16.5 * sx - 0.5, (34 - 20.16) * sz, 16.5 * sx, 40.32 * sz);
     for (const t of m.teams) for (const p of t.players) {
+      if (p.sentOff) continue;
       const human = m.controllerOf(p);
       g.fillStyle = p.isGK ? '#dddddd' : t.kit[0];
       g.beginPath(); g.arc((p.x + 52.5) * sx, (p.z + 34) * sz, p === mine ? 4 : 3, 0, Math.PI * 2); g.fill();
@@ -1079,7 +1103,9 @@ class Game {
     const h = m.humanById(this.renderer.localId);
     const human = h ? m.teams[h.team] : null;
     $('ft-verdict').textContent = !human ? 'Partita terminata' : human.score > human.opponent().score ? 'Vittoria' : human.score === human.opponent().score ? 'Pareggio' : 'Sconfitta';
-    $('ft-goals').textContent = m.log.length ? m.log.map(g => g.minute + "' " + g.scorer + ' (' + g.team.data.short + (g.own ? ', autogol' : '') + ')').join(', ') : 'Nessun gol';
+    const goals = m.log.length ? m.log.map(g => g.minute + "' " + g.scorer + ' (' + g.team.data.short + (g.own ? ', autogol' : '') + ')').join(', ') : 'Nessun gol';
+    const cards = (m.cardLog || cardList(m.timeline)).map(c => c.minute + "' " + c.name + ' (' + (c.type === 'red' ? 'rosso' : 'giallo') + ')');
+    $('ft-goals').textContent = goals + (cards.length ? '. Cartellini: ' + cards.join(', ') : '');
     const tot = a.stats.possession + b.stats.possession || 1;
     const rows = [
       ['Possesso', Math.round(a.stats.possession / tot * 100) + '%', Math.round(b.stats.possession / tot * 100) + '%'],
@@ -1087,6 +1113,8 @@ class Game {
       ['Tiri in porta', a.stats.onTarget, b.stats.onTarget],
       ['Passaggi riusciti', a.stats.passesOk + ' su ' + a.stats.passes, b.stats.passesOk + ' su ' + b.stats.passes],
       ['Falli', a.stats.fouls, b.stats.fouls],
+      ['Ammonizioni', a.stats.yellow || 0, b.stats.yellow || 0],
+      ['Espulsioni', a.stats.red || 0, b.stats.red || 0],
       ['Calci d\'angolo', a.stats.corners, b.stats.corners],
       ['Fuorigioco', a.stats.offsides, b.stats.offsides],
     ];
