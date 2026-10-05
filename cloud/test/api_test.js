@@ -379,10 +379,12 @@ async function main() {
   ], stake: 10, clientKey: newKey() }, A);
   check('multipla su due partite: quota = prodotto', mult.status === 201 && mult.body.bet.type === 'MULTIPLA' && Math.abs(mult.body.bet.odds - Math.round(oddsOf(d3, 'DC', '1X') * oddsOf(d4, 'DC', 'X2') * 100) / 100) < 0.011);
   await setClock(F2.kickoffAt + 6 * 60000);   // F2 finita (dura ~3-4 minuti), F3 non ancora iniziata
-  await tick();
+  const tk3 = await tick();
   const mv = (await GET('/api/bets/' + mult.body.bet.code, A)).body;
+  const f2now = (await GET('/api/fixtures/' + F2.code)).body;
   check('multipla dopo la prima partita: ' + mv.items[0].status + ' → ' + (mv.items[0].status === 'LOST' ? 'persa subito' : 'resta aperta finché non finisce la seconda'),
-    mv.items[0].status !== 'OPEN' && mv.items[1].status === 'OPEN' && (mv.items[0].status === 'LOST' ? mv.status === 'LOST' : mv.status === 'OPEN'));
+    mv.items[0].status !== 'OPEN' && mv.items[1].status === 'OPEN' && (mv.items[0].status === 'LOST' ? mv.status === 'LOST' : mv.status === 'OPEN'),
+    { tick: tk3.status, tickBody: tk3.body, f2: { phase: f2now.phase, settled: f2now.settled, durationMs: f2now.durationMs, kickoffAt: f2now.kickoffAt, serverTime: f2now.serverTime }, f3: F3.code, items: mv.items.map(i => i.fixture + ':' + i.status) });
 
   // ===== persistenza dopo tutto: riavvio =====
   const snap = { A: await balanceOf(A), B: await balanceOf(B), betA: JSON.stringify((await GET('/api/bets/' + codeA, A)).body) };
