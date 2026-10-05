@@ -21,6 +21,8 @@ const PROTOCOL = 1;                 // deve coincidere con NET.PROTOCOL nel gioc
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // niente 0/O e 1/I per evitare confusione
 const CODE_LEN = 6;
 
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
 function createRelay(opts) {
   opts = Object.assign({
     port: 8787,
@@ -32,6 +34,10 @@ function createRelay(opts) {
     heartbeatMs: 15000,
     maxMsgPerSec: 300,
     quiet: false,
+    lanCodes: false,        // codici che iniziano con 'L' (rete locale); altrimenti mai con 'L'
+    createLocalOnly: false, // 'create' accettato solo da questo computer (loopback)
+    maxConns: 0,            // massimo di socket contemporanei (0 = nessun limite)
+    unattachedMs: 0,        // chiude i socket che non entrano in una stanza entro questo tempo (0 = mai)
   }, opts || {});
   const log = (...a) => { if (!opts.quiet) console.log('[relay]', ...a); };
   const rooms = new Map();            // codice -> stanza
@@ -51,6 +57,7 @@ function createRelay(opts) {
     for (let tries = 0; tries < 50; tries++) {
       let c = '';
       for (let i = 0; i < CODE_LEN; i++) c += CODE_CHARS[crypto.randomInt(CODE_CHARS.length)];
+      c = (opts.lanCodes ? 'L' : c[0] === 'L' ? 'M' : c[0]) + c.slice(1);
       if (!rooms.has(c)) return c;
     }
     return null;
@@ -98,6 +105,7 @@ function createRelay(opts) {
   function attach(ws, room, m) {
     clearTimeout(m.graceTimer);
     if (m.ws && m.ws !== ws) { m.ws.ctx = null; m.ws.close(4000, 'replaced'); }
+    clearTimeout(ws.unTimer);
     m.ws = ws; m.connected = true;
     ws.ctx = { room, member: m };
   }
@@ -120,6 +128,7 @@ function createRelay(opts) {
       // prima del collegamento a una stanza: solo create, join, resume
       if (msg.v !== PROTOCOL) return send(ws, { t: 'error', code: 'VERSION', msg: 'Versione del gioco diversa da quella del server' });
       if (msg.t === 'create') {
+        if (opts.createLocalOnly && !LOOPBACK.has(ip)) return send(ws, { t: 'error', code: 'LOCAL_ONLY', msg: 'Solo chi ospita può creare la partita' });
         if (rooms.size >= opts.maxRooms) return send(ws, { t: 'error', code: 'FULL_SERVER', msg: 'Il server è pieno, riprova più tardi' });
         const code = newCode();
         if (!code) return send(ws, { t: 'error', code: 'FULL_SERVER', msg: 'Impossibile creare la partita' });
@@ -186,6 +195,10 @@ function createRelay(opts) {
 
   wss.on('connection', (ws, req) => {
     const ip = req.socket.remoteAddress;
+    // relay locale: una pagina web aperta nel browser dell'host non deve poterlo raggiungere (file:// e 'null' vanno bene)
+    if (opts.createLocalOnly && /^https?:/i.test(String(req.headers.origin || ''))) { ws.on('error', () => {}); ws.close(1008, 'origin'); return; }
+    if (opts.maxConns && wss.clients.size > opts.maxConns) { ws.on('error', () => {}); ws.close(1013, 'full'); return; }
+    if (opts.unattachedMs) ws.unTimer = setTimeout(() => { if (!ws.ctx) ws.terminate(); }, opts.unattachedMs);
     ws.isAlive = true;
     ws.rate = { n: 0, t: Date.now() };
     ws.on('pong', () => { ws.isAlive = true; });
@@ -207,6 +220,7 @@ function createRelay(opts) {
       try { handleJson(ws, msg, ip); } catch (e) { log('errore messaggio', e.message); }
     });
     ws.on('close', () => {
+      clearTimeout(ws.unTimer);
       const ctx = ws.ctx;
       if (ctx && ctx.member.ws === ws) memberDropped(ctx.room, ctx.member);
     });
