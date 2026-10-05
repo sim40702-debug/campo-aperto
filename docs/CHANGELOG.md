@@ -2,6 +2,36 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.5.0 — 05/10/2026 (arbitro vero, fisica più credibile, grafica)
+- Arbitro (nuovo src/08_referee.js). Prima il fallo era un numero casuale: probabilità di base più scivolata più "da dietro",
+  senza guardare chi prende il pallone; inseguendo il portatore oltre metà dei contrasti diventava fallo. Ora
+  analyzeChallenge ricostruisce la dinamica (linea dell'intervento, pallone raggiungibile o coperto dal corpo, chi lo tocca
+  per primo, contatto e punto di contatto, direzione, velocità di impatto, contesto) e evaluateChallenge decide:
+  contatto da solo mai fallo, pallone preso per primo regolare salvo forza eccessiva, gambe senza pallone fallo,
+  imprudente giallo, grave fallo di gioco rosso, fallo tattico giallo, occasione da rete negata rosso (giallo in area).
+- Vantaggio (con ritorno al fallo se non si concretizza entro 2.5 s), cartellini al fischio, doppio giallo, espulsione
+  (l'espulso esce dal campo, la squadra gioca in dieci, portiere sostituito da un difensore), rigori solo per falli veri.
+- Fuorigioco anche sulle ribattute dei tiri; parate e deviazioni non lo annullano.
+- Registro centrale degli eventi (timeline): GOAL, FOUL, YELLOW_CARD, SECOND_YELLOW, RED_CARD, PENALTY, FREE_KICK, CORNER,
+  OFFSIDE, THROW_IN, GOAL_KICK, ADVANTAGE, KICK_OFF, HALF_TIME, FULL_TIME, con tempo, giocatori, squadra, posizione, motivo,
+  gravità e conseguenza.
+- IA: contrasta solo quando può arrivare al pallone, si affianca se è alle spalle, va in pressione chi è tra il portatore e
+  la porta; ogni tanto sbaglia valutazione (più spesso i difensori aggressivi) e in situazioni pericolose prova la
+  scivolata di recupero.
+- Fisica: resistenza dell'aria quadratica, effetto Magnus laterale e verticale, rimbalzo dipendente dall'impatto, volo dei
+  calci calcolato con la fisica vera; tiro rasoterra, normale, potente, a giro (pressing + tiro); passaggio teso
+  (pressing + passaggio), filtrante nello spazio davanti alla corsa, filtrante alto (pressing + filtrante); primo controllo
+  lungo; conduzione più larga in sprint; accelerazione progressiva e frenata più rapida; urti tra giocatori con massa;
+  pallone che rimbalza sul corpo di chi non lo può giocare. Parate ritarate sulle velocità d'arrivo (gol medi invariati).
+- Grafica: trama dell'erba nello shader del campo, ombre morbide di contatto per giocatori e pallone, rete che si gonfia al
+  gol, caduta dopo un fallo, scia dei tiri potenti, erba e polvere sui contrasti, vignettatura, luce un po' più contrastata.
+  Scritte dell'arbitro in una striscia sotto il tabellone (fallo, giallo, rosso, vantaggio, fuorigioco, rigore), espulsioni e
+  vantaggio nel tabellone, cartellini nel riepilogo finale.
+- Rete: istantanea con 14 valori per calciatore (cartellini, espulsione, caduta), sempre tutti i 22; eventi dell'arbitro
+  inoltrati e ripuliti; il registro degli eventi del client è quello dell'host. Versione 0.5.0: tutti la stessa.
+- Test: nuovo referee_test (54: i 10 casi dell'arbitro con 100-200 prove ciascuno, fuorigioco, eventi, fisica), net_test 83
+  (+5, TEST 10 in multiplayer).
+
 ## 0.4.2 — 05/10/2026 (rete locale: un solo "Crea partita", ricerca più robusta, diagnostica)
 - Causa del "stesso codice ma non trova la partita": il pulsante principale "Crea partita" creava la stanza sul server delle
   impostazioni, che per difetto era ws://localhost:8787, cioè il computer di CHI lo usa. L'host creava la partita sul proprio

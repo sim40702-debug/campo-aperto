@@ -21,7 +21,7 @@ class Renderer {
     r.shadowMap.type = this.Q.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     r.outputEncoding = THREE.sRGBEncoding;
     r.toneMapping = THREE.ACESFilmicToneMapping;
-    r.toneMappingExposure = 0.98;
+    r.toneMappingExposure = 1.04;
     container.appendChild(r.domElement);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#0b1626');
@@ -79,8 +79,8 @@ class Renderer {
 
   buildLights() {
     const s = this.scene;
-    s.add(new THREE.HemisphereLight('#c9dcff', '#27402a', 0.55));
-    const sun = this.sun = new THREE.DirectionalLight('#fff6e6', 0.95);
+    s.add(new THREE.HemisphereLight('#c9dcff', '#1f3a24', 0.5));
+    const sun = this.sun = new THREE.DirectionalLight('#fff3df', 1.05);
     sun.position.set(-35, 90, 45);
     sun.castShadow = true;
     sun.shadow.mapSize.set(this.Q.shadowSize, this.Q.shadowSize);
@@ -149,8 +149,39 @@ class Renderer {
     return tex;
   }
 
+  // trama fine dell'erba (fili e zolle) ripetuta molte volte sul campo: da vicino il prato non sembra più piatto.
+  // Un solo campionamento in più nello shader, nessun oggetto in più.
+  grassDetailTexture() {
+    const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const g = cv.getContext('2d');
+    g.fillStyle = 'rgb(128,128,128)'; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 2600; i++) {
+      const v = 70 + Math.random() * 120 | 0, x = Math.random() * S, y = Math.random() * S, h = 2 + Math.random() * 5;
+      g.strokeStyle = 'rgb(' + v + ',' + v + ',' + v + ')'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random() - 0.5) * 2, y - h); g.stroke();
+    }
+    for (let i = 0; i < 40; i++) {
+      const gr = g.createRadialGradient(0, 0, 0, 0, 0, 1), x = Math.random() * S, y = Math.random() * S, r = 10 + Math.random() * 30;
+      gr.addColorStop(0, 'rgba(' + (Math.random() < 0.5 ? '0,0,0,0.10' : '255,255,255,0.08') + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.save(); g.translate(x, y); g.scale(r, r); g.fillStyle = gr; g.fillRect(-1, -1, 2, 2); g.restore();
+    }
+    const t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = Math.min(this.Q.aniso, this.renderer.capabilities.getMaxAnisotropy());
+    return t;
+  }
+
   buildPitch() {
-    const pitch = this.pitch = new THREE.Mesh(new THREE.PlaneGeometry(105, 68), new THREE.MeshLambertMaterial({ map: this.pitchTexture() }));
+    const pitchMat = new THREE.MeshLambertMaterial({ map: this.pitchTexture() });
+    if (this.Q.detail >= 1) {
+      const detail = this.grassDetailTexture();
+      pitchMat.onBeforeCompile = sh => {
+        sh.uniforms.grassDetail = { value: detail };
+        sh.fragmentShader = 'uniform sampler2D grassDetail;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+          '#include <map_fragment>\n  float gd = texture2D(grassDetail, vUv * vec2(84.0, 54.4)).r;\n  diffuseColor.rgb *= 0.84 + gd * 0.32;');
+      };
+    }
+    const pitch = this.pitch = new THREE.Mesh(new THREE.PlaneGeometry(105, 68), pitchMat);
     pitch.rotation.x = -Math.PI / 2;
     pitch.receiveShadow = true;
     this.scene.add(pitch);
@@ -204,8 +235,37 @@ class Renderer {
       }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      geo.attributes.position.setUsage(THREE.DynamicDrawUsage);
       g.add(new THREE.LineSegments(geo, netMat));
       this.scene.add(g);
+      this.nets = this.nets || [];
+      this.nets.push({ side: s, gx: gx, geo: geo, base: Float32Array.from(pts), hit: null });
+    }
+  }
+
+  // il pallone entra in rete: la rete si gonfia attorno al punto colpito e torna indietro oscillando
+  netBulge(side, y, z, power) {
+    const net = this.nets && this.nets.find(n => n.side === side);
+    if (!net) return;
+    net.hit = { y: clamp(y, 0.1, CONFIG.GOAL_H), z: clamp(z, -CONFIG.GOAL_HALF_W, CONFIG.GOAL_HALF_W), amp: clamp(power / 22, 0.25, 1) * 0.5, t: 0 };
+  }
+  updateNets(dt) {
+    if (!this.nets) return;
+    for (const n of this.nets) {
+      if (!n.hit) continue;
+      const h = n.hit, pos = n.geo.attributes.position.array, base = n.base;
+      h.t += dt;
+      const done = h.t > 2;
+      const disp = done ? 0 : h.amp * Math.exp(-2.6 * h.t) * Math.cos(11 * h.t);
+      for (let i = 0; i < pos.length; i += 3) {
+        const depth = (base[i] - n.gx) * n.side / CONFIG.GOAL_DEPTH;   // 0 sulla linea di porta (fissa), 1 in fondo
+        const dy = base[i + 1] - h.y, dz = base[i + 2] - h.z;
+        const w = Math.exp(-(dy * dy + dz * dz) / 0.9) * clamp(depth, 0, 1);
+        pos[i] = base[i] + n.side * disp * w;
+        pos[i + 1] = base[i + 1] - Math.abs(disp) * w * 0.15;
+      }
+      n.geo.attributes.position.needsUpdate = true;
+      if (done) n.hit = null;
     }
   }
 
@@ -324,10 +384,38 @@ class Renderer {
     // indicatore del giocatore controllato
     const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 3), new THREE.MeshBasicMaterial({ color: '#ffd84a' }));
     arrow.rotation.x = Math.PI; this.arrow = arrow; this.scene.add(arrow);
-    // ombra di contatto della palla quando è in aria
-    this.ballShadow = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.35 }));
+    // ombra morbida del pallone: piccola e scura a terra, più larga e chiara quando sale
+    this.ballShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshBasicMaterial({ map: this.softShadowTexture(), color: '#000000', transparent: true, opacity: 0.55, depthWrite: false }));
     this.ballShadow.rotation.x = -Math.PI / 2; this.ballShadow.position.y = 0.02;
     this.scene.add(this.ballShadow);
+    // ombre di contatto dei giocatori (occlusione ai piedi): tutte in un solo disegno
+    this.footShadows = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: this.softShadowTexture(), color: '#000000', transparent: true, opacity: 0.42, depthWrite: false }), 22);
+    this.footShadows.frustumCulled = false;
+    this.footShadows.count = 0;
+    this.scene.add(this.footShadows);
+    this._shadowM = new THREE.Matrix4(); this._shadowQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)); this._shadowS = new THREE.Vector3(); this._shadowP = new THREE.Vector3();
+  }
+  softShadowTexture() {
+    if (this._softShadow) return this._softShadow;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return this._softShadow = new THREE.CanvasTexture(cv);
+  }
+  setFootShadow(i, x, z, sx, sz, rot) {
+    const q = this._shadowQ.clone();
+    if (rot) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot));
+    this._shadowM.compose(this._shadowP.set(x, 0.018, z), q, this._shadowS.set(sx, sz, 1));
+    this.footShadows.setMatrixAt(i, this._shadowM);
+  }
+  // pallone e ombra: l'ombra si allarga e si schiarisce con l'altezza
+  placeBallShadow(x, y, z) {
+    const h = Math.max(0, y - CONFIG.BALL_R);
+    const k = 1 + h * 0.35;
+    this.ballShadow.position.set(x, 0.02, z);
+    this.ballShadow.scale.set(k, k, 1);
+    this.ballShadow.material.opacity = 0.55 / (1 + h * 0.6);
   }
 
   numberTexture(num, color, bg) {
@@ -444,13 +532,14 @@ class Renderer {
 
   setupMatch(match) {
     for (const pm of this.playerMeshes) this.disposePlayerMesh(pm);
-    this.playerMeshes = match.allPlayers().map(p => this.makePlayerMesh(p));
+    this.playerMeshes = (match.allSlots ? match.allSlots() : match.allPlayers()).map(p => this.makePlayerMesh(p));
     this.match = match;
   }
 
   clearMatch() {
     for (const pm of this.playerMeshes) this.disposePlayerMesh(pm);
     this.playerMeshes = [];
+    this.footShadows.count = 0;
     this.match = null;
   }
 
@@ -478,6 +567,14 @@ class Renderer {
       pm.arms[0].sh.rotation.x = -2.6; pm.arms[1].sh.rotation.x = 2.6;
     }
     if (extra && extra.tackle > 0) { body.rotation.z = -0.9; body.position.y = -0.35; pm.legs[1].hip.rotation.z = 1.4; }
+    if (extra && extra.fall > 0) {
+      // a terra dopo un fallo: cade in avanti, resta giù, si rialza
+      const f = extra.fall, down = f > 0.85 ? (1.1 - f) / 0.25 : f > 0.3 ? 1 : f / 0.3;
+      const k = down * down * (3 - 2 * down);
+      body.rotation.z = -1.45 * k; body.position.y = 0.05 * k;
+      pm.arms[0].sh.rotation.z = pm.arms[1].sh.rotation.z = 2.2 * k;
+      pm.legs[0].hip.rotation.z = 0.3 * k; pm.legs[1].hip.rotation.z = -0.2 * k;
+    }
     if (extra && extra.header > 0) { body.position.y = 0.35; body.rotation.z = 0.25; }
     if (extra && extra.celebrate) { pm.arms[0].sh.rotation.x = -2.8; pm.arms[1].sh.rotation.x = 2.8; body.position.y = Math.abs(Math.sin(phase * 1.5)) * 0.3; }
   }
@@ -498,18 +595,28 @@ class Renderer {
       this.ballMesh.rotation.z -= b.vx * dt / 0.18;
       this.ballMesh.rotation.x += b.vz * dt / 0.18;
     }
-    this.ballShadow.position.set(bx, 0.02, bz);
-    this.ballShadow.visible = by > 0.4;
+    this.placeBallShadow(bx, by, bz);
+    // scia sui tiri potenti: qualche particella dietro al pallone
+    const sp3 = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
+    if (!b.owner && sp3 > 21 && by > 0.25) this.burst('trail', bx, bz, { y: by, amount: Math.min(1.5, (sp3 - 18) / 10) });
     const scorers = match.state === 'GOAL' && match.lastGoal ? match.lastGoal.team : null;
+    let ns = 0;
     for (const pm of this.playerMeshes) {
       const p = pm.player;
+      pm.root.visible = !p.gone;
+      if (p.gone) continue;
       // posizione disegnata (interpolata), usata anche da indicatori e telecamera
       p.rx = mix(p.px, p.x, 2.5); p.rz = mix(p.pz, p.z, 2.5);
       const f = useA && p.pf !== undefined ? p.pf + angleDiff(p.pf, p.facing) * a : p.facing;
       const ph = mix(p.pph, p.anim.phase, 1.5);
       this.poseMesh(pm, p.rx, p.rz, f, ph, p.speed(), p.anim.kick, p.anim.dive > 0 ? p.anim.diveDir : 0,
-        { tackle: p.anim.tackle, header: p.anim.header, celebrate: scorers === p.team && match.stateTime > 0.4 });
+        { tackle: p.anim.tackle, header: p.anim.header, fall: p.anim.fall, celebrate: scorers === p.team && match.stateTime > 0.4 });
+      // ombra di contatto: allungata quando è a terra (caduta, scivolata, tuffo)
+      const lying = p.anim.fall > 0 || p.anim.tackle > 0.3 || p.anim.dive > 0;
+      if (ns < 22) this.setFootShadow(ns++, p.rx + (lying ? Math.cos(f) * 0.7 : 0), p.rz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0);
     }
+    this.footShadows.count = ns;
+    this.footShadows.instanceMatrix.needsUpdate = true;
     this.syncHumanMarks(match, this.localId, this.names);
     // pubblico: si agita di più vicino alle porte e dopo un gol
     const nearGoal = Math.max(0, (Math.abs(bx) - 30) / 22);
@@ -518,6 +625,7 @@ class Renderer {
     this.animateCrowd(dt);
     const mine = match.humanById ? match.humanById(this.localId) : null;
     this.updateFx(dt);
+    this.updateNets(dt);
     this.updateCamera(dt, bx, by, bz, mine && mine.player, match);
   }
 
@@ -532,13 +640,17 @@ class Renderer {
   // aggiornamento dal replay
   syncFromReplay(frame, match, dt) {
     this.ballMesh.position.set(frame[0], frame[1] + 0.07, frame[2]);
-    this.ballShadow.position.set(frame[0], 0.02, frame[2]);
-    this.ballShadow.visible = frame[1] > 0.4;
-    let k = 3;
+    this.placeBallShadow(frame[0], frame[1], frame[2]);
+    let k = 3, ns = 0;
     for (const pm of this.playerMeshes) {
+      pm.root.visible = !pm.player.gone;
       this.poseMesh(pm, frame[k], frame[k + 1], frame[k + 2], frame[k + 3], frame[k + 4], frame[k + 5], frame[k + 6], null);
+      if (pm.root.visible && ns < 22) this.setFootShadow(ns++, frame[k], frame[k + 1], 1, 0.85, 0);
       k += 7;
     }
+    this.footShadows.count = ns;
+    this.footShadows.instanceMatrix.needsUpdate = true;
+    this.updateNets(dt);
     for (const mk of this.humanMarks) { mk.ring.visible = false; if (mk.label) mk.label.visible = false; }
     this.arrow.visible = false;
     this.updateFx(dt);
@@ -629,13 +741,16 @@ class Renderer {
   burst(kind, x, z, opts) {
     opts = opts || {};
     const mult = this.Q.particles;
-    const n = Math.round((kind === 'confetti' ? 220 : kind === 'grass' ? 14 : 10) * mult * (opts.amount || 1));
+    const n = Math.round((kind === 'confetti' ? 220 : kind === 'grass' ? 14 : kind === 'trail' ? 2 : 10) * mult * (opts.amount || 1));
     const c1 = new THREE.Color(), c2 = new THREE.Color();
     if (kind === 'confetti') { c1.set(opts.colors ? opts.colors[0] : '#ffd84a'); c2.set(opts.colors ? opts.colors[1] : '#ffffff'); }
     for (let i = 0; i < n && this.fx.length < this.fxMax; i++) {
       const a = Math.random() * Math.PI * 2;
       let p;
-      if (kind === 'confetti') {
+      if (kind === 'trail') {
+        p = { x: x + (Math.random() - 0.5) * 0.1, y: opts.y + (Math.random() - 0.5) * 0.1, z: z + (Math.random() - 0.5) * 0.1, vx: 0, vy: 0, vz: 0,
+          life: 0, max: 0.18 + Math.random() * 0.1, r: 0.85, g: 0.9, b: 1, drag: 0, grav: 0 };
+      } else if (kind === 'confetti') {
         const c = Math.random() < 0.5 ? c1 : c2;
         p = { x: x + (Math.random() - 0.5) * 8, y: 6 + Math.random() * 8, z: z + (Math.random() - 0.5) * 14,
           vx: (Math.random() - 0.5) * 3, vy: Math.random() * 2, vz: (Math.random() - 0.5) * 3,

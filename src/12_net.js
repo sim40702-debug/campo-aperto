@@ -20,7 +20,11 @@ const NET = {
   STATES: ['KICKOFF', 'PLAY', 'DEAD', 'SETPIECE', 'GOAL', 'HALFTIME', 'FULLTIME'],
   SP_TYPES: ['KICKOFF', 'THROW_IN', 'CORNER', 'GOAL_KICK', 'FREE_KICK', 'PENALTY'],
   HEADER: 34,             // valori fissi in testa all'istantanea
-  PSTRIDE: 12,            // valori per ogni calciatore
+  PSTRIDE: 14,            // valori per ogni calciatore (posizione, animazioni, energia, cartellini, caduta)
+  BANNER_KINDS: ['goal', 'foul', 'yellow', 'red', 'advantage', 'offside', 'penalty', 'info'],
+  REF_TYPES: ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'SECOND_YELLOW', 'PENALTY', 'FREE_KICK', 'CORNER', 'OFFSIDE',
+    'THROW_IN', 'GOAL_KICK', 'ADVANTAGE', 'KICK_OFF', 'HALF_TIME', 'FULL_TIME'],
+  EV_TYPES: ['kick', 'whistle', 'post', 'save', 'goal', 'tackle', 'switch', 'ref'],
 };
 const netNow = () => performance.now() / 1000;
 
@@ -188,8 +192,10 @@ class NetLink {
 }
 
 // ---------- ISTANTANEA BINARIA ----------
+// i calciatori viaggiano sempre tutti e 22 nello stesso ordine (allSlots), espulsi compresi:
+// per ognuno i cartellini e lo stato (in campo, espulso, uscito) stanno nei "flag"
 function encodeSnapshot(m, seq, simTime, slots) {
-  const ps = m.allPlayers();
+  const ps = m.allSlots();
   const f = new Float32Array(NET.HEADER + ps.length * NET.PSTRIDE);
   const b = m.ball;
   f[0] = seq; f[1] = simTime; f[2] = NET.STATES.indexOf(m.state); f[3] = m.stateTime;
@@ -199,7 +205,7 @@ function encodeSnapshot(m, seq, simTime, slots) {
   f[14] = sp && (m.state === 'SETPIECE' || m.state === 'KICKOFF') ? NET.SP_TYPES.indexOf(sp.type) : -1;
   f[15] = sp && sp.taker ? ps.indexOf(sp.taker) : -1;
   f[16] = m.setPieceReady ? 1 : 0;
-  f[17] = 0;
+  f[17] = m.advantage ? 1 : 0;
   for (let s = 0; s < NET.MAX_SLOTS; s++) {
     const h = slots[s] ? m.humanById(slots[s]) : null;
     f[18 + s * 2] = h && h.player ? ps.indexOf(h.player) : -1;
@@ -210,6 +216,8 @@ function encodeSnapshot(m, seq, simTime, slots) {
     f[k] = p.x; f[k + 1] = p.z; f[k + 2] = p.vx; f[k + 3] = p.vz; f[k + 4] = p.facing; f[k + 5] = p.anim.phase;
     f[k + 6] = p.anim.kick; f[k + 7] = p.anim.dive; f[k + 8] = p.anim.diveDir; f[k + 9] = p.anim.tackle;
     f[k + 10] = p.anim.header; f[k + 11] = p.energy;
+    f[k + 12] = Math.min(3, p.cards.yellow) + (p.sentOff ? 4 : 0) + (p.gone ? 8 : 0);
+    f[k + 13] = p.anim.fall;
     k += NET.PSTRIDE;
   }
   return f;
@@ -229,6 +237,49 @@ function sanitizeInput(d) {
     if (m > 0.5) sw = [x / m, z / m];
   }
   return { mx: mx, mz: mz, sprint: !!d.sp, shoot: !!d.sh, press: !!d.pr, acts: acts, sw: sw };
+}
+
+// ---------- EVENTI IN RETE ----------
+// evento della simulazione -> formato compatto per audio, grafica e rete (uguale in locale e sui client)
+function matchEventForNet(m, e) {
+  const ev = { type: e.type, x: m.ball.x, z: m.ball.z };
+  if (e.type === 'kick') ev.power = e.data.power;
+  if (e.type === 'whistle') ev.kind = e.data.type;
+  if (e.type === 'goal') { ev.team = e.data.team; ev.y = m.ball.netHit ? m.ball.netHit.y : m.ball.y; if (m.ball.netHit) { ev.z = m.ball.netHit.z; ev.power = m.ball.netHit.v; } }
+  if (e.type === 'switch') ev.id = e.data.id;
+  if (e.type === 'tackle') { ev.sev = e.data && e.data.sev || 0; ev.slide = !!(e.data && e.data.slide); }
+  if (e.type === 'ref') ev.r = e.data;
+  return ev;
+}
+
+// evento ricevuto dall'host: solo tipi conosciuti, numeri finiti, testi corti
+function cleanNetEvent(e) {
+  if (!e || typeof e !== 'object' || NET.EV_TYPES.indexOf(e.type) < 0) return null;
+  const num = (v, d) => (Number.isFinite(v) ? v : d);
+  const c = { type: e.type, x: clamp(num(e.x, 0), -70, 70), z: clamp(num(e.z, 0), -50, 50), T: num(e.T, 0) };
+  if (e.power !== undefined) c.power = clamp(num(e.power, 0), 0, 60);
+  if (e.y !== undefined) c.y = clamp(num(e.y, 0), 0, 10);
+  if (e.sev !== undefined) c.sev = clamp(num(e.sev, 0), 0, 1);
+  if (e.slide !== undefined) c.slide = e.slide === true;
+  if (typeof e.kind === 'string') c.kind = e.kind.slice(0, 16);
+  if (e.team === 0 || e.team === 1) c.team = e.team;
+  if (typeof e.id === 'string') c.id = e.id.slice(0, 16);
+  if (e.type === 'ref') {
+    const r = e.r;
+    if (!r || typeof r !== 'object' || NET.REF_TYPES.indexOf(r.type) < 0) return null;
+    const who = q => q && typeof q === 'object' ? { id: num(q.id, -1) | 0, num: num(q.num, 0) | 0, name: typeof q.name === 'string' ? q.name.slice(0, 40) : '', team: q.team === 1 ? 1 : 0 } : null;
+    c.r = { type: r.type, minute: num(r.minute, 0) | 0, half: r.half === 2 ? 2 : 1, clock: num(r.clock, 0), team: r.team === 0 || r.team === 1 ? r.team : -1,
+      player: who(r.player), victim: who(r.victim), x: clamp(num(r.x, 0), -70, 70), z: clamp(num(r.z, 0), -50, 50),
+      reason: typeof r.reason === 'string' ? r.reason.slice(0, 80) : '', severity: clamp(num(r.severity, 0), 0, 1),
+      consequence: typeof r.consequence === 'string' ? r.consequence.slice(0, 16) : '' };
+  }
+  return c;
+}
+
+// cartellini della partita per il riepilogo (dal registro degli eventi)
+function cardList(timeline) {
+  return timeline.filter(e => e.type === 'YELLOW_CARD' || e.type === 'RED_CARD').slice(-40)
+    .map(e => ({ type: e.type === 'RED_CARD' ? 'red' : 'yellow', minute: e.minute, team: e.player ? e.player.team : e.team, name: e.player ? e.player.name : '' }));
 }
 
 // ---------- HOST ----------
@@ -385,12 +436,9 @@ class HostSession {
       this.simTime += CONFIG.DT;
       for (const e of m.events) {
         out.push(e);
-        const ev = { type: e.type, x: m.ball.x, z: m.ball.z, T: this.simTime };
-        if (e.type === 'kick') ev.power = e.data.power;
-        if (e.type === 'whistle') ev.kind = e.data.type;
-        if (e.type === 'goal') ev.team = e.data.team;
-        if (e.type === 'switch') ev.id = e.data.id;
-        if (['kick', 'whistle', 'post', 'save', 'goal', 'tackle', 'switch'].indexOf(e.type) >= 0) this.pendingEv.push(ev);
+        const ev = matchEventForNet(m, e);
+        ev.T = this.simTime;
+        if (NET.EV_TYPES.indexOf(e.type) >= 0) this.pendingEv.push(ev);
       }
       m.events.length = 0;
       if (++this.steps % NET.SNAP_EVERY === 0) this.sendSnapshot();
@@ -405,18 +453,19 @@ class HostSession {
     this.link.sendBinary(encodeSnapshot(m, this.seq++, this.simTime, this.slots).buffer);
     if (this.pendingEv.length) { this.link.toAll({ t: 'ev', l: this.pendingEv }); this.pendingEv = []; }
     // cambi importanti (gol, cartello) vanno subito, il resto due volte al secondo
-    const key = (m.banner ? m.banner.text : '') + '|' + m.log.length + '|' + m.state;
+    const key = (m.banner ? m.banner.text : '') + '|' + m.log.length + '|' + m.state + '|' + m.timeline.length;
     if (key !== this.lastMetaKey) this.sendMeta(true);
   }
 
   sendMeta() {
     const m = this.match;
     if (!m) return;
-    this.lastMetaKey = (m.banner ? m.banner.text : '') + '|' + m.log.length + '|' + m.state;
+    this.lastMetaKey = (m.banner ? m.banner.text : '') + '|' + m.log.length + '|' + m.state + '|' + m.timeline.length;
     const lg = m.lastGoal;
     this.link.toAll({
       t: 'meta', T: this.simTime,
-      banner: m.banner ? { text: m.banner.text, t: m.banner.t } : null,
+      banner: m.banner ? { text: m.banner.text, t: m.banner.t, kind: m.banner.kind } : null,
+      cards: cardList(m.timeline),
       lastGoal: lg ? { minute: lg.minute, scorer: lg.scorer, own: !!lg.own, team: lg.team.index } : null,
       log: m.log.map(g => ({ minute: g.minute, scorer: g.scorer, own: !!g.own, team: g.team.index })),
       stats: m.teams.map(t => t.stats),
@@ -452,7 +501,16 @@ class ClientSession {
       case 'lobby': { const L = this.cleanLobby(d); if (L) { this.lobby = L; if (this.onLobby) this.onLobby(L); } break; }
       case 'start': this.buildMatch(d); break;
       case 'meta': this.meta = d; this.applyMeta(); break;
-      case 'ev': for (const e of d.l || []) this.events.push(e); break;
+      case 'ev':
+        if (!Array.isArray(d.l)) break;
+        for (const e of d.l.slice(0, 64)) {
+          const c = cleanNetEvent(e);
+          if (!c) continue;
+          this.events.push(c);
+          // il registro degli eventi del client è quello dell'host: arriva già deciso
+          if (c.type === 'ref' && this.match) { this.match.timeline.push(c.r); if (this.match.timeline.length > 300) this.match.timeline.shift(); }
+        }
+        break;
       case 'pong': this.rtt = Math.round(performance.now() - d.n); break;
       case 'lobby-return': this.match = null; this.mid = null; this.snaps = []; if (this.onLobbyReturn) this.onLobbyReturn(); break;
       case 'reject': if (this.onReject) this.onReject(d.reason); break;
@@ -494,6 +552,7 @@ class ClientSession {
     // la partita del client è un "manichino": non viene simulata, riceve solo le posizioni
     this.match = new Match(this.db[s.home], this.db[s.away], { humans: hs.map(h => ({ id: h.id, team: h.team })), difficulty: s.difficulty, halfSeconds: s.halfSeconds });
     this.match.events.length = 0;
+    this.match.timeline.length = 0;   // il registro degli eventi arriva solo dall'host
     this.mid = d.mid; this.snaps = []; this.delay = undefined; this.events = []; this.replayAcc = 0;
     if (this.onStart) this.onStart(this.match);
   }
@@ -501,7 +560,7 @@ class ClientSession {
   onSnapshot(buf) {
     if (!this.match) return;
     const f = new Float32Array(buf);
-    if (f.length !== NET.HEADER + this.match.allPlayers().length * NET.PSTRIDE) return;
+    if (f.length !== NET.HEADER + this.match.allSlots().length * NET.PSTRIDE) return;
     const T = f[1], now = netNow();
     const d = now - T;
     // il ritardo minimo osservato segue gli sbalzi di rete; sale piano se l'orologio deriva
@@ -515,10 +574,17 @@ class ClientSession {
   applyMeta() {
     const m = this.match, d = this.meta;
     if (!m || !d) return;
-    m.banner = d.banner ? { text: d.banner.text, t: d.banner.t } : null;
+    const bn = d.banner;
+    m.banner = bn && typeof bn.text === 'string' ? { text: bn.text.slice(0, 80), t: Number(bn.t) || 1, kind: NET.BANNER_KINDS.indexOf(bn.kind) >= 0 ? bn.kind : 'info' } : null;
+    if (Array.isArray(d.cards)) m.cardLog = d.cards.slice(0, 40).filter(c => c && typeof c === 'object').map(c => ({
+      type: c.type === 'red' ? 'red' : 'yellow', minute: Number.isFinite(c.minute) ? c.minute : 0, team: c.team === 1 ? 1 : 0, name: typeof c.name === 'string' ? c.name.slice(0, 40) : '' }));
     m.lastGoal = d.lastGoal ? Object.assign({}, d.lastGoal, { team: m.teams[d.lastGoal.team] }) : null;
     m.log = (d.log || []).map(g => Object.assign({}, g, { team: m.teams[g.team] }));
-    (d.stats || []).forEach((st, i) => { if (m.teams[i]) Object.assign(m.teams[i].stats, st); });
+    // statistiche: solo le voci conosciute e solo numeri
+    (Array.isArray(d.stats) ? d.stats.slice(0, 2) : []).forEach((st, i) => {
+      if (!st || typeof st !== 'object') return;
+      for (const k in m.teams[i].stats) if (Number.isFinite(st[k])) m.teams[i].stats[k] = st[k];
+    });
   }
 
   // ricostruisce lo stato da mostrare all'istante (tempo locale - ritardo - interpolazione)
@@ -555,7 +621,8 @@ class ClientSession {
     const jump = Math.hypot(B[9] - A[9], B[11] - A[11]) > 8;   // teletrasporto (rimessa, calcio d'inizio)
     if (jump) { bl.x = B[9]; bl.y = B[10]; bl.z = B[11]; } else { bl.x = L(9); bl.y = L(10); bl.z = L(11); }
     bl.vx = L(12); bl.vz = L(13);
-    const ps = m.allPlayers();
+    const ps = m.allSlots();
+    m.advantage = B[17] > 0 ? {} : null;
     let k = NET.HEADER;
     for (const p of ps) {
       const pj = Math.hypot(B[k] - A[k], B[k + 1] - A[k + 1]) > 6;
@@ -565,6 +632,11 @@ class ClientSession {
       p.anim.phase = Math.abs(B[k + 5] - A[k + 5]) > 3 ? B[k + 5] : L(k + 5);
       p.anim.kick = B[k + 6]; p.anim.dive = B[k + 7]; p.anim.diveDir = B[k + 8];
       p.anim.tackle = B[k + 9]; p.anim.header = B[k + 10]; p.energy = B[k + 11];
+      // cartellini e stato decisi dall'host: un espulso esce anche dalla squadra del client
+      const fl = B[k + 12] | 0;
+      p.cards.yellow = fl & 3; p.sentOff = !!(fl & 4); p.cards.red = p.sentOff; p.gone = !!(fl & 8);
+      if (p.sentOff && p.team.players.indexOf(p) >= 0) p.team.players = p.team.players.filter(q => q !== p);
+      p.anim.fall = B[k + 13];
       k += NET.PSTRIDE;
     }
     const spType = NET.SP_TYPES[B[14]];

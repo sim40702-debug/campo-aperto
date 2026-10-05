@@ -136,6 +136,27 @@ function startLoops(host, clients, hostInput) {
   }
   check('movimento della palla sul client senza scatti (< 1.2 m per fotogramma)', maxStep < 1.2, maxStep.toFixed(2));
 
+  // --- TEST 10: evento arbitrale in multiplayer. Decide solo l'host; ogni client riceve lo stesso evento e lo stesso stato
+  const hmatch = host.match;
+  const offender = hmatch.teams[1].players[5], victim = hmatch.teams[0].players[7];
+  const slotIdx = hmatch.allSlots().indexOf(offender);
+  hmatch.applyFoul(offender, victim, { legal: false, foul: true, advantage: false, yellow_card: true, red_card: false, severity: 0.6, reason: 'Intervento imprudente' },
+    globalThis.challengeContext(hmatch, offender, victim), true);
+  await until(() => c2.match.timeline.some(e => e.type === 'YELLOW_CARD'), 4000);
+  const cy = c2.match.timeline.find(e => e.type === 'YELLOW_CARD'), cf = c2.match.timeline.find(e => e.type === 'FOUL');
+  check('TEST 10 fallo in multiplayer: il client riceve FOUL e YELLOW_CARD dall\'host', cf && cy && cy.player.num === offender.data.number && cf.victim.num === victim.data.number && cf.reason === 'Intervento imprudente', JSON.stringify(cy));
+  await until(() => c2.match.allSlots()[slotIdx].cards.yellow === 1, 3000);
+  check('TEST 10b il cartellino arriva anche nello stato dei calciatori del client', c2.match.allSlots()[slotIdx].cards.yellow === 1 && c1.match.allSlots()[slotIdx].cards.yellow === 1);
+  hmatch.issueCard(offender, 'yellow', 'prova');
+  await until(() => c2.match.allSlots()[slotIdx].sentOff, 3000);
+  const cOff = c2.match.allSlots()[slotIdx];
+  check('TEST 10c secondo giallo: espulso anche sui client e tolto dalla loro squadra', cOff.sentOff && !c2.match.teams[1].players.includes(cOff) && c1.match.allSlots()[slotIdx].sentOff);
+  await wait(300);
+  const sig = e => e.type + ':' + (e.player ? e.player.num : '') + ':' + e.reason;
+  const ht = hmatch.timeline.map(sig), ct = c2.match.timeline.map(sig);
+  check('TEST 10d registro degli eventi del client identico a quello dell\'host', ct.length >= 5 && ct.every((x, i) => x === ht[i]), ct.length + ' / ' + ht.length);
+  check('TEST 10e il client non decide nulla da solo: nessun evento che l\'host non ha', ct.length <= ht.length);
+
   // --- disconnessione improvvisa di Luca: l'IA prende il suo calciatore, nessun crash
   c1Link.ws.close();   // simula la caduta di rete (non è un'uscita volontaria)
   await until(() => !host.match.humanById(c1Link.id), 2000);
