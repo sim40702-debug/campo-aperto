@@ -33,18 +33,8 @@ xattr -cr "/Applications/Campo Aperto.app"
 
 ### Linux
 
-**AppImage**, funziona su qualsiasi distribuzione:
-
-```bash
-chmod +x CampoAperto-*.AppImage
-./CampoAperto-*.AppImage
-```
-
-**Debian / Ubuntu (.deb)**:
-
-```bash
-sudo apt install ./CampoAperto-*.deb
-```
+Le release pubblicano solo Windows e macOS. Su Linux si compila in locale con `npm run dist:linux` (`.AppImage` e
+`.deb` in `release/<versione>/`), oppure si gioca dal sorgente con `npm start`.
 
 ---
 
@@ -165,9 +155,9 @@ npm start    # apre il gioco in una finestra desktop
 |---|---|
 | `npm run dist:win` | Installer `.exe` + portable |
 | `npm run dist:mac` | `.dmg` e `.zip` per Intel e Apple Silicon |
-| `npm run dist:linux` | `.AppImage` e `.deb` |
+| `npm run dist:linux` | `.AppImage` e `.deb` (solo in locale, non nelle release) |
 
-Per compilare tutte le piattaforme insieme con GitHub Actions basta pubblicare un tag:
+Per compilare Windows e macOS insieme con GitHub Actions basta pubblicare un tag:
 
 ```bash
 git tag v0.4.2 && git push --tags
