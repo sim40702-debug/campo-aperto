@@ -1,7 +1,7 @@
 {
   "name": "campo-aperto",
   "productName": "Campo Aperto",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Gioco di calcio 3D originale, undici contro undici",
   "author": "Simone",
   "license": "UNLICENSED",
@@ -22,7 +22,8 @@
     "dist:linux": "node scripts/controlla-electron.js && node build.js desktop && electron-builder --linux",
     "postinstall": "node scripts/controlla-electron.js",
     "server": "node server/relay.js",
-    "server:lan": "node server/relay.js --host 0.0.0.0"
+    "server:lan": "node server/relay.js --host 0.0.0.0",
+    "prova-lan": "node scripts/prova-lan.js"
   },
   "dependencies": {
     "ws": "8.22.0"
