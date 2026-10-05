@@ -10,6 +10,32 @@ function inBoxOf(team, x, z) {
   return Math.abs(x - gx) < CONFIG.BOX_DEPTH && Math.abs(z) < CONFIG.BOX_HALF_W && Math.sign(x) === Math.sign(gx);
 }
 
+// un difensore entra solo se può arrivare al pallone senza passare dal corpo dell'avversario;
+// da dietro rinuncia, salvo i più aggressivi quando l'azione è pericolosa (fallo tattico consapevole)
+function aiWantsTackle(p, carrier) {
+  const m = p.team.match;
+  const g = challengeGeometry(m, p, carrier, 'stand');
+  if (g.ballReachable && !g.shielded && !g.fromBehind) return true;
+  // errore di valutazione: chi difende peggio ed è più irruento a volte entra lo stesso da posizione sbagliata
+  // (spesso è fallo: lo decide poi la dinamica del contrasto, non questo numero)
+  const misjudge = 0.04 + p.data.hidden.aggression / 100 * 0.12 + (1 - p.attr.defense / 100) * 0.08;
+  if ((g.bAlong < g.reach + 0.5 || dist2(p.x, p.z, carrier.x, carrier.z) < 1.6) && rand() < misjudge) return true;
+  const ctx = challengeContext(m, p, carrier);
+  return (ctx.promising || ctx.dogso) && !ctx.inPenaltyArea && rand() < p.data.hidden.aggression / 100 * 0.25;
+}
+
+// scivolata di recupero: solo per fermare un'azione pericolosa, più spesso per i difensori aggressivi.
+// Se manca il pallone travolge l'avversario: da qui nascono gran parte dei falli (e dei cartellini) dell'IA
+function aiWantsSlide(p, carrier) {
+  const m = p.team.match;
+  const ctx = challengeContext(m, p, carrier);
+  if (!ctx.promising && !ctx.dogso) return false;
+  if (p.speed() < 3) return false;
+  const g = challengeGeometry(m, p, carrier, 'slide');
+  if (!g.ballReachable && g.victimFirstHit > g.reach) return false;
+  return rand() < 0.12 + p.data.hidden.aggression / 100 * 0.3;
+}
+
 // ---------- 1) PERCEZIONE: chi arriva prima sulla palla ----------
 function computeIntercepts(match) {
   const pred = match.pred;
@@ -52,8 +78,11 @@ function aiAssignRoles(team) {
     const c = ball.owner;
     const field = team.players.filter(p => !p.isGK).sort((a, b) =>
       dist2(a.x, a.z, c.x, c.z) - dist2(b.x, b.z, c.x, c.z));
-    team.presser = field[0];
-    team.cover = field[1];
+    // in pressione va chi sta tra il portatore e la porta (può contrastare di fronte); chi insegue da dietro copre
+    const goalSide = p => team.uOf(p.x) < team.uOf(c.x) - 0.5;
+    const score = p => dist2(p.x, p.z, c.x, c.z) + (goalSide(p) ? 0 : 6);
+    team.presser = field.slice().sort((a, b) => score(a) - score(b))[0];
+    team.cover = field.find(p => p !== team.presser);
   }
   // marcature: ogni difensore/centrocampista prende l'avversario più vicino alla sua zona
   team.marks = new Map();
@@ -96,16 +125,24 @@ function aiUpdatePlayer(p, dt) {
       const carrierU = team.uOf(c.x); // distanza del portatore dalla NOSTRA porta
       const passive = carrierU > 68 && team.tactics.pressing < 0.5;
       const keep = passive ? 7 : 0.9;
-      const tx = c.x + toGoalX / dg * keep + c.vx * 0.25;
-      const tz = c.z + toGoalZ / dg * keep + c.vz * 0.25;
+      let tx = c.x + toGoalX / dg * keep + c.vx * 0.25;
+      let tz = c.z + toGoalZ / dg * keep + c.vz * 0.25;
+      // alle spalle del portatore il pallone è coperto dal corpo: ci si affianca dal lato del pallone
+      const behind = Math.abs(angleDiff(c.facing, Math.atan2(p.z - c.z, p.x - c.x))) > Math.PI * 0.6;
+      if (!passive && behind && dist2(p.x, p.z, c.x, c.z) < 4) {
+        const fx = Math.cos(c.facing), fz = Math.sin(c.facing);
+        const sd = Math.sign(-(p.x - c.x) * fz + (p.z - c.z) * fx) || 1;
+        tx = c.x + fx * 0.5 - fz * sd * 0.75 + c.vx * 0.2; tz = c.z + fz * 0.5 + fx * sd * 0.75 + c.vz * 0.2;
+      }
       p.moveToward(tx, tz, dist2(p.x, p.z, tx, tz) > 1.2, dt, true);
       p.faceTo(c.x, c.z, dt, 8);
       p.decisionTimer -= dt;
       if (!passive && p.decisionTimer <= 0) {
         p.decisionTimer = 0.25;
         const d = dist2(p.x, p.z, c.x, c.z);
-        const chance = 0.18 + p.attr.defense / 400 + team.tactics.pressing * 0.12 - m.aiNoise(team) * 0.1;
-        if (d < 1.9 && p.tackleCooldown <= 0 && !c.isGK && rand() < chance) m.resolveTackle(p, c, false);
+        const chance = 0.3 + p.attr.defense / 350 + team.tactics.pressing * 0.12 - m.aiNoise(team) * 0.1;
+        if (d < 2.3 && p.tackleCooldown <= 0 && !c.isGK && aiWantsTackle(p, c) && rand() < chance) m.resolveTackle(p, c, false);
+        else if (d < 2.6 && p.tackleCooldown <= 0 && !c.isGK && aiWantsSlide(p, c)) m.resolveTackle(p, c, true);
       }
       return;
     }

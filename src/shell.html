@@ -20,6 +20,8 @@ html, body { height: 100%; margin: 0; background: var(--night); color: var(--cha
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 #stage { position: fixed; inset: 0; }
 #stage canvas { display: block; width: 100%; height: 100%; }
+/* vignettatura leggera: più profondità all'inquadratura, nessun costo per la scheda grafica */
+#stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 58%, rgba(0,0,0,0.3) 100%); }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.45; }
 :focus-visible { outline: 2px solid var(--flood); outline-offset: 2px; }
@@ -170,6 +172,20 @@ body.pad-nav .mode:focus b { color: var(--flood); }
 #sb-time { color: var(--flood); min-width: 62px; justify-content: center; clip-path: var(--slant); padding-right: 20px !important; }
 .banner { position: fixed; top: 24%; left: 0; right: 0; text-align: center; font-family: var(--display); font-weight: 800; font-style: italic; font-size: clamp(34px, 6vw, 64px); text-shadow: 0 3px 0 rgba(0,0,0,0.45); pointer-events: none; animation: pop 0.25s ease-out; }
 .banner.goal { font-size: clamp(80px, 16vw, 190px); color: var(--flood); top: 18%; animation: pop 0.4s cubic-bezier(.2,1.6,.4,1); }
+/* decisioni dell'arbitro: una striscia sotto il tabellone, non una scritta enorme in mezzo al campo */
+.banner.ref { top: calc(64px + env(safe-area-inset-top, 0px)); left: 50%; right: auto; transform: translateX(-50%); display: flex; align-items: center; gap: 12px;
+  font-size: clamp(20px, 2.4vw, 28px); font-style: normal; font-weight: 700; background: rgba(12,26,43,0.88); padding: 6px 18px 6px 14px;
+  border-left: 4px solid var(--chalk); white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; text-shadow: none; animation: slidein 0.22s ease-out; }
+.banner.ref::before { content: ''; flex: none; width: 14px; height: 20px; border-radius: 2px; background: var(--chalk); box-shadow: 0 1px 0 rgba(0,0,0,0.4); }
+.banner.ref.foul { border-left-color: var(--flood); } .banner.ref.foul::before { width: 10px; height: 10px; border-radius: 50%; background: var(--flood); }
+.banner.ref.yellow { border-left-color: #ffd23a; } .banner.ref.yellow::before { background: #ffd23a; transform: rotate(-8deg); }
+.banner.ref.red { border-left-color: var(--signal); } .banner.ref.red::before { background: var(--signal); transform: rotate(-8deg); }
+.banner.ref.advantage { border-left-color: var(--turf-light); } .banner.ref.advantage::before { width: 0; height: 0; background: none; border: 9px solid transparent; border-left: 13px solid var(--turf-light); box-shadow: none; border-radius: 0; }
+.banner.ref.offside { border-left-color: var(--sky); } .banner.ref.offside::before { width: 16px; height: 12px; border-radius: 0; background: linear-gradient(135deg, #ffd84a 50%, var(--signal) 50%); }
+.banner.ref.penalty { border-left-color: var(--signal); } .banner.ref.penalty::before { width: 12px; height: 12px; border-radius: 50%; background: var(--chalk); }
+@keyframes slidein { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.sb-red { color: var(--signal); font-size: 18px; letter-spacing: 1px; padding: 4px 2px !important; }
+.sb-adv { background: var(--turf-light); color: var(--night); font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
 @keyframes pop { from { transform: scale(0.82); opacity: 0; } to { transform: none; opacity: 1; } }
 #scorer { position: fixed; top: 44%; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 600; text-shadow: 0 2px 0 rgba(0,0,0,0.5); }
 #replay-tag { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 18px; font-family: var(--display); font-weight: 800; font-style: italic; font-size: 26px; color: var(--night); background: var(--flood); padding: 2px 14px; }
@@ -415,7 +431,7 @@ body.pad-nav .mode:focus b { color: var(--flood); }
 
 <div id="hud" hidden>
   <div class="scoreboard" role="status" aria-live="polite">
-    <span class="sb-kit" id="sb-home-kit"></span><span id="sb-home"></span><span id="sb-score">0 – 0</span><span id="sb-away"></span><span class="sb-kit" id="sb-away-kit"></span><span id="sb-time">1'</span>
+    <span class="sb-kit" id="sb-home-kit"></span><span id="sb-home"></span><span class="sb-red" id="sb-red-0" hidden></span><span id="sb-score">0 – 0</span><span class="sb-red" id="sb-red-1" hidden></span><span id="sb-away"></span><span class="sb-kit" id="sb-away-kit"></span><span id="sb-time">1'</span><span class="sb-adv" id="sb-adv" hidden>Vantaggio</span>
   </div>
   <div class="netind" id="netind" hidden><span class="dot" id="net-dot"></span><span id="net-text"></span></div>
   <div id="banner" class="banner" hidden></div>

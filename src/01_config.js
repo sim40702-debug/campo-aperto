@@ -27,8 +27,9 @@ const CONFIG = {
   BALL_R: 0.11,
   ROLL_DECEL: 2.6,       // attrito di rotolamento (m/s²)
   ROLL_DRAG: 0.12,       // attrito proporzionale alla velocità
-  AIR_DRAG: 0.07,
-  BOUNCE: 0.55,
+  AIR_DRAG: 0.0125,      // resistenza dell'aria: decelerazione = AIR_DRAG·v² (pallone da 0.43 kg, raggio 0.11 m)
+  MAGNUS: 0.004,         // effetto: accelerazione = MAGNUS·ω·v (ω in rad/s, 50 rad/s a 25 m/s ≈ 5 m/s²)
+  BOUNCE: 0.62,          // restituzione massima del rimbalzo (cala con la forza dell'impatto)
 
   PLAYER_RADIUS: 0.42,
   CONTROL_DIST: 0.85,
