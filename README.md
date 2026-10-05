@@ -10,7 +10,7 @@
 
 ## 🌟 Key Features
 
-- **Arcade Football Gameplay**: Fast-paced 2D match simulation including custom ball physics, player movement, team tactics, and AI.
+- **Arcade Football Gameplay**: Fast-paced 3D match simulation including custom ball physics, player movement, team tactics, and AI.
 - **Multiplayer & Networking**: Real-time multiplayer support via custom relay servers (`server/relay.js` & `src/12_net.js`).
 - **Desktop & Web Support**: Play directly in the browser (`shell.html`) or launch as a desktop app powered by Electron.
 - **Audio & Visual Experience**: Modular rendering engine (`src/09_render.js`) paired with sound effects (`src/10_audio.js`).
