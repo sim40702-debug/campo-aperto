@@ -17,7 +17,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     # bash anche su Windows: PowerShell spezza gli argomenti tipo "-c.publish.x=y"
     defaults:
@@ -51,7 +51,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
