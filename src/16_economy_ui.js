@@ -27,7 +27,7 @@ class Economy {
     this.btTab = 'open'; this.btCursor = null; this.lb = { metric: 'profit', period: 'week' };
     this.shopCat = 'tutti'; this.shopItems = [];
     this.loadouts = new Map();     // aspetto dei giocatori (dal server), per pochi minuti
-    this.api.onChange(() => { this.renderWallet(); this.pullPrefs(); });
+    this.api.onChange(() => { this.renderWallet(); this.pullPrefs(); if (this.api.me && this.g.comps && this.careerUser !== this.api.me.username) { this.careerUser = this.api.me.username; this.careerSync(); } });
     settingsSavedHook = s => this.prefsChanged(s);
     this.bind();
     this.renderWallet();
@@ -152,6 +152,53 @@ class Economy {
     if (slipScreens.includes(name) && this.slip.items.length) { this.requote(); this.every(20000, () => this.requote()); }
   }
 
+  // ---------- campionato del server (cruscotto delle competizioni) ----------
+  // una richiesta all'apertura del cruscotto (niente aggiornamenti continui); i dati sono uguali per tutti
+  renderServerLeague(el) {
+    const box = $('cs-server');
+    if (!this.api.configured()) { box.hidden = true; return; }
+    box.hidden = false;
+    el.innerHTML = '<p class="empty">Caricamento…</p>';
+    this.api.get('/api/league').then(L => {
+      if (!L.season) { el.innerHTML = '<p class="empty">Il campionato del server comincia con le prossime partite.</p>'; return; }
+      const top = L.standings.slice(0, 8);
+      el.innerHTML = '<div class="srv-league"><div><p class="small">Stagione ' + L.season + ' · giornata ' + L.round + ' di ' + L.rounds + ' · ' + L.played + ' partite finite' +
+        (L.previousChampion ? ' · campione della stagione ' + L.previousChampion.season + ': ' + esc(L.previousChampion.name) : '') + '</p>' +
+        '<div class="tbl-wrap"><table class="stand"><thead><tr><th>Pos</th><th class="tl">Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>PT</th><th class="tl">Forma</th></tr></thead><tbody>' +
+        top.map(r => '<tr><td>' + r.pos + '</td><td class="tl"><span class="tt"><i class="kd" style="background:' + esc(r.kit) + '"></i>' + esc(r.name) + '</span></td><td>' + r.pg + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td><td>' + (r.dr > 0 ? '+' : '') + r.dr + '</td><td><b>' + r.pt + '</b></td><td class="tl"><span class="form">' + r.form.map(x => '<i class="f' + x + '">' + x + '</i>').join('') + '</span></td></tr>').join('') +
+        '</tbody></table></div></div><div><h3 class="gsub">Giornata ' + L.round + '</h3><div class="fx-list">' +
+        L.fixtures.map(f => '<div class="fx-item"><span class="h">' + esc(f.home) + '</span>' + (f.score ? '<span class="sc">' + f.score[0] + '-' + f.score[1] + '</span>' : '<span class="sc none">' + (f.phase === 'LIVE' ? 'in corso' : new Date(f.kickoffAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })) + '</span>') + '<span class="a">' + esc(f.away) + '</span><span></span></div>').join('') + '</div>' +
+        (L.scorers.length ? '<p class="small" style="margin-top:10px">Marcatori: ' + L.scorers.slice(0, 5).map(x => esc(x.name) + ' ' + x.goals).join(', ') + '</p>' : '') +
+        '<div class="actions" style="margin-top:12px"><button class="primary sm" id="srv-fixtures">Partite e scommesse</button></div></div></div>';
+      $('srv-fixtures').onclick = () => this.open('fixtures');
+    }).catch(e => { el.innerHTML = '<p class="empty">' + esc(this.errText(e)) + '</p>'; });
+  }
+
+  // ---------- carriera sull'account ----------
+  // le competizioni giocate seguono il giocatore su ogni computer: vince la copia modificata per ultima
+  careerSync() {
+    const comps = this.g.comps;
+    if (!comps || !this.api.loggedIn()) return;
+    const C = comps.career;
+    this.api.get('/api/me/career').then(r => {
+      const local = C.data.updatedAt || 0;
+      if (r.data && r.updatedAt > local) { if (C.replace(Object.assign({}, r.data, { updatedAt: r.updatedAt }))) this.g.toast('Competizioni riprese dall\'account'); }
+      else if (local > (r.updatedAt || 0) && C.comps.length) this.careerPush();
+    }).catch(() => { /* senza rete restano sul computer */ });
+  }
+  careerChanged() {
+    if (!this.api.loggedIn() || (this.g.comps && this.g.comps.career.replaced)) return;
+    clearTimeout(this.careerTimer);
+    this.careerTimer = setTimeout(() => this.careerPush(), 2000);
+  }
+  careerPush() {
+    const C = this.g.comps && this.g.comps.career;
+    if (!C || !this.api.loggedIn()) return;
+    this.api.post('/api/me/career', { data: C.data, updatedAt: C.data.updatedAt }).catch(e => {
+      if (e.code === 'STALE') this.careerSync();
+    });
+  }
+
   // ---------- comandi personalizzati sull'account ----------
   // Con l'account i comandi seguono il giocatore su ogni computer; senza, restano solo su questo (localStorage).
   // Vince la configurazione modificata per ultima.
@@ -267,7 +314,8 @@ class Economy {
       return '<button class="fxrow ' + (f.phase === 'LIVE' ? 'live' : f.phase === 'OPEN' ? 'open' : '') + '" data-fx="' + esc(f.code) + '">' +
         '<span class="when" data-countdown="' + f.kickoffAt + '" data-phase="' + f.phase + '">' + this.whenText(f) + '</span>' +
         '<span class="vs"><span class="kitdot" style="background:' + esc(f.home.kit) + '"></span>' + esc(f.home.name) + ' ' + score + ' ' + esc(f.away.name) + '<span class="kitdot" style="background:' + esc(f.away.kit) + '"></span></span>' +
-        pill + '<span class="small">' + f.bets + (f.bets === 1 ? ' scommessa' : ' scommesse') + '</span></button>';
+        pill + '<span class="small">' + f.bets + (f.bets === 1 ? ' scommessa' : ' scommesse') + '</span>' +
+        (f.comp ? '<span class="fxcomp">' + esc(f.comp.replace('Serie del server · ', '')) + '</span>' : '') + '</button>';
     };
     const grp = (title, list) => list.length ? '<div class="fxgroup">' + title + '</div>' + list.map(row).join('') : '';
     $('fx-list').innerHTML = grp('In corso', r.live) + grp('Prossime', r.next) + grp('Finite', r.finished) ||
@@ -340,6 +388,7 @@ class Economy {
     if (!f) return;
     $('mc-title').textContent = f.home.short + ' – ' + f.away.short;
     const sc = f.score ? '<span class="sc">' + f.score[0] + ' – ' + f.score[1] + '</span>' : '<span class="small">contro</span>';
+    $('mc-comp').textContent = f.comp || '';
     $('mc-teams').innerHTML = '<span class="kitdot" style="background:' + esc(f.home.kit) + '"></span>' + esc(f.home.name) + ' ' + sc + ' ' + esc(f.away.name) + '<span class="kitdot" style="background:' + esc(f.away.kit) + '"></span>';
     this.renderCenterState();
     // schede dei mercati

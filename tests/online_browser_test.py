@@ -88,10 +88,21 @@ async def main():
             # Luca tiene premuto D: il suo calciatore sull'host va verso +x
             lid = await B.evaluate("game.net.link.id")
             x0 = await A.evaluate("(()=>{const h=game.match.humanById('%s'); window.__lp=h.player; return h.player.x})()" % lid)
-            await B.keyboard.down('d'); await B.wait_for_timeout(3000)
+            # predizione: sul client il proprio calciatore si muove subito, prima che arrivi la risposta dell'host
+            # (senza predizione il client mostra l'host 100 ms nel passato: in 90 ms non si vedrebbe nulla)
+            cx0 = await B.evaluate("(()=>{const c=game.net.client, p=c.match.humanById(game.net.link.id).player; return p.x})()")
+            await B.keyboard.down('d'); await B.wait_for_timeout(90)
+            cx1 = await B.evaluate("(()=>{const c=game.net.client, p=c.match.humanById(game.net.link.id).player; return {x:p.x, pred:!!c.pr}})()")
+            check('client: il proprio calciatore risponde subito al tasto (predizione locale, %.2f m in 90 ms)' % (cx1['x'] - cx0), cx1['pred'] and cx1['x'] - cx0 > 0.04, (cx0, cx1))
+            await B.wait_for_timeout(2910)
             st = await A.evaluate("({x: __lp.x, vx: __lp.vx, mx: game.match.humanById('%s').input.mx})" % lid)
             await B.keyboard.up('d')
             check('tastiera del client: comando arrivato all host e calciatore in movimento', st['mx'] == 1 and (st['x'] - x0 > 0.5 or st['vx'] > 1), st)
+            await B.wait_for_timeout(1500)
+            hostP = await A.evaluate("(()=>{const p=game.match.humanById('%s').player; return [p.x, p.z]})()" % lid)
+            cliP = await B.evaluate("(()=>{const p=game.net.client.match.humanById(game.net.link.id).player; return [p.x, p.z]})()")
+            err = ((hostP[0] - cliP[0]) ** 2 + (hostP[1] - cliP[1]) ** 2) ** 0.5
+            check('predizione corretta dall\'host: da fermo la posizione sul client coincide con quella vera (scarto %.2f m)' % err, err < 0.6, (hostP, cliP))
             # sincronizzazione: stesso punteggio e palla vicina
             sync = await B.evaluate("(()=>{const c=game.match; return {bx:c.ball.x, bz:c.ball.z, s:c.teams[0].score+'-'+c.teams[1].score, snaps:game.net.client.snaps.length, rtt:game.net.client.rtt}})()")
             hb = await A.evaluate("({bx:game.match.ball.x, bz:game.match.ball.z, s:game.match.teams[0].score+'-'+game.match.teams[1].score})")

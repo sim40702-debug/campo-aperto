@@ -7,6 +7,9 @@ const SETPIECE_NAMES = {
   GOAL_KICK: 'Rinvio dal fondo', FREE_KICK: 'Punizione', PENALTY: 'Calcio di rigore',
 };
 
+// finestra del buffer dei comandi: abbastanza per un tocco "un attimo prima", non tanto da sembrare automatico
+const INPUT_BUFFER_S = 0.2;
+
 class Match {
   // opts.rng: generatore casuale proprio della partita (makeRng(seme)). Con lo stesso seme la partita si ripete
   // identica, anche se intanto altro codice usa rand(): così il server la calcola e i client la rivedono uguale.
@@ -726,6 +729,12 @@ class Match {
     }
     // tiro: un tocco rapidissimo (premuto e rilasciato tra due passi) conta comunque come tiro debole
     const shootHeld = !!input.shoot || !!pressed.shootDown;
+    // buffer di comandi (0,2 s): passaggio, lancio, filtrante o tiro premuti un istante prima di avere la palla
+    // (palla libera o in arrivo da un compagno) partono appena la si controlla. Mai dopo un contrasto.
+    const now = this.realTime, buf = h.buf || (h.buf = {});
+    const looseOrOurs = !b.owner || (b.owner.team === team && b.owner !== p);
+    if (looseOrOurs && this.state === 'PLAY') for (const k of ['pass', 'long', 'through']) if (pressed[k]) buf[k] = now;
+    const buffered = k => buf[k] !== undefined && now - buf[k] <= INPUT_BUFFER_S;
     // in un piazzato il battitore umano mira e batte
     if (this.state === 'SETPIECE' || this.state === 'KICKOFF') {
       if (this.setPiece.taker !== p) return null;
@@ -733,7 +742,7 @@ class Match {
       this.humanSetPieceInput(p, h, dt);
       return p;
     }
-    if (this.state !== 'PLAY') { h.shootCharge = 0; h.prevShoot = shootHeld; return p; }
+    if (this.state !== 'PLAY') { h.shootCharge = 0; h.prevShoot = shootHeld; h.buf = {}; return p; }
     const dirX = input.mx, dirZ = input.mz;
     const hasDir = len(dirX, dirZ) > 0.2;
     if (b.owner === p && p.isGK) {
@@ -766,9 +775,11 @@ class Match {
       p.moveToward(p.icX, p.icZ, input.sprint, dt, true);
     } else p.moveDir(dirX, dirZ, input.sprint, dt);
     if (b.owner === p) {
-      if (pressed.pass) this.humanPass(p, input, 'pass');
-      else if (pressed.long) this.humanPass(p, input, 'lob');
-      else if (pressed.through) this.humanPass(p, input, 'through');
+      const shotBuf = buf.shot && now - buf.shot.t <= INPUT_BUFFER_S ? buf.shot : null;
+      if (pressed.pass || buffered('pass')) this.humanPass(p, input, 'pass');
+      else if (pressed.long || buffered('long')) this.humanPass(p, input, 'lob');
+      else if (pressed.through || buffered('through')) this.humanPass(p, input, 'through');
+      else if (shotBuf && !shootHeld) doShot(p, this.humanShotAim(p, input), Math.max(0.25, shotBuf.charge), { curl: !!input.press });
       // tiro con carica: tieni premuto e rilascia
       else {
         if (shootHeld) h.shootCharge = Math.min(1, h.shootCharge + dt / 0.9);
@@ -777,9 +788,14 @@ class Match {
           h.shootCharge = 0;
         }
       }
+      if (b.owner !== p) { h.buf = {}; h.shootCharge = 0; }
+    } else if (looseOrOurs) {
+      // palla libera o di un compagno: il tiro si può già caricare (tiro al volo appena arriva)
+      if (shootHeld) h.shootCharge = Math.min(1, h.shootCharge + dt / 0.9);
+      else if (h.prevShoot && h.shootCharge > 0) { buf.shot = { t: now, charge: h.shootCharge }; h.shootCharge = 0; }
     } else {
-      // senza palla la carica del tiro si azzera
-      h.shootCharge = 0;
+      // palla agli avversari: la carica del tiro si azzera, i comandi in attesa pure
+      h.shootCharge = 0; h.buf = {};
       // difesa: contrasto (passaggio) o scivolata (tiro)
       if (opp && !opp.isGK && p.tackleCooldown <= 0) {
         const d = dist2(p.x, p.z, opp.x, opp.z);

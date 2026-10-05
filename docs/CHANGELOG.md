@@ -2,6 +2,37 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.8.0 — 05/10/2026 (competizioni, reattività, personaggi)
+- **Competizioni** (menu Competizioni, al posto di "In costruzione"): Campionato all'italiana (6-20 squadre, andata o
+  andata e ritorno, giornate, classifica con scontri diretti, forma, serie, porte inviolate, % vittorie, statistiche,
+  marcatori, fine stagione con campione, miglior attacco e difesa, capocannoniere, nuova stagione con storico), Torneo
+  (8/16/32, sedicesimi → finale) e Coppe configurabili (nome, squadre, gironi + eliminazione, andata e ritorno con finale
+  secca, supplementari, rigori o ripetizione; modelli pronti). 32 squadre: le 8 del server più 24 nuove, tutte originali.
+- **Partite vere**: Gioca usa il motore della partita; il risultato torna da solo nella competizione e la giornata si
+  completa con la simulazione ufficiale. Supplementari e rigori sono nel motore (KnockoutMatch): rigori con rincorsa,
+  tiro caricato e tuffo del portiere, anche col giocatore. Il risultato non si modifica né si rilancia: niente
+  Ricomincia/Rivincita, uscita a metà = resto simulato dal punteggio, gioco chiuso a metà = partita simulata al riavvio.
+- **Simulazione**: forza dalle rose vere (attacco, difesa, portiere), forma delle ultime 5, fattore campo, casualità con
+  seme per partita (sempre lo stesso risultato). La più forte vince più spesso ma non sempre.
+- **Serie del server**: le partite delle scommesse formano un campionato con giornate e classifica ufficiale (solo partite
+  finite), marcatori, stagioni; etichetta della giornata su ogni partita. Liquidazione invariata, tutta sul server.
+- **Salvataggi**: carriera sul computer e, con l'account, sul server (vince la copia più recente, nessun aggiornamento
+  continuo). Migrazione 0004.
+- **Reattività**: movimento dei calciatori guidati da una persona riscritto (primo passo in 67 ms, inversione 0,30 s invece
+  di 0,63, curva di 90° 0,28 s invece di 0,60, frenata 0,30 s, scatto progressivo, curve più larghe in scatto, corpo che
+  gira subito); buffer di 0,2 s per passaggio, lancio, filtrante e tiro premuti un istante prima di ricevere (prima
+  andavano persi); carica del tiro visibile subito; anello che si allarga al cambio giocatore; piccoli colpi di
+  telecamera sui tuoi tiri potenti e contrasti duri. L'IA e le partite del server non cambiano comportamento.
+- **Online**: predizione del proprio calciatore sul client (risponde subito, corretto da ogni istantanea dell'host:
+  scarto 3 cm da fermo), palla ai piedi in conduzione, gesto del calcio immediato.
+- **Menu**: ogni pulsante si abbassa e suona alla pressione (non al rilascio).
+- **Personaggi**: scheletro con bacino, busto e testa separati, proporzioni da atleta (anca 0,92 m, spalle ~46 cm),
+  polpacci, scarpe con tallone, colletto e bordi; corsa con spalle contro anche e ginocchio alto in scatto, frenata
+  accovacciata, respiro e sguardo da fermo, calcio con rotazione del busto, contrasto in piedi distinto dalla scivolata,
+  colpo di testa con stacco, caduta con le braccia avanti, quattro esultanze.
+- Test: competizioni 27 + 32, supplementari e rigori 16, reattività 12, API 124, nel browser competizioni 26,
+  reattività 10, online 20, economia 65.
+
 ## 0.7.1 — 05/10/2026 (nomi delle squadre)
 - Nuova partita: il nome della squadra di casa non si vedeva. Causa: due elementi con lo stesso id ("home-name"), il
   nome del giocatore nella Home e quello della squadra; il gioco scriveva nel primo. Ora la Home usa "home-user-name".
