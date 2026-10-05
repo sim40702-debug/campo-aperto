@@ -1,7 +1,9 @@
 // Test dei mercati (modulo puro): quote, linee, liquidazione, multiple, vincite.
 // node test/markets_test.js
 import fs from 'node:fs';
-import { buildMarkets, settleSelection, settleBet, payoutOf, currentOdds, linesFor, MIN_ODDS, MAX_ODDS, GROUPS } from '../src/markets.js';
+import { buildMarkets, settleSelection, settleBet, currentOdds, linesFor, MIN_ODDS, MAX_ODDS, GROUPS } from '../src/markets.js';
+import { payoutFor, RULES } from '../src/betlogic.js';
+const payoutOf = (stake, list) => payoutFor(stake, list.reduce((p, o) => p * o, 1));
 
 const model = JSON.parse(fs.readFileSync(new URL('../src/odds-model.json', import.meta.url), 'utf8'));
 let pass = 0, failN = 0;
@@ -33,11 +35,22 @@ const mk01 = buildMarkets(model, 0, 1, names);
 const over = ['1', 'X', '2'].reduce((s, x) => s + 1 / mk01.book['1X2:' + x].o, 0);
 check('margine del banco 1X2 tra 1 e 1.12 (' + over.toFixed(3) + ')', over > 1 && over < 1.12);
 
+// 2b. ogni selezione di ogni listino ha una regola di liquidazione (nessuna selezione senza regola)
+let noRule = [];
+for (const key of Object.keys(model.pairs)) {
+  const [h, a] = key.split('-').map(Number);
+  for (const m of buildMarkets(model, h, a, names).markets) for (const sel of m.sels) {
+    const r = RULES[m.id];
+    if (!r || r.test({ g: [0, 0], g1: [0, 0], firstGoal: -1, lastGoal: -1, c: [0, 0], firstCorner: -1, k: [0, 0], firstCard: -1, red: false, pen: false, s: [0, 0], o: [0, 0], pos: [50, 50] }, sel.id) === null) noRule.push(m.id + ':' + sel.id);
+  }
+}
+check('ogni selezione dei listini ha la sua regola di liquidazione', noRule.length === 0, [...new Set(noRule)].slice(0, 5));
+
 // 3. linee
 check('linee vicine alla media', JSON.stringify(linesFor(2.4)) === JSON.stringify([1.5, 2.5, 3.5]) && JSON.stringify(linesFor(0.1)) === JSON.stringify([0.5, 1.5]));
 
 // 4. liquidazione delle selezioni con fatti noti
-const S = (m, s) => settleSelection(model, 0, 1, names, m, s, F);
+const S = (m, s) => settleSelection(m, s, F);
 const cases = [
   ['1X2', '1', 'WON'], ['1X2', 'X', 'LOST'], ['1X2', '2', 'LOST'], ['DC', '1X', 'WON'], ['DC', 'X2', 'LOST'], ['DC', '12', 'WON'],
   ['HT', '1', 'WON'], ['HCP', 'H-1.5', 'LOST'], ['HCP', 'A+1.5', 'WON'], ['CS', '2-1', 'WON'], ['CS', '1-1', 'LOST'], ['CS', 'ALTRO', 'LOST'],
@@ -48,7 +61,7 @@ const cases = [
 ];
 const wrong = cases.filter(([m, s, want]) => S(m, s) !== want).map(([m, s, want]) => [m, s, want, S(m, s)]);
 check('liquidazione di ' + cases.length + ' selezioni su fatti noti', wrong.length === 0, wrong);
-check('fatti mancanti o partita annullata = VOID', settleSelection(model, 0, 1, names, '1X2', '1', null) === 'VOID' && settleSelection(model, 0, 1, names, '1X2', '1', { void: true }) === 'VOID');
+check('fatti mancanti o partita annullata = VOID', settleSelection('1X2', '1', null) === 'VOID' && settleSelection('1X2', '1', { void: true }) === 'VOID');
 // linee che dipendono dalla coppia: corner e tiri in porta con la linea vera del mercato
 const tc = mk01.markets.find(m => m.id === 'TC');
 if (tc) {

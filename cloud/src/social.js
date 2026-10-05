@@ -8,7 +8,7 @@ import { seasonOf } from './rewards.js';
 
 const PAGE = 20;
 const PUBLIC = "b.visibility = 'public' AND u.public_bets = 1";
-const COLS = 'b.id, b.code, b.user_id, b.stake, b.odds, b.potential_payout, b.status, b.payout, b.visibility, b.shared, b.copied_from, b.created_at, b.settled_at, u.username, u.public_bets';
+const COLS = 'b.id, b.code, b.user_id, b.stake, b.odds, b.base_odds, b.bonus_pct, b.potential_payout, b.status, b.payout, b.visibility, b.shared, b.copied_from, b.created_at, b.settled_at, u.username, u.public_bets';
 
 // scommesse dei giocatori su una partita. before: pagine più vecchie; after: solo le nuove (aggiornamento leggero)
 export async function fixtureFeed(env, code, viewer, q) {

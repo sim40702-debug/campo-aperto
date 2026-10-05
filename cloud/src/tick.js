@@ -56,25 +56,25 @@ export async function ensureFixtures(env, t) {
 // e l'accredito ha riferimento unico (codice della scommessa), quindi un giro interrotto si riprende senza doppioni.
 export async function settleFixture(env, f, t) {
   const F = JSON.parse(f.facts);
-  const names = { home: f.home_name, away: f.away_name };
   const { results: sels } = await env.DB.prepare("SELECT DISTINCT market, selection FROM bet_items WHERE fixture_id = ? AND status = 'OPEN'").bind(f.id).all();
   if (sels.length) {
     await env.DB.batch(sels.map(s => env.DB.prepare("UPDATE bet_items SET status = ? WHERE fixture_id = ? AND market = ? AND selection = ? AND status = 'OPEN'")
-      .bind(f.status === 'VOID' ? 'VOID' : settleSelection(model, f.home, f.away, names, s.market, s.selection, F), f.id, s.market, s.selection)));
+      .bind(f.status === 'VOID' ? 'VOID' : settleSelection(s.market, s.selection, F), f.id, s.market, s.selection)));
   }
   // scommesse ancora aperte che toccano questa partita (le multiple restano aperte finché non finiscono tutte)
   let lastId = 0, settled = 0;
   for (;;) {
     const { results: bets } = await env.DB.prepare(
-      "SELECT DISTINCT b.id, b.code, b.user_id, b.stake, b.odds FROM bet_items i JOIN bets b ON b.id = i.bet_id WHERE i.fixture_id = ? AND b.status = 'OPEN' AND b.id > ? ORDER BY b.id LIMIT ?")
+      "SELECT DISTINCT b.id, b.code, b.user_id, b.stake, b.odds, b.bonus_pct FROM bet_items i JOIN bets b ON b.id = i.bet_id WHERE i.fixture_id = ? AND b.status = 'OPEN' AND b.id > ? ORDER BY b.id LIMIT ?")
       .bind(f.id, lastId, BET_BATCH).all();
     if (!bets.length) break;
     lastId = bets[bets.length - 1].id;
-    const { results: items } = await env.DB.prepare('SELECT bet_id, odds, status FROM bet_items WHERE bet_id IN (' + bets.map(() => '?').join(',') + ')')
+    const { results: items } = await env.DB.prepare('SELECT bet_id, odds, eff_odds, bonus_flag, status FROM bet_items WHERE bet_id IN (' + bets.map(() => '?').join(',') + ')')
       .bind(...bets.map(b => b.id)).all();
     const done = [];
     for (const b of bets) {
-      const r = settleBet(b.stake, items.filter(i => i.bet_id === b.id));
+      // quota effettiva (selezioni collegate della stessa partita) se c'è, altrimenti quella della selezione
+      const r = settleBet(b.stake, items.filter(i => i.bet_id === b.id).map(i => ({ status: i.status, odds: i.eff_odds || i.odds, bonusFlag: i.bonus_flag })), b.bonus_pct);
       if (r) done.push(Object.assign({}, b, r));
     }
     const stmtsFor = b => {

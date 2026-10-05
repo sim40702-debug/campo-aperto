@@ -65,6 +65,7 @@ class Game {
     if (panel) {
       const el = $(panel);
       el.hidden = false;
+      if (el.scrollTop) el.scrollTop = 0;   // ogni schermata si apre dall'inizio
       el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
     }
     if (name === 'setup') this.renderSetup();
