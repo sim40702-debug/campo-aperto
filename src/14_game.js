@@ -3,14 +3,15 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['menu', 'setup', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile'];
+const SCREENS = ['menu', 'setup', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 
 class Game {
   constructor() {
     this.settings = loadSettings();
     if (!this.settings.name) { this.settings.name = 'Giocatore ' + (10 + Math.floor(Math.random() * 90)); saveSettings(this.settings); }
-    this.db = buildDatabase(2026);
+    // le 8 squadre del server (stesso seme) più le altre della carriera (sempre uguali, per tornei fino a 32)
+    this.db = buildDatabase(2026).concat(buildExtraTeams());
     setSeed(Date.now() % 100000);
     this.renderer = new Renderer($('stage'), this.settings.quality);
     this.renderer.setResolutionScale(this.settings.resScale);
@@ -48,6 +49,8 @@ class Game {
     this.bindUI();
     this.fxw = null;
     this.eco = new Economy(this);
+    this.comps = new CompetitionsUI(this);
+    this.compMatch = null;      // partita di una competizione in corso: { compId, fid }
     this.startDemo();
     this.showScreen('menu');
     requestAnimationFrame(t => this.loop(t));
@@ -64,7 +67,7 @@ class Game {
   showScreen(name) {
     this.screen = name;
     for (const id of SCREENS) $(id).hidden = true;
-    const panel = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', match: 'hud' }[name] || (ECO_SCREENS.includes(name) ? name : null);
+    const panel = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
     if (panel) {
       const el = $(panel);
       el.hidden = false;
@@ -137,6 +140,7 @@ class Game {
     $('ft-rematch').onclick = () => { if (this.mode === 'host') this.net.host.backToLobby(); else this.startMatch(); };
     $('ft-setup').onclick = () => { this.quitToMenu(); this.showScreen('setup'); };
     $('ft-menu').onclick = () => this.quitToMenu();
+    $('ft-comp').onclick = () => { const id = this.lastCompId; this.quitToMenu(); if (id) this.comps.open(id); };
     // online
     $('on-name').value = this.settings.name;
     $('on-name').onchange = () => { this.settings.name = $('on-name').value.trim().slice(0, 16) || this.settings.name; saveSettings(this.settings); };
@@ -272,7 +276,31 @@ class Game {
     this.eco.dressMatch(m, localId, names);
   }
 
+  // partita di una competizione: motore vero (con supplementari e rigori quando serve un vincitore)
+  startCompMatch(comp, f) {
+    const cfg = comp.config, C = this.comps.career;
+    const side = f.home === cfg.userTeam ? 0 : f.away === cfg.userTeam ? 1 : -1;
+    const team = (idx, mine) => {
+      const t = namedTeam(this.db[idx], this.settings.teamNames[idx]);
+      const copy = Object.assign({}, t, { tactics: Object.assign({}, t.tactics) });
+      if (mine) copy.tactics.mentality = this.setup.mentality;
+      return copy;
+    };
+    const rules = C.matchRules(comp, f);
+    const opts = { humanTeam: side, difficulty: cfg.difficulty, halfSeconds: cfg.halfSeconds };
+    const m = rules ? new KnockoutMatch(team(f.home, side === 0), team(f.away, side === 1), Object.assign(opts, { knockout: rules }))
+      : new Match(team(f.home, side === 0), team(f.away, side === 1), opts);
+    C.markInProgress(comp, f.id);
+    this.compMatch = { compId: comp.id, fid: f.id };
+    this.lastCompId = comp.id;
+    this.mode = 'offline';
+    this.prepareMatchView(m, 'local', null);
+    $('netind').hidden = true;
+    m.showBanner(comp.name + ' · ' + C.roundLabel(comp, C.currentRound(comp)), 3);
+  }
+
   startMatch() {
+    this.compMatch = null;
     const s = this.setup;
     const home = this.teamForMatch(s.home, s.side === 0), away = this.teamForMatch(s.away, s.side === 1);
     const m = new Match(home, away, { humanTeam: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds });
@@ -309,6 +337,12 @@ class Game {
 
   quitToMenu() {
     if (this.mode === 'fixture') { this.stopFixtureWatch(true); return; }
+    // partita di competizione lasciata a metà: il tempo che manca si simula dal punteggio attuale
+    if (this.compMatch && this.match && this.match.state !== 'FULLTIME') {
+      const f = this.comps.matchAbandoned(this.compMatch, this.match);
+      if (f) this.toast('Partita lasciata a metà: il resto è stato simulato (' + this.teamName(f.home) + ' ' + f.h + '-' + f.a + ' ' + this.teamName(f.away) + ')');
+    }
+    this.compMatch = null;
     if (this.net) this.leaveOnline(false);
     this.mode = 'menu';
     this.match = null; this.paused = false; this.replay = null;
@@ -325,7 +359,8 @@ class Game {
       const online = this.mode !== 'offline';
       $('pause-online').hidden = !online;
       $('pause-online').textContent = this.mode === 'fixture' ? 'Partita del server: il tempo continua mentre sei in questo menu.' : 'Partita online: il gioco continua mentre sei in questo menu.';
-      $('pause-restart').hidden = online;
+      // in una competizione non si ricomincia: il risultato non si può rifare
+      $('pause-restart').hidden = online || !!this.compMatch;
       $('pause-quit').textContent = this.mode === 'host' ? 'Chiudi la partita per tutti' : this.mode === 'fixture' ? 'Torna al centro partita' : online ? 'Esci dalla partita' : 'Esci al menu';
       $('pause-camera').textContent = 'Telecamera: ' + CAMERA_NAMES[this.renderer.camMode];
       $('pause-restart').textContent = 'Ricomincia';
@@ -443,7 +478,7 @@ class Game {
   navRoot() {
     if (!$('busy').hidden) return $('busy');
     if (this.screen === 'match') return this.paused && !$('pause').hidden ? $('pause') : null;
-    const id = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime' }[this.screen] || (ECO_SCREENS.includes(this.screen) ? this.screen : null);
+    const id = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime' }[this.screen] || (ECO_SCREENS.includes(this.screen) || COMP_SCREENS.includes(this.screen) ? this.screen : null);
     return id ? $(id) : null;
   }
   navItems(root) {
@@ -500,7 +535,8 @@ class Game {
       case 'settings': this.closeSettings(); break;
       case 'help': this.closeHelp(); break;
       case 'center': this.eco.open('fixtures'); break;
-      case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': this.showScreen('menu'); break;
+      case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': case 'comps': this.showScreen('menu'); break;
+      case 'comp': case 'comp-new': this.comps.openDashboard(); break;
     }
   }
   // tasti nei menu (la partita non è in corso o è in pausa)
@@ -633,7 +669,7 @@ class Game {
     this.input.capture = null; this.input.padCapture = null;
     const r = this.settingsReturn;
     if (r === 'pause') { this.showScreen('match'); this.togglePause(true); }
-    else this.showScreen(r === 'online' || ECO_SCREENS.includes(r) ? r : 'menu');
+    else this.showScreen(r === 'online' || ECO_SCREENS.includes(r) || COMP_SCREENS.includes(r) ? r : 'menu');
   }
 
   renderSettings() {
@@ -1036,7 +1072,8 @@ class Game {
       case 'save': this.audio.roar(false); break;
       case 'goal': {
         this.audio.roar(true);
-        this.replayPending = true;
+        // ai rigori niente replay: il prossimo tiro arriva subito
+        if (!(m && m.so)) this.replayPending = true;
         const team = m && m.teams[e.team];
         R.burst('confetti', Math.sign(e.x || 1) * 46, 0, { colors: team ? [team.kit[0], team.kit[1]] : null });
         R.netBulge(Math.sign(e.x || 1), e.y || 1, e.z || 0, e.power || 15);
@@ -1122,7 +1159,9 @@ class Game {
     const m = this.match;
     this.setText('sb-score', m.teams[0].score + ' – ' + m.teams[1].score);
     const min = m.minute();
-    this.setText('sb-time', m.state === 'HALFTIME' ? 'Int.' : m.state === 'FULLTIME' ? 'Fine' : (min + 1) + "'");
+    this.setText('sb-time', m.so ? 'Rigori' : m.state === 'HALFTIME' ? 'Int.' : m.state === 'FULLTIME' ? 'Fine' : (min + 1) + "'");
+    // serie dei rigori: punteggio della serie accanto al risultato
+    if (m.so) this.setText('sb-score', m.teams[0].score + ' – ' + m.teams[1].score + '  (' + m.so.score[0] + '-' + m.so.score[1] + ')');
     // espulsioni: un rettangolo rosso per ogni giocatore in meno
     for (const i of [0, 1]) { const n = m.teams[i].stats.red || 0; this.setHidden('sb-red-' + i, !n); this.setText('sb-red-' + i, '▮'.repeat(Math.min(n, 4))); }
     this.setHidden('sb-adv', !m.advantage);
@@ -1226,8 +1265,26 @@ class Game {
     ];
     $('ft-stats').innerHTML = '<tr><th>' + a.data.short + '</th><th></th><th>' + b.data.short + '</th></tr>' +
       rows.map(r => '<tr><td>' + r[1] + '</td><th>' + r[0] + '</th><td>' + r[2] + '</td></tr>').join('');
-    $('ft-rematch').hidden = this.mode === 'client' || this.mode === 'fixture';
-    $('ft-setup').hidden = this.mode !== 'offline';
+    const cm = this.compMatch;
+    $('ft-rematch').hidden = this.mode === 'client' || this.mode === 'fixture' || !!cm;
+    $('ft-setup').hidden = this.mode !== 'offline' || !!cm;
+    $('ft-comp').hidden = !cm;
+    $('ft-comp-note').hidden = !cm;
+    if (cm) {
+      // il risultato del motore va nella competizione (una volta sola), poi si simula il resto della giornata
+      const r = m.result ? m.result() : null;
+      if (r && (r.et || r.pens)) $('ft-score').textContent += (r.et ? '  d.t.s.' : '') + (r.pens ? '  ·  rigori ' + r.pens.h + '-' + r.pens.a : '');
+      if (r && human && (r.winner === 0 || r.winner === 1)) $('ft-verdict').textContent = r.winner === human.index ? (r.pens ? 'Vittoria ai rigori' : 'Qualificati') : (r.pens ? 'Sconfitta ai rigori' : 'Eliminati');
+      if (!cm.recorded) {
+        cm.recorded = true;
+        const c = this.comps.matchFinished(cm, m);
+        if (c) {
+          const o = this.comps.career.overview(c);
+          $('ft-comp-note').textContent = c.status === 'finished' ? '🏆 ' + c.name + ': vince ' + this.teamName(c.champion) + '!' :
+            c.name + ' · risultato registrato' + (o.position ? ' · ' + o.position + 'º posto' : '') + (o.userOut ? ' · la tua squadra è eliminata' : '') + (o.round ? ' · prossimo turno: ' + o.round : '');
+        }
+      }
+    }
     $('ft-wait').hidden = this.mode !== 'client';
     $('ft-rematch').textContent = this.mode === 'host' ? 'Torna alla lobby' : 'Rivincita';
     $('ft-menu').textContent = this.mode === 'host' ? 'Chiudi la partita' : this.mode === 'client' ? 'Esci' : this.mode === 'fixture' ? 'Torna al centro partita' : 'Menu principale';

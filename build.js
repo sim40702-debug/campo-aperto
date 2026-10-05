@@ -39,11 +39,13 @@ if (target === 'engine') {
 
 // logica delle schedine: lo stesso file del server (cloud/src/betlogic.js), nel gioco come oggetto BetLogic.
 // Un solo sistema di regole: il gioco controlla subito le combinazioni, il server decide comunque tutto.
-function betLogicModule() {
-  const src = fs.readFileSync(path.join(root, 'cloud', 'src', 'betlogic.js'), 'utf8');
+// Allo stesso modo le regole delle competizioni (cloud/src/complogic.js) diventano l'oggetto CompLogic.
+function sharedModule(file, varName) {
+  const src = fs.readFileSync(path.join(root, 'cloud', 'src', file), 'utf8');
   const names = [...src.matchAll(/^export (?:const|function\*?|let) (\w+)/gm)].map(m => m[1]);
-  return 'var BetLogic = (function () {\n' + src.replace(/^export /gm, '') + '\nreturn { ' + names.join(', ') + ' };\n})();\n';
+  return 'var ' + varName + ' = (function () {\n' + src.replace(/^export /gm, '') + '\nreturn { ' + names.join(', ') + ' };\n})();\n';
 }
+function betLogicModule() { return sharedModule('betlogic.js', 'BetLogic'); }
 
 // 1. codice del gioco: tutti i file src che iniziano con due cifre, in ordine
 const files = fs.readdirSync(srcDir).filter(f => /^\d\d_.*\.js$/.test(f)).sort();
@@ -54,6 +56,7 @@ if (apiUrl && !/^https?:\/\/[^\s"'<>]+$/i.test(apiUrl)) { console.error('CAMPO_A
 let code = 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = ' + JSON.stringify(target) + ';\nvar DEFAULT_API_URL = ' + JSON.stringify(apiUrl) + ';\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
 for (const f of files) code += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
 code += '// ---- cloud/src/betlogic.js ----\n' + betLogicModule();
+code += '// ---- cloud/src/complogic.js ----\n' + sharedModule('complogic.js', 'CompLogic');
 
 // 2. three.js e font: da internet (web) oppure file locali (test, desktop)
 let threeTag, fontsTag;
