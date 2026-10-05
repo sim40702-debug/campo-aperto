@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 02/10/2026, sessione 5, versione 0.3.2
+Aggiornato: 02/10/2026, sessione 5, versione 0.4.0
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -13,6 +13,8 @@ Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a 
 - Simulazione (moduli 01-08) e rete (12) indipendenti da THREE e DOM: girano anche in Node per i test.
 - Online: server relay WebSocket (server/relay.js, libreria ws) + host autorevole che simula la partita; i client mandano
   solo comandi e ricevono istantanee binarie (34 + 22x12 float, 30 al secondo) che interpolano.
+- Rete locale (app desktop): desktop/lan.js avvia il relay sul PC dell'host (porta 8787, o libera) e risponde a UDP 8788 al codice;
+  chi entra manda il codice in broadcast e ottiene l'indirizzo. desktop/preload.js espone window.campoLan (hostStart, hostStop, find).
 - Passo fisso 1/60 s. Coordinate: x lunghezza (±52.5), z larghezza (±34), y altezza.
 
 ## Architettura (src/)
@@ -64,7 +66,7 @@ Cartellini, sostituzioni, finte, tiro a giro manuale, barriera controllabile, sa
 - App non firmate: avvisi di Gatekeeper (Mac) e SmartScreen (Windows) al primo avvio.
 
 ## Prossima attività
-1. Provare l'online tra due computer reali (LAN e server di casa con wss) e un controller vero.
+1. Provare l'online tra due computer reali (partita in rete locale con ricerca automatica, firewall Windows, e server di casa con wss) e un controller vero.
 2. M1 rifinitura: verificare il numero di gol contro umani e le rimesse laterali.
 3. M2: cartellini, sostituzioni, finte/dribbling a scatto, tiro a giro, rigori e punizioni controllati.
 4. M3: salvataggi (localStorage), editor giocatori, creazione squadra.
