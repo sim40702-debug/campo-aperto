@@ -1,3 +1,7 @@
+[![JavaScript](https://img.shields.io/badge/Language-JavaScript-yellow.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Python](https://img.shields.io/badge/Language-Python-blue.svg)](https://www.python.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-v18%2B-green.svg)](https://nodejs.org/)
+
 # Campo Aperto — come compilare l'app
 
 Gioco di calcio 3D originale. Funziona nel browser e come app desktop (Electron) per Windows, Mac e Linux.
