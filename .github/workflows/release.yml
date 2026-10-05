@@ -1,5 +1,7 @@
-# Compila l'app per Windows, Mac e Linux quando si pubblica un tag di versione (es. v0.2.0).
-# I file finiti compaiono in una "Release" bozza su GitHub.
+# Compila l'app per Windows, Mac e Linux e la pubblica in una release (tag v<versione di package.json>).
+# Parte con un tag di versione (es. v0.5.0) o a mano dalla scheda Actions.
+# I tre sistemi compilano senza pubblicare; solo quando hanno finito tutti, l'ultimo passo crea (o completa)
+# la release con tutti i file e la pubblica. Così nessuno scarica una release a metà.
 name: Rilascio app desktop
 
 on:
@@ -17,8 +19,7 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    # bash anche su Windows: PowerShell spezza "-c.publish.releaseType=draft" in "-c" e ".publish...",
-    # ed electron-builder prende il secondo pezzo per un file di configurazione (ENOENT)
+    # bash anche su Windows: PowerShell spezza gli argomenti tipo "-c.publish.x=y"
     defaults:
       run:
         shell: bash
@@ -29,19 +30,45 @@ jobs:
           node-version: 26
       - run: npm ci
       - run: npm test
-      - name: Compila Windows
-        if: matrix.os == 'windows-latest'
-        run: npm run dist:win -- --publish always -c.publish.provider=github -c.publish.releaseType=draft
+      - name: Compila
+        run: |
+          case "$RUNNER_OS" in
+            Windows) npm run dist:win -- --publish never ;;
+            macOS) npm run dist:mac -- --publish never ;;
+            Linux) npm run dist:linux -- --publish never ;;
+          esac
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Compila Mac
-        if: matrix.os == 'macos-latest'
-        run: npm run dist:mac -- --publish always -c.publish.provider=github -c.publish.releaseType=draft
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
-      - name: Compila Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run dist:linux -- --publish always -c.publish.provider=github -c.publish.releaseType=draft
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.os }}
+          path: |
+            release/*/CampoAperto-*
+            release/*/latest*.yml
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - name: Pubblica la release con i file di tutti i sistemi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          tag="v$v"
+          # note: la sezione della versione nel CHANGELOG
+          awk -v h="## $v " 'index($0, h) == 1 { f = 1; next } /^## / { if (f) exit } f' docs/CHANGELOG.md > notes.md
+          mapfile -t list < <(find files -type f | sort)
+          printf '%s\n' "${list[@]}"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" "${list[@]}" --clobber
+            gh release edit "$tag" --draft=false --title "Campo Aperto $v" --notes-file notes.md
+          else
+            gh release create "$tag" "${list[@]}" --target "$GITHUB_SHA" --title "Campo Aperto $v" --notes-file notes.md
+          fi
