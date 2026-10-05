@@ -14,6 +14,9 @@ class Game {
     setSeed(Date.now() % 100000);
     this.renderer = new Renderer($('stage'), this.settings.quality);
     this.renderer.setResolutionScale(this.settings.resScale);
+    this.renderer.setRenderResolution(this.settings.renderRes);
+    // app desktop: la finestra riprende la dimensione scelta
+    if (window.campoWindow && this.settings.windowSize) { const [w, h] = this.settings.windowSize.split('x').map(Number); window.campoWindow.setSize(w, h).catch(() => {}); }
     this.renderer.camMode = this.settings.camera || 0;
     this.audio = new GameAudio();
     this.audio.setVolumes({ master: this.settings.volMaster, sfx: this.settings.volSfx, crowd: this.settings.volCrowd, muted: this.settings.muted });
@@ -75,7 +78,7 @@ class Game {
     // in partita i tasti di gioco non devono far scorrere la pagina o spostare il focus
     this.input.gameKeysActive = name === 'match';
     if (name === 'match') { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
-    const first = panel && name !== 'match' ? $(panel).querySelector('.primary, .mode') : null;
+    const first = panel && name !== 'match' ? $(panel).querySelector('.primary') : null;
     // nel menu principale il primo pulsante si evidenzia solo se si usa controller o tastiera
     if (first && (name !== 'menu' || this.input.lastDevice === 'pad')) setTimeout(() => first.focus({ preventScroll: true }), 30);
     if (this.eco) this.eco.onShow(name);
@@ -102,6 +105,8 @@ class Game {
     $('btn-watch').onclick = () => this.eco.open('fixtures');
     $('btn-online').onclick = () => this.showScreen('online');
     $('btn-settings').onclick = () => this.openSettings('grafica', 'menu');
+    $('btn-graphics').onclick = () => this.openSettings('grafica', 'menu');
+    $('btn-audio').onclick = () => this.openSettings('audio', 'menu');
     $('btn-controls').onclick = () => this.openHelp('menu');
     $('help-back').onclick = () => this.closeHelp();
     $('help-keys').onclick = () => { const r = this.helpReturn; this.openSettings('controlli', r === 'pause' ? 'pause' : 'menu'); };
@@ -612,6 +617,20 @@ class Game {
     $('st-dyn').checked = s.dynamicRes;
     $('st-dyn').onchange = () => { s.dynamicRes = $('st-dyn').checked; if (!s.dynamicRes) this.renderer.setDynamicScale(1); save(); this.updateDrawInfo(); };
     this.segmented('st-fps', [{ label: 'Schermo', value: 0 }, { label: '30', value: 30 }, { label: '60', value: 60 }, { label: '120', value: 120 }, { label: '144', value: 144 }], s.fpsLimit, v => { s.fpsLimit = v; save(); this.renderSettings(); });
+    // risoluzione di disegno: nativa o fissa (sopra la finestra = più nitido, sotto = più leggero)
+    this.segmented('st-renderres', [{ label: 'Nativa', value: 0 }, { label: '1280×720', value: 720 }, { label: '1600×900', value: 900 }, { label: '1920×1080', value: 1080 },
+      { label: '2560×1440', value: 1440 }, { label: '3840×2160', value: 2160 }], s.renderRes, v => { s.renderRes = v; this.renderer.setRenderResolution(v); save(); this.renderSettings(); });
+    // app desktop: dimensione della finestra
+    $('st-winrow').hidden = !window.campoWindow; $('st-winlbl').hidden = !window.campoWindow;
+    if (window.campoWindow) {
+      this.segmented('st-winsize', ['1280x720', '1366x768', '1600x900', '1920x1080', '2560x1440'].map(v => ({ label: v.replace('x', '×'), value: v })), s.windowSize, async v => {
+        s.windowSize = v; save();
+        const [w, h] = v.split('x').map(Number);
+        const r = await window.campoWindow.setSize(w, h);
+        if (r && r.fitted) this.toast('Lo schermo è più piccolo: finestra ' + r.width + '×' + r.height);
+        setTimeout(() => this.renderSettings(), 200);
+      });
+    }
     $('st-full').textContent = document.fullscreenElement ? 'Disattiva' : 'Attiva';
     $('st-showfps').checked = s.showFps;
     $('st-showfps').onchange = () => { s.showFps = $('st-showfps').checked; $('fps').hidden = !s.showFps; save(); };

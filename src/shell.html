@@ -45,17 +45,50 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .menu-col { padding: 3vh clamp(20px, 6vw, 88px); max-width: 540px; max-height: 100%; overflow-y: auto; }
 .title { font-family: var(--display); font-weight: 800; font-size: clamp(44px, min(9vw, 13vh), 112px); line-height: 0.86; margin: 0; letter-spacing: -0.01em; font-style: italic; }
 .title span { display: block; }
-.tagline { color: var(--slate); margin: 14px 0 30px; font-size: 16px; max-width: 34ch; }
-.modes { list-style: none; margin: 0; padding: 0; }
-.mode { display: grid; grid-template-columns: 1fr; width: 100%; text-align: left; background: none; border: 0; border-left: 3px solid transparent; padding: 8px 0 8px 14px; transition: border-color 0.12s, padding-left 0.12s; }
-.mode b { font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1.1; }
-.mode small { color: var(--slate); font-size: 14px; }
-.mode:hover, .mode:focus-visible { border-left-color: var(--flood); padding-left: 20px; outline: none; }
-.mode:hover b, .mode:focus-visible b { color: var(--flood); }
 .later { margin-top: 20px; color: var(--slate); font-size: 14px; line-height: 1.6; max-width: 42ch; }
 .later strong { color: var(--chalk); font-weight: 600; }
 .version { color: var(--slate); font-size: 13px; margin: 16px 0 0 17px; letter-spacing: 0.02em; }
 
+
+/* ---------- home ---------- */
+.menu-col { display: flex; flex-direction: column; min-height: 100%; justify-content: center; padding-top: max(3vh, 84px); width: 100%; min-width: 0; }
+.menu .title { font-size: clamp(40px, min(7vw, 10vh), 92px); margin-bottom: clamp(14px, 3vh, 30px); }
+.home-play { display: grid; text-align: left; width: min(460px, 100%); padding: 14px 44px 14px 26px; margin-bottom: 16px; }
+.home-play b { font-size: clamp(34px, 5vh, 46px); line-height: 1; font-style: italic; letter-spacing: 0.01em; text-transform: uppercase; }
+.home-play small { font-family: var(--text); font-weight: 600; font-size: 14px; opacity: 0.75; margin-top: 4px; }
+.home-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(460px, 100%); }
+.home-tile { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; row-gap: 3px; text-align: left;
+  background: rgba(19,37,59,0.82); border: 1px solid rgba(243,245,238,0.1); border-left: 3px solid transparent; padding: 11px 12px; min-height: 64px;
+  transition: border-color 0.12s, background 0.12s, transform 0.12s; }
+.home-tile.wide { grid-column: 1 / -1; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; align-items: center; }
+.home-tile svg { width: 26px; height: 26px; margin-bottom: 2px; fill: none; stroke: var(--chalk); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.home-tile svg .f { fill: var(--flood); stroke: none; }
+.home-tile { container-type: inline-size; }
+.home-tile b { font-family: var(--display); font-weight: 700; font-size: clamp(13px, 8.4cqw, 21px); line-height: 1.1; text-transform: uppercase; letter-spacing: 0.01em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-tile.wide b { font-size: clamp(16px, 5cqw, 22px); }
+.home-tile.wide svg { grid-row: 1 / span 2; width: 30px; height: 30px; margin: 0; }
+.home-tile small { color: var(--slate); font-size: 12.5px; line-height: 1.3; min-width: 0; }
+.home-tile:hover, .home-tile:focus-visible { background: rgba(27,49,80,0.95); border-left-color: var(--flood); outline: none; transform: translateX(2px); }
+.home-tile:hover svg, .home-tile:focus-visible svg { stroke: var(--flood); }
+.home-menu { display: flex; flex-wrap: wrap; gap: 2px 4px; margin-top: 18px; width: min(460px, 100%); }
+.home-menu button, .home-menu span > button { background: none; border: 0; color: var(--slate); font-size: 14px; padding: 6px 8px; }
+.home-menu button:hover, .home-menu button:focus-visible { color: var(--chalk); outline: none; text-decoration: underline; text-underline-offset: 4px; }
+.home-user { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: clamp(12px, 3vw, 32px); display: flex; align-items: center; gap: 12px;
+  background: rgba(12,26,43,0.86); padding: 8px 12px 8px 8px; border-bottom: 3px solid var(--flood); max-width: calc(100vw - 24px); }
+#home-avatar { width: 56px; height: 56px; background: radial-gradient(circle at 50% 40%, #2a4a78, #0c1a2b); flex: none; }
+.home-who { display: grid; gap: 2px; min-width: 0; }
+.home-who b { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+.home-who .wallet { font-size: 20px; padding: 0 18px 0 8px; justify-self: start; }
+.home-user .ghost { padding: 7px 14px; font-size: 14px; }
+body.pad-nav .home-tile:focus { border-left-color: var(--flood); outline: 2px solid var(--flood); }
+@media (max-width: 820px) {
+  .menu-col { padding-top: 96px; }
+  .home-user { left: 12px; right: 12px; }
+}
+@media (max-height: 640px) {
+  .home-tile small { display: none; }
+  .home-tile { min-height: 46px; padding: 7px 10px; }
+}
 /* ---------- pannelli (sovrimpressione TV, lo stadio resta visibile a destra) ---------- */
 .panel { position: fixed; inset: 0; overflow-y: auto; display: flex; align-items: flex-start; padding: 5vh clamp(16px, 5vw, 72px);
   background: linear-gradient(90deg, rgba(12,26,43,0.97) 0%, rgba(12,26,43,0.93) 55%, rgba(12,26,43,0.55) 100%); }
@@ -161,8 +194,6 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .ghost.confirm { border-color: var(--signal); background: rgba(226,65,46,0.18); color: #ffd2cb; }
 /* navigazione con controller o frecce: il pulsante selezionato si vede sempre */
 body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
-body.pad-nav .mode:focus { border-left-color: var(--flood); padding-left: 20px; outline: none; }
-body.pad-nav .mode:focus b { color: var(--flood); }
 .keytable .kh { color: var(--slate); font-size: 13px; }
 .keybtn { background: rgba(243,245,238,0.07); border: 1px solid rgba(243,245,238,0.14); padding: 7px 8px; font-family: var(--display); font-weight: 700; font-size: 17px; }
 .keybtn.wait { border-color: var(--flood); color: var(--flood); animation: pulse 0.9s infinite; }
@@ -246,13 +277,9 @@ body.pad-nav .mode:focus b { color: var(--flood); }
 /* ---------- economia: account, partite, scommesse, negozio, personaggio, profilo ---------- */
 input[type=password], input[type=number] { font: inherit; color: var(--chalk); background: rgba(243,245,238,0.06); border: 1px solid rgba(243,245,238,0.2); padding: 10px 12px; width: 100%; }
 input[type=password]:focus, input[type=number]:focus { border-color: var(--flood); outline: none; }
-.ecobar { display: flex; gap: 10px; align-items: center; margin: -16px 0 14px; flex-wrap: wrap; }
 .wallet { font-family: var(--display); font-weight: 800; font-size: 24px; color: var(--flood); background: var(--night-2); padding: 3px 22px 3px 12px; clip-path: var(--slant); border: 0; white-space: nowrap; }
 .wallet small { font-family: var(--text); font-weight: 400; font-size: 12px; color: var(--slate); margin-left: 6px; }
 .whoami { background: none; border: 1px solid rgba(243,245,238,0.25); padding: 5px 12px; font-size: 14px; }
-.ecogrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 0 16px; max-width: 470px; }
-.ecotile { background: rgba(243,245,238,0.06); border: 1px solid rgba(243,245,238,0.12); padding: 9px 6px; font-family: var(--display); font-weight: 700; font-size: 17px; text-transform: uppercase; letter-spacing: 0.03em; }
-.ecotile:hover, .ecotile:focus-visible { border-color: var(--flood); color: var(--flood); outline: none; }
 .sheet.wide { max-width: 1180px; }
 .ecohead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ecohead h2 { margin-bottom: 14px; }
@@ -308,8 +335,21 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
 .slip-it .x { background: none; border: 0; color: var(--slate); font-size: 18px; padding: 0 4px; }
 .slip-it.bad { opacity: 0.6; }
 .chg { color: var(--flood); font-size: 13px; font-weight: 600; }
-.slip-tot { display: grid; grid-template-columns: 1fr auto; gap: 4px; margin: 10px 0; font-size: 15px; }
-.slip-tot b { font-family: var(--display); font-size: 20px; text-align: right; }
+.slip-tot { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; margin: 12px 0 10px; font-size: 14px; align-items: baseline; padding-top: 8px; border-top: 1px solid rgba(243,245,238,0.15); }
+.slip-tot b { font-family: var(--display); font-size: 18px; text-align: right; }
+.slip-tot b.big { font-size: 26px; color: var(--flood); }
+.slip-note { grid-column: 1 / -1; color: var(--slate); font-size: 12px; margin-top: -2px; }
+.slip-match { background: rgba(0,0,0,0.18); padding: 6px 10px 4px; margin-bottom: 8px; border-left: 3px solid var(--sky); }
+.slip-mh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; padding-bottom: 2px; }
+.slip-match .slip-it:last-child { border-bottom: 0; }
+.slip-it.conflict { background: rgba(226,65,46,0.18); box-shadow: inset 3px 0 0 var(--signal); padding-left: 6px; }
+.slip-corr { font-size: 12px; color: var(--sky); padding: 4px 0; }
+.slip-conflict { background: rgba(226,65,46,0.14); border-left: 3px solid var(--signal); padding: 8px 10px; margin: 6px 0 4px; font-size: 14px; }
+.slip-conflict p { margin: 4px 0 8px; line-height: 1.4; }
+.slip-win { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; }
+.slip-win b { font-family: var(--display); font-size: 24px; color: var(--turf-light); }
+.sel.blocked { opacity: 0.38; }
+.sel.blocked:hover { opacity: 0.6; border-color: var(--signal); }
 .shopgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 10px; }
 .item { background: var(--night-2); padding: 10px; border-top: 4px solid #8a96a8; display: flex; flex-direction: column; gap: 5px; }
 .item.raro { border-top-color: #3d8bff; } .item.epico { border-top-color: #b05cff; } .item.leggendario { border-top-color: var(--flood); }
@@ -358,12 +398,6 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
   .keytable { grid-template-columns: 1fr 1fr 1fr 1fr; }
   .helptable td.k { white-space: normal; }
 }
-@media (max-height: 640px) {
-  .tagline { margin: 8px 0 14px; }
-  .mode { padding-top: 4px; padding-bottom: 4px; }
-  .mode b { font-size: 22px; }
-  .later { display: none; }
-}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
 }
@@ -381,26 +415,31 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
 <main id="menu" class="menu" hidden>
   <div class="menu-col">
     <h1 class="title"><span>Campo</span><span>Aperto</span></h1>
-    <p class="tagline">Calcio 3D, undici contro undici. Dietro questo menu si sta giocando una partita vera.</p>
-    <div class="ecobar"><button class="wallet" id="eco-wallet" title="Saldo (dal server)">🪙 <span data-balance>—</span></button><button class="whoami" id="eco-user">Accedi</button></div>
-    <div class="ecogrid" id="ecogrid">
-      <button class="ecotile" data-eco="fixtures">Partite</button>
-      <button class="ecotile" data-eco="bets">Scommesse</button>
-      <button class="ecotile" data-eco="shop">Negozio</button>
-      <button class="ecotile" data-eco="character">Personaggio</button>
-      <button class="ecotile" data-eco="inventory">Inventario</button>
-      <button class="ecotile" data-eco="profile">Profilo</button>
+    <button class="primary home-play" id="btn-quick"><b>Gioca</b><small>Partita 11 contro 11 contro l'IA</small></button>
+    <div class="home-tiles" role="list">
+      <button class="home-tile wide" id="btn-watch" data-eco="fixtures" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12.5" rx="1.5"/><path d="M8 21h8M12 17.5V21"/><path d="M10 9l5 2.3-5 2.3z" class="f"/></svg><b>Guarda partita</b><small>Partite del server, cronaca e scommesse dei giocatori</small></button>
+      <button class="home-tile" id="btn-online" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M2.5 19c.6-3.6 2.8-5.5 5.5-5.5s4.9 1.9 5.5 5.5M13.6 14.6c.9-.7 1.8-1 2.9-1 2.3 0 4 1.6 4.6 4.9"/></svg><b>Multiplayer</b><small>Online o in rete locale</small></button>
+      <button class="home-tile" data-eco="bets" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v4a2.5 2.5 0 0 0 0 5v4H4v-4a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 5.5v13" stroke-dasharray="1.6 1.8"/></svg><b>Scommesse</b><small>Schedine, feed, classifiche</small></button>
+      <button class="home-tile" data-eco="shop" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg><b>Shop</b><small>Maglie, scarpe, capelli</small></button>
+      <button class="home-tile" data-eco="character" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3.5 4 6l1.8 4.2 2-.9V20.5h8.4V9.3l2 .9L20 6l-4.5-2.5c-.6 1.6-1.9 2.5-3.5 2.5s-2.9-.9-3.5-2.5z"/></svg><b>Personalizzazione</b><small>Personaggio e inventario</small></button>
     </div>
-    <ul class="modes">
-      <li><button class="mode" id="btn-quick"><b>Nuova partita</b><small>Scegli le squadre e gioca contro l'IA</small></button></li>
-      <li><button class="mode" id="btn-online"><b>Gioca online</b><small>Crea una partita o entra con un codice</small></button></li>
-      <li><button class="mode" id="btn-watch"><b>Guarda partita</b><small>Partite del server con le scommesse dei giocatori</small></button></li>
-      <li><button class="mode" id="btn-settings"><b>Impostazioni</b><small>Grafica, audio, tasti</small></button></li>
-      <li><button class="mode" id="btn-controls"><b>Comandi</b><small>Tastiera, controller e regole</small></button></li>
-      <li id="li-quit" hidden><button class="mode" id="btn-quit"><b>Esci</b><small>Chiudi il gioco</small></button></li>
-    </ul>
-    <p class="later"><strong>In costruzione:</strong> allenamento, torneo, campionato, coppe, carriera, mercato, creazione squadra ed editor giocatori.</p>
+    <nav class="home-menu" aria-label="Menu">
+      <button id="btn-settings">Impostazioni</button>
+      <button id="btn-controls">Controlli</button>
+      <button id="btn-audio">Audio</button>
+      <button id="btn-graphics">Grafica</button>
+      <button data-eco="profile">Account</button>
+      <span id="li-quit" hidden><button id="btn-quit">Esci</button></span>
+    </nav>
     <p class="version" id="version"></p>
+  </div>
+  <div class="home-user">
+    <canvas id="home-avatar" width="112" height="112" aria-hidden="true"></canvas>
+    <div class="home-who">
+      <b id="home-name">Ospite</b>
+      <button class="wallet" id="eco-wallet" title="Saldo (dal server)">🪙 <span data-balance>—</span></button>
+    </div>
+    <button class="ghost" id="eco-user">Accedi</button>
   </div>
 </main>
 
@@ -514,6 +553,8 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
     </div>
     <div data-pane="grafica" class="opts">
       <span class="lbl">Qualità</span><div class="segs" id="st-quality"></div>
+      <span class="lbl">Risoluzione</span><div class="segs" id="st-renderres"></div>
+      <span class="lbl" id="st-winlbl">Finestra</span><div class="segs" id="st-winrow"><div class="segs" id="st-winsize"></div></div>
       <span class="lbl">Scala di risoluzione</span><div class="range"><input type="range" id="st-res" min="50" max="100" step="5"><output id="st-res-out"></output></div>
       <span class="lbl">Risoluzione dinamica</span><label class="check"><input type="checkbox" id="st-dyn"> Abbassa la risoluzione da sola se gli fps calano</label>
       <span class="lbl">Limite fps</span><div class="segs" id="st-fps"></div>
@@ -704,13 +745,25 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
   </div>
 </section>
 
-<aside id="slip" hidden aria-label="Schedina">
-  <h3><span>Schedina <small class="small" id="slip-count"></small></span><button class="ghost" id="slip-min" style="padding:2px 10px;font-size:14px">Riduci</button></h3>
+<aside id="slip" hidden aria-label="La mia schedina">
+  <h3><span>La mia schedina <small class="small" id="slip-count"></small></span><button class="ghost" id="slip-min" style="padding:2px 10px;font-size:14px">Riduci</button></h3>
   <div class="slip-body">
     <div id="slip-items"></div>
-    <div class="field" style="margin-top:10px"><span>Puntata (monete)</span><input type="number" id="slip-stake" min="1" max="10000" step="1" value="10"></div>
+    <div class="slip-conflict" id="slip-conflict" hidden role="alert">
+      <b>Selezione incompatibile</b>
+      <p id="slip-conflict-text"></p>
+      <div class="segs"><button class="seg on" id="slip-conflict-replace">Sostituisci</button><button class="seg" id="slip-conflict-cancel">Annulla</button></div>
+    </div>
+    <div class="slip-tot">
+      <span>Selezioni</span><b id="slip-sel">0</b>
+      <span>Quota base</span><b id="slip-base">—</b>
+      <span>Bonus multipla</span><b id="slip-bonus">nessuno</b>
+      <span class="slip-note" id="slip-bonus-note"></span>
+      <span>Quota totale</span><b id="slip-odds" class="big">—</b>
+    </div>
+    <div class="field"><span>Puntata (monete)</span><input type="number" id="slip-stake" min="1" max="10000" step="1" value="10"></div>
     <label class="check small"><input type="checkbox" id="slip-public"> Pubblica (visibile agli altri giocatori)</label>
-    <div class="slip-tot"><span>Quota totale</span><b id="slip-odds">—</b><span>Vincita possibile</span><b id="slip-win">—</b></div>
+    <div class="slip-win"><span>Vincita possibile</span><b id="slip-win">—</b></div>
     <div class="status" id="slip-status" role="status" aria-live="polite"></div>
     <div class="actions" style="margin-top:8px"><button class="primary" id="slip-confirm">Conferma scommessa</button><button class="ghost" id="slip-clear">Svuota</button></div>
   </div>

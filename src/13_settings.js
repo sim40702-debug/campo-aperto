@@ -9,6 +9,8 @@ function defaultSettings() {
   return {
     quality: 'alta',          // bassa, media, alta, ultra
     resScale: 1,              // scala di risoluzione (0.5 - 1)
+    renderRes: 0,             // risoluzione di disegno: 0 = nativa, altrimenti l'altezza (720, 900, 1080, 1440, 2160)
+    windowSize: '',           // app desktop: dimensione della finestra "1920x1080" ('' = libera)
     dynamicRes: true,         // abbassa la risoluzione da sola se gli fps scendono
     fpsLimit: 0,              // 0 = sincronizzato con lo schermo
     showFps: false,
@@ -58,6 +60,8 @@ function loadSettings() {
   // vecchio valore predefinito (fino alla 0.4.1): indicava il computer di ciascun giocatore, mai quello dell'host
   if (/^ws:\/\/(localhost|127\.0\.0\.1):8787\/?$/.test(s.server)) s.server = '';
   s.resScale = clamp(Number(s.resScale) || 1, 0.5, 1);
+  if (![0, 720, 900, 1080, 1440, 2160].includes(s.renderRes)) s.renderRes = 0;
+  if (!/^\d{3,4}x\d{3,4}$/.test(s.windowSize)) s.windowSize = '';
   s.deadzone = clamp(Number(s.deadzone) || 0.22, 0.1, 0.4);
   if (!PAD_NAMES[s.padLayout]) s.padLayout = 'xbox';
   return s;
