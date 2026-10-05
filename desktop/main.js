@@ -29,6 +29,10 @@ ipcMain.handle('lan:find', async (e, code, hosts) => {
   const extra = Array.isArray(hosts) ? hosts.filter(lan.isV4).slice(0, 4) : [];
   try { return await lan.findGame(code, { hosts: extra }); } catch (err) { return { url: null, why: 'no-reply', detail: '' }; }
 });
+ipcMain.handle('lan:status', async e => {
+  if (!fidato(e)) return { error: 'Richiesta non consentita' };
+  try { return await lan.status(); } catch (err) { return { hosting: false, addresses: [] }; }
+});
 ipcMain.handle('lan:check', async (e, ip, port) => {
   if (!fidato(e)) return { error: 'Richiesta non consentita' };
   if (!lan.isPrivateV4(ip) || !Number.isInteger(port) || port < 1 || port > 65535) return { ok: false, code: 'EINVAL' };

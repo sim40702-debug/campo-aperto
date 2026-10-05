@@ -97,7 +97,10 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .field span { color: var(--slate); font-size: 14px; }
 .codebox { display: flex; gap: 6px; margin-bottom: 14px; }
 .codebox input { width: 100%; text-align: center; font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: 0.35em; text-transform: uppercase; padding: 8px 4px 8px 14px; }
-.status { min-height: 24px; margin-top: 14px; font-size: 15px; }
+.status { min-height: 24px; margin-top: 14px; font-size: 15px; line-height: 1.45; }
+#on-host-row { margin: -4px 0 14px; font-size: 14px; }
+#on-host-row summary { cursor: pointer; color: var(--slate); margin-bottom: 6px; }
+#on-host-row label { display: block; margin-bottom: 4px; }
 .status.err { color: #ffb1a6; } .status.ok { color: var(--turf-light); }
 .webonly { background: rgba(226,65,46,0.12); border-left: 3px solid var(--signal); padding: 12px 14px; margin-bottom: 18px; line-height: 1.5; }
 
@@ -204,6 +207,11 @@ body.pad-nav .mode:focus b { color: var(--flood); }
 /* ---------- avvisi ---------- */
 #toast { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); z-index: 60; background: var(--night-3); border-left: 4px solid var(--flood); padding: 12px 18px; max-width: min(560px, 90vw); box-shadow: 0 6px 24px rgba(0,0,0,0.4); animation: pop 0.2s ease-out; }
 #toast.err { border-left-color: var(--signal); }
+#netdiag { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 42; width: min(380px, calc(100vw - 24px)); max-height: 60vh; overflow: auto;
+  background: rgba(12,26,43,0.92); border-left: 3px solid var(--sky); padding: 8px 12px; font: 12px/1.45 Consolas, 'Courier New', monospace; }
+#netdiag h4 { margin: 0 0 6px; font: 700 13px var(--text); color: var(--sky); } #netdiag h4 small { color: var(--slate); font-weight: 400; }
+#netdiag dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; margin: 0 0 6px; } #netdiag dt { color: var(--slate); } #netdiag dd { margin: 0; overflow-wrap: anywhere; }
+#netdiag ol { list-style: none; margin: 0; padding: 6px 0 0; border-top: 1px solid rgba(243,245,238,0.12); } #netdiag li.err { color: #ffb1a6; }
 #busy { position: fixed; inset: 0; z-index: 45; background: rgba(12,26,43,0.75); display: flex; align-items: center; justify-content: center; }
 #busy .box { background: var(--night-2); padding: 26px 30px; min-width: 300px; }
 #busy .sweep { margin: 16px 0; }
@@ -295,26 +303,24 @@ body.pad-nav .mode:focus b { color: var(--flood); }
     <div class="online-grid">
       <div class="card">
         <h3>Crea partita</h3>
-        <p>Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.</p>
+        <p id="on-create-info">Ricevi un codice di 6 caratteri da dare agli amici. Scegli tu squadre e durata, e avvii quando siete pronti.</p>
         <button class="primary" id="on-create">Crea partita</button>
-        <div id="on-lan" hidden>
-          <p style="margin-top:14px">Oppure gioca con amici sulla stessa rete (Wi-Fi o cavo di casa): parte un piccolo server su questo computer e gli amici entrano con il codice. Al primo avvio Windows può chiedere il permesso del firewall: va consentito.</p>
-          <button class="primary" id="on-create-lan">Ospita in rete locale</button>
-        </div>
+        <button class="ghost" id="on-create-server" hidden style="margin-top:10px">Crea sul server online</button>
       </div>
       <div class="card">
         <h3>Unisciti</h3>
         <p>Scrivi il codice che ti ha dato chi ha creato la partita.</p>
-        <div class="codebox"><input type="text" id="on-code" maxlength="7" placeholder="ABC123" autocomplete="off" spellcheck="false" aria-label="Codice partita"></div>
-        <div id="on-host-row" hidden style="margin:-4px 0 14px">
-          <label for="on-host" style="display:block;font-size:14px;margin-bottom:4px">Indirizzo dell'host (solo se la ricerca non funziona)</label>
-          <input type="text" id="on-host" placeholder="172.20.10.9:8787" autocomplete="off" spellcheck="false" style="width:100%">
-        </div>
+        <div class="codebox"><input type="text" id="on-code" maxlength="7" placeholder="LABC23" autocomplete="off" spellcheck="false" aria-label="Codice partita"></div>
+        <details id="on-host-row" hidden>
+          <summary>La partita non viene trovata?</summary>
+          <label for="on-host">Indirizzo dell'host, quello grande nella sua lobby</label>
+          <input type="text" id="on-host" placeholder="192.168.1.23:8787" autocomplete="off" spellcheck="false">
+        </details>
         <button class="primary" id="on-join">Entra</button>
       </div>
     </div>
     <div class="status" id="on-status" role="status" aria-live="polite"></div>
-    <p class="hintline">Server: <span id="on-server"></span> <button class="ghost" id="on-server-edit" style="padding:4px 10px;font-size:14px;margin-left:6px">Cambia</button></p>
+    <p class="hintline">Server online: <span id="on-server"></span> <button class="ghost" id="on-server-edit" style="padding:4px 10px;font-size:14px;margin-left:6px">Cambia</button></p>
     <div class="actions"><button class="ghost" id="on-back">Indietro</button></div>
   </div>
 </section>
@@ -334,7 +340,7 @@ body.pad-nav .mode:focus b { color: var(--flood); }
       <span class="small">Il tuo indirizzo</span>
       <div class="lan-main"><b id="lb-lan-addr"></b><button class="ghost" id="lb-lan-copy">Copia</button></div>
       <p class="small" id="lb-lan-more" hidden></p>
-      <p class="small" style="margin:6px 0 0">Gli amici nella stessa rete entrano con il codice. Se la ricerca non funziona, possono impostare questo indirizzo in Impostazioni → Online. Se Windows chiede il permesso del firewall, consentilo.</p>
+      <p class="small" style="margin:6px 0 0">Gli amici nella stessa rete entrano con il solo codice. Se il gioco non li trova, possono scrivere questo indirizzo in Unisciti, sotto «La partita non viene trovata?». Se Windows chiede il permesso del firewall, consentilo anche per le reti pubbliche.</p>
     </div>
     <div class="lobby-grid">
       <div class="col" id="lb-col-0"><h3><span class="kitdot" id="lb-kit-0"></span><span id="lb-team-0">Casa</span></h3><ul id="lb-list-0"></ul><button class="seg" data-side="0">Gioca qui</button></div>
@@ -398,9 +404,10 @@ body.pad-nav .mode:focus b { color: var(--flood); }
       <p class="later">Regole attive: fuorigioco, falli, punizioni, rigori, rimesse laterali, calci d'angolo, rinvii dal fondo, intervallo con cambio di campo. I colpi di testa sono automatici quando la palla arriva alta. In difesa il passaggio diventa contrasto e il tiro diventa scivolata.</p>
     </div>
     <div data-pane="online" class="opts">
-      <label for="st-server">Indirizzo del server</label><input type="text" id="st-server" spellcheck="false">
+      <label for="st-server">Server online (facoltativo)</label><input type="text" id="st-server" spellcheck="false" placeholder="wss://calcio.tuodominio.ch">
       <span></span><div><button class="ghost" id="st-server-test">Prova collegamento</button> <span class="status" id="st-server-status" style="margin-left:10px"></span></div>
-      <span></span><p class="small" style="margin:0">Sul tuo computer: ws://localhost:8787 (avvia il server con npm run server). Su un server in internet usa wss:// con il nome del dominio.</p>
+      <span></span><p class="small" style="margin:0">Serve solo per giocare via internet. Per giocare sulla stessa rete (Wi-Fi o cavo) lascia vuoto: chi crea la partita fa anche da server.</p>
+      <span class="lbl">Diagnostica di rete</span><label class="check"><input type="checkbox" id="st-netdebug"> Pannello con ruolo, IP, porta, stato, ping ed eventi (anche Ctrl+Maiusc+D)</label>
     </div>
     <div class="actions"><button class="primary" id="st-back">Fatto</button></div>
   </div>
@@ -477,6 +484,7 @@ body.pad-nav .mode:focus b { color: var(--flood); }
 <div id="busy" hidden><div class="box" role="status" aria-live="polite"><h3 id="busy-text">Collegamento…</h3><div class="sweep"><div></div></div><button class="ghost" id="busy-cancel">Annulla</button></div></div>
 <div id="toast" hidden role="alert"></div>
 <div id="fps" hidden></div>
+<aside id="netdiag" hidden aria-label="Diagnostica di rete"><h4>Diagnostica di rete <small>Ctrl+Maiusc+D</small></h4><dl id="nd-info"></dl><ol id="nd-log"></ol></aside>
 <div id="fatal" hidden></div>
 
 <!--THREE-->

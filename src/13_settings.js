@@ -24,8 +24,9 @@ function defaultSettings() {
     lastSetup: null,          // ultima partita impostata (squadre, durata...)
     camera: 0,
     name: '',
-    server: 'ws://localhost:8787',
+    server: '',               // server online (wss://...), facoltativo: senza, le partite si ospitano in rete locale
     lanHost: '',              // ultimo indirizzo dell'host in rete locale con cui sei entrato (IP o IP:porta)
+    netDebug: false,          // pannello di diagnostica della rete
   };
 }
 function loadSettings() {
@@ -53,6 +54,8 @@ function loadSettings() {
     }
   } catch (e) { /* impostazioni rovinate o archivio non disponibile: si usano quelle predefinite */ }
   if (QUALITY_LEVELS.every(q => q.id !== s.quality)) s.quality = 'alta';
+  // vecchio valore predefinito (fino alla 0.4.1): indicava il computer di ciascun giocatore, mai quello dell'host
+  if (/^ws:\/\/(localhost|127\.0\.0\.1):8787\/?$/.test(s.server)) s.server = '';
   s.resScale = clamp(Number(s.resScale) || 1, 0.5, 1);
   s.deadzone = clamp(Number(s.deadzone) || 0.22, 0.1, 0.4);
   if (!PAD_NAMES[s.padLayout]) s.padLayout = 'xbox';
