@@ -7,6 +7,8 @@ import { fail, randomToken, sha256hex, constraintKind } from './util.js';
 export const SESSION_DAYS = 90;
 const MAX_FAILS = 8, LOCK_MS = 15 * 60 * 1000;
 export const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
+// account nascosti fin dalla registrazione: giocano, ma gli altri non li vedono (vedi migrazione 0006)
+export const HIDDEN_NAMES = ['admin'];
 
 function checkCredentials(body) {
   const username = typeof body.username === 'string' ? body.username.trim() : '';
@@ -28,8 +30,8 @@ export async function register(env, body, t) {
   try {
     // tutto insieme: account, portafoglio con il bonus iniziale, transazione e sessione
     await env.DB.batch([
-      env.DB.prepare('INSERT INTO users (username, username_lc, pass_hash, pass_salt, pass_iter, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .bind(username, lc, pw.hash, pw.salt, pw.iter, t),
+      env.DB.prepare('INSERT INTO users (username, username_lc, pass_hash, pass_salt, pass_iter, created_at, hidden) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .bind(username, lc, pw.hash, pw.salt, pw.iter, t, HIDDEN_NAMES.includes(lc) ? 1 : 0),
       env.DB.prepare('INSERT INTO wallets (user_id, balance, updated_at) SELECT id, ?2, ?3 FROM users WHERE username_lc = ?1').bind(lc, start, t),
       env.DB.prepare('INSERT INTO transactions (user_id, type, amount, balance_before, balance_after, reference_id, created_at) ' +
         'SELECT id, \'INITIAL_BONUS\', ?2, 0, ?2, \'user:\' || id, ?3 FROM users WHERE username_lc = ?1').bind(lc, start, t),

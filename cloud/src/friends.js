@@ -1,5 +1,6 @@
 // Amici: elenco dei giocatori iscritti, richieste di amicizia, amici. Degli altri si vede solo il nome pubblico e
 // la data di iscrizione: mai id interni, email, sessioni o altri dati dell'account.
+// Gli account nascosti (users.hidden, es. "admin") non compaiono da nessuna parte e non possono avere amici.
 import { fail } from './util.js';
 import { USERNAME_RE } from './auth.js';
 
@@ -9,7 +10,7 @@ const pair = (x, y) => (x < y ? [x, y] : [y, x]);
 
 export async function userByName(env, username) {
   if (typeof username !== 'string' || !USERNAME_RE.test(username)) fail(404, 'NO_USER', 'Giocatore non trovato');
-  const u = await env.DB.prepare('SELECT id, username FROM users WHERE username_lc = ?').bind(username.toLowerCase()).first();
+  const u = await env.DB.prepare('SELECT id, username FROM users WHERE username_lc = ? AND hidden = 0').bind(username.toLowerCase()).first();
   if (!u) fail(404, 'NO_USER', 'Giocatore non trovato');
   return u;
 }
@@ -31,9 +32,9 @@ export async function areFriends(env, x, y) {
 export async function listUsers(env, user, q) {
   const search = String(q.get('q') || '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 16);
   const after = String(q.get('after') || '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 16);
-  const { results } = await env.DB.prepare('SELECT id, username, username_lc, created_at FROM users WHERE username_lc > ? AND instr(username_lc, ?) > 0 ORDER BY username_lc LIMIT ' + (PAGE + 1))
-    .bind(after, search).all();
-  const total = await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first();
+  const { results } = await env.DB.prepare('SELECT id, username, username_lc, created_at FROM users WHERE (hidden = 0 OR id = ?) AND username_lc > ? AND instr(username_lc, ?) > 0 ORDER BY username_lc LIMIT ' + (PAGE + 1))
+    .bind(user.id, after, search).all();
+  const total = await env.DB.prepare('SELECT COUNT(*) AS n FROM users WHERE hidden = 0').first();
   const rel = await relations(env, user.id);
   const page = results.slice(0, PAGE);
   return {
@@ -46,7 +47,7 @@ export async function listUsers(env, user, q) {
 export async function myFriends(env, user) {
   const { results } = await env.DB.prepare(
     'SELECT u.username, f.status, f.requested_by, f.created_at, f.accepted_at FROM friendships f JOIN users u ON u.id = (CASE WHEN f.user_a = ? THEN f.user_b ELSE f.user_a END) ' +
-    'WHERE f.user_a = ? OR f.user_b = ? ORDER BY u.username_lc').bind(user.id, user.id, user.id).all();
+    'WHERE (f.user_a = ? OR f.user_b = ?) AND u.hidden = 0 ORDER BY u.username_lc').bind(user.id, user.id, user.id).all();
   return {
     friends: results.filter(r => r.status === 'ACCEPTED').map(r => ({ username: r.username, since: r.accepted_at })),
     incoming: results.filter(r => r.status === 'PENDING' && r.requested_by !== user.id).map(r => ({ username: r.username, at: r.created_at })),
@@ -58,6 +59,8 @@ export async function myFriends(env, user) {
 export async function requestFriend(env, user, body, t) {
   const other = await userByName(env, body.username);
   if (other.id === user.id) fail(400, 'SELF', 'Non puoi aggiungere te stesso');
+  const me = await env.DB.prepare('SELECT hidden FROM users WHERE id = ?').bind(user.id).first();
+  if (me && me.hidden) fail(403, 'HIDDEN', 'Questo account è nascosto: non può avere amici');
   const [a, b] = pair(user.id, other.id);
   const row = await env.DB.prepare('SELECT requested_by, status FROM friendships WHERE user_a = ? AND user_b = ?').bind(a, b).first();
   if (row && row.status === 'ACCEPTED') return { username: other.username, relation: 'friend' };

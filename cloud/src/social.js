@@ -7,8 +7,8 @@ import { fixtureByCode } from './fixtures.js';
 import { seasonOf } from './rewards.js';
 
 const PAGE = 20;
-const PUBLIC = "b.visibility = 'public' AND u.public_bets = 1";
-const COLS = 'b.id, b.code, b.user_id, b.stake, b.odds, b.base_odds, b.bonus_pct, b.potential_payout, b.status, b.payout, b.visibility, b.shared, b.copied_from, b.created_at, b.settled_at, u.username, u.public_bets';
+const PUBLIC = "b.visibility = 'public' AND u.public_bets = 1 AND u.hidden = 0";
+const COLS = 'b.id, b.code, b.user_id, b.stake, b.odds, b.base_odds, b.bonus_pct, b.potential_payout, b.status, b.payout, b.visibility, b.shared, b.copied_from, b.created_at, b.settled_at, u.username, u.public_bets, u.hidden';
 
 // scommesse dei giocatori su una partita. before: pagine più vecchie; after: solo le nuove (aggiornamento leggero)
 export async function fixtureFeed(env, code, viewer, q) {
@@ -94,7 +94,7 @@ export async function leaderboard(env, metric, period, t) {
   if (!METRICS.includes(metric)) metric = 'profit';
   if (!PERIODS.includes(period)) period = 'week';
   if (metric === 'streak') {
-    const { results } = await env.DB.prepare('SELECT username, streak, best_streak FROM users WHERE public_bets = 1 AND best_streak > 0 ORDER BY streak DESC, best_streak DESC, id LIMIT 20').all();
+    const { results } = await env.DB.prepare('SELECT username, streak, best_streak FROM users WHERE public_bets = 1 AND hidden = 0 AND best_streak > 0 ORDER BY streak DESC, best_streak DESC, id LIMIT 20').all();
     return { metric, period: 'all', rows: results.map((r, i) => ({ rank: i + 1, user: r.username, streak: r.streak, bestStreak: r.best_streak })) };
   }
   const from = periodStart(period, t);
@@ -103,7 +103,7 @@ export async function leaderboard(env, metric, period, t) {
   const { results } = await env.DB.prepare(
     "SELECT u.username, COUNT(*) AS n, SUM(b.status = 'WON') AS won, SUM(b.status IN ('WON','LOST')) AS decided, SUM(b.stake) AS staked, SUM(b.payout - b.stake) AS profit, " +
     "CAST(SUM(b.payout - b.stake) AS REAL) / SUM(b.stake) AS roi, CAST(SUM(b.status = 'WON') AS REAL) / MAX(1, SUM(b.status IN ('WON','LOST'))) AS winrate " +
-    "FROM bets b JOIN users u ON u.id = b.user_id WHERE b.status <> 'OPEN' AND b.settled_at >= ? AND u.public_bets = 1 " +
+    "FROM bets b JOIN users u ON u.id = b.user_id WHERE b.status <> 'OPEN' AND b.settled_at >= ? AND u.public_bets = 1 AND u.hidden = 0 " +
     'GROUP BY b.user_id HAVING decided >= ? ORDER BY ' + order + ', n DESC, MIN(b.id) LIMIT 20').bind(from, minDecided).all();
   return {
     metric, period, from,

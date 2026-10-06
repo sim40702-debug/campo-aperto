@@ -104,8 +104,20 @@ async function main() {
   check('richiesta rifiutata: nessuna relazione', (await GET('/api/friends', D)).body.outgoing.length === 0 && (await GET('/api/users', A)).body.users.find(u => u.username === names.D).relation === null);
   check('risposte degli amici senza dati privati', forbiddenKeys(fa.body).length === 0, forbiddenKeys(fa.body));
 
+  // ===== account nascosto: "admin" non lo vede nessuno =====
+  const adm = (await POST('/api/auth/register', { username: 'admin', password: 'password-admin' })).body.token;
+  const usA = (await GET('/api/users', A)).body;
+  check('account nascosto (admin): non compare tra i giocatori e non è contato', !usA.users.some(u => u.username.toLowerCase() === 'admin') && usA.total === 4, usA);
+  check('ricerca per nome: niente', (await GET('/api/users?q=admin', B)).body.users.length === 0);
+  check('nessuno può aggiungerlo (come se non esistesse)', (await POST('/api/friends/request', { username: 'admin' }, A)).status === 404);
+  const ar = await POST('/api/friends/request', { username: names.A }, adm);
+  check('lui non può chiedere l\'amicizia a nessuno', ar.status === 403 && (await GET('/api/friends', A)).body.incoming.length === 0, ar.body);
+  check('profilo pubblico: non trovato', (await GET('/api/players/admin')).status === 404);
+  check('lui gioca normalmente e vede sé stesso', (await GET('/api/users', adm)).body.users.some(u => u.username === 'admin' && u.me));
+
   // ===== competizione tra amici: creazione e inviti =====
   const base = { kind: 'league', name: 'Lega <b>Amici</b>', teams: [0, 1, 2, 3], team: 0, legs: 2, halfSeconds: 120 };
+  check('invitare l\'account nascosto: non trovato', (await POST('/api/friendcomps', Object.assign({}, base, { invite: ['admin'] }), A)).status === 404);
   check('invitare chi non è amico: rifiutato', (await POST('/api/friendcomps', Object.assign({}, base, { invite: [names.D] }), A)).status === 403);
   check('configurazione impossibile (campionato a 3): rifiutata', (await POST('/api/friendcomps', Object.assign({}, base, { teams: [0, 1, 2] }), A)).status === 400);
   check('la propria squadra deve essere tra quelle della competizione', (await POST('/api/friendcomps', Object.assign({}, base, { team: 9 }), A)).status === 400);

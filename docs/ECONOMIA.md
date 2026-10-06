@@ -255,6 +255,16 @@ partita iniziata e mai finita al secondo avvio si simula; tra due amici: valgono
 simulazione), nell'eliminazione diretta la parità si completa con supplementari e rigori simulati. Le partite tra due
 persone si giocano con il relay del Worker: il codice della stanza passa dal server (`friend_comp_rooms`, valido 3 ore).
 
+### Account nascosti
+
+Un account con `users.hidden = 1` gioca normalmente ma non lo vede nessuno (giocatori, amici, inviti, profilo pubblico,
+feed, classifiche, premi di stagione) e non può avere amici. "admin" è nascosto dalla migrazione 0006 e alla
+registrazione. Per nasconderne un altro:
+
+```bash
+npx wrangler d1 execute campo-aperto --remote --command "UPDATE users SET hidden = 1 WHERE username_lc = 'nome'; DELETE FROM friendships WHERE user_a = (SELECT id FROM users WHERE username_lc = 'nome') OR user_b = (SELECT id FROM users WHERE username_lc = 'nome');"
+```
+
 ## Indirizzi dell'API
 
 Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'accesso.

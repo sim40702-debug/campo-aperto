@@ -45,7 +45,7 @@ export async function setPrivacy(env, user, body) {
 // profilo pubblico: nome, statistiche di gioco se il profilo è pubblico. Mai saldo, id o dati dell'account
 export async function publicProfile(env, username) {
   if (typeof username !== 'string' || !USERNAME_RE.test(username)) fail(404, 'NO_USER', 'Giocatore non trovato');
-  const u = await env.DB.prepare('SELECT id, username, public_bets, streak, best_streak, created_at FROM users WHERE username_lc = ?').bind(username.toLowerCase()).first();
+  const u = await env.DB.prepare('SELECT id, username, public_bets, streak, best_streak, created_at FROM users WHERE username_lc = ? AND hidden = 0').bind(username.toLowerCase()).first();
   if (!u) fail(404, 'NO_USER', 'Giocatore non trovato');
   const out = { username: u.username, since: u.created_at, publicBets: !!u.public_bets };
   if (u.public_bets) {
