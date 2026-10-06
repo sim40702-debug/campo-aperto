@@ -7,3 +7,4 @@ tests/shots/
 .wrangler/
 .dev.vars
 cloud/src/engine.gen.js
+cloud/src/teams.gen.json

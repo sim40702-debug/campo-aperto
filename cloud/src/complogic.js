@@ -312,3 +312,282 @@ export function seasonSummary(table, matches, nameOf) {
     biggestWin: biggest,
   };
 }
+
+// ---------- stato di una competizione: calendario, risultati, avanzamento ----------
+// Lo stesso codice muove le competizioni sul computer (Career nel gioco) e quelle tra amici (sul server).
+// comp: { kind, name, season, seed, config, fixtures, nextId, stage, groups, bracket, status, champion, summary, history }
+// ctx: { profile(t) -> teamProfile della squadra t, nameOf(t) -> nome della squadra t }
+export const COMP_KINDS = { league: 'Campionato', tournament: 'Torneo', cup: 'Coppa' };
+
+// configurazione controllata di una competizione nuova (errori leggibili). nTeams: squadre esistenti (0..nTeams-1)
+export function makeCompConfig(cfg, nTeams) {
+  cfg = cfg || {};
+  const kind = COMP_KINDS[cfg.kind] ? cfg.kind : 'league';
+  const teams = [...new Set(Array.isArray(cfg.teams) ? cfg.teams : [])].filter(t => Number.isInteger(t) && t >= 0 && t < nTeams);
+  if (kind === 'league' && (teams.length < 4 || teams.length > 32)) throw new Error('Un campionato vuole da 4 a 32 squadre');
+  if (kind !== 'league' && !isPow2(teams.length) && !(cfg.groups && cfg.groups.count)) throw new Error('Il tabellone vuole 4, 8, 16 o 32 squadre');
+  const config = {
+    teams: teams, userTeam: teams.indexOf(cfg.userTeam) >= 0 ? cfg.userTeam : -1,
+    legs: cfg.legs === 2 ? 2 : 1,
+    groups: kind === 'cup' && cfg.groups && cfg.groups.count ? { count: cfg.groups.count | 0, qualify: Math.max(1, cfg.groups.qualify | 0), legs: cfg.groups.legs === 2 ? 2 : 1 } : null,
+    extraTime: cfg.extraTime !== false, penalties: cfg.penalties !== false,
+    halfSeconds: [120, 180, 300].includes(cfg.halfSeconds) ? cfg.halfSeconds : 180,
+    difficulty: [0, 1, 2].includes(cfg.difficulty) ? cfg.difficulty : 1,
+  };
+  if (kind === 'tournament') config.legs = 1;
+  if (config.groups) {
+    const per = teams.length / config.groups.count;
+    if (!Number.isInteger(per) || per < 3) throw new Error('Le squadre devono dividersi in gironi da almeno 3');
+    if (!isPow2(config.groups.count * config.groups.qualify)) throw new Error('Le qualificate devono essere 4, 8, 16 o 32');
+  }
+  const name = String(cfg.name || COMP_KINDS[kind]).replace(/[<>]/g, '').trim().slice(0, 40) || COMP_KINDS[kind];
+  return { kind: kind, name: name, config: config };
+}
+
+// nuova stagione (o edizione): stesse squadre e regole, nuovo calendario o sorteggio; lo storico resta
+export function startSeason(comp, seed, ctx) {
+  comp.seed = seed >>> 0 || 1;
+  comp.fixtures = []; comp.nextId = 1;
+  comp.status = 'active'; comp.champion = null; comp.summary = null; comp.userOut = false;
+  comp.groups = null; comp.bracket = null; comp.stage = null;
+  const cfg = comp.config, rng = compRng(seedFor(comp.seed, 'sorteggio'));
+  if (comp.kind === 'league') {
+    comp.stage = 'league';
+    roundRobin(shuffled(cfg.teams, rng), cfg.legs).forEach((games, r) => games.forEach(g => addFixture(comp, { stage: 'league', round: r, home: g.home, away: g.away })));
+  } else if (cfg.groups) {
+    comp.stage = 'groups';
+    comp.groups = drawGroups(cfg.teams, t => ctx.profile(t).ovr, cfg.groups.count, rng);
+    comp.groups.forEach((g, gi) => roundRobin(g, cfg.groups.legs).forEach((games, r) =>
+      games.forEach(x => addFixture(comp, { stage: 'group', group: gi, round: r, home: x.home, away: x.away }))));
+  } else {
+    startKnockout(comp, drawBracket(cfg.teams, rng));
+  }
+}
+// stagione successiva di una competizione finita (seme derivato: sempre lo stesso calendario per quella stagione)
+export function nextSeason(comp, ctx) {
+  if (comp.status !== 'finished') return false;
+  comp.season++;
+  startSeason(comp, seedFor(comp.seed, 'stagione' + comp.season), ctx);
+  return true;
+}
+export function addFixture(comp, f) {
+  const fx = Object.assign({ id: 'f' + (comp.nextId++), played: false }, f);
+  comp.fixtures.push(fx);
+  return fx;
+}
+export function startKnockout(comp, seeds) {
+  comp.stage = 'knockout';
+  comp.bracket = buildBracket(seeds, { legs: comp.kind === 'cup' ? comp.config.legs : 1 });
+  createTieFixtures(comp, 0);
+}
+// partite di un turno del tabellone: gara unica (la finale sempre, in campo neutro) o andata e ritorno
+export function createTieFixtures(comp, r) {
+  const round = comp.bracket[r];
+  round.ties.forEach((t, i) => {
+    if (t.fixtures.length) return;
+    const neutral = round.size === 2;
+    t.fixtures.push(addFixture(comp, { stage: 'ko', round: r, tie: i, leg: 1, home: t.a, away: t.b, neutral: neutral }).id);
+    if (t.legs === 2) t.fixtures.push(addFixture(comp, { stage: 'ko', round: r, tie: i, leg: 2, home: t.b, away: t.a }).id);
+  });
+}
+
+export function findFixture(comp, id) { return comp.fixtures.find(f => f.id === id) || null; }
+// giornata o turno in corso: le partite ancora da giocare con il turno più basso (e la fase attuale)
+export function currentRound(comp) {
+  const open = comp.fixtures.filter(f => !f.played);
+  if (!open.length) return null;
+  const stageRank = { league: 0, group: 0, ko: 1 };
+  open.sort((a, b) => stageRank[a.stage] - stageRank[b.stage] || a.round - b.round || (a.leg || 1) - (b.leg || 1) || (a.replay ? 1 : 0) - (b.replay ? 1 : 0));
+  const f0 = open[0];
+  const same = open.filter(f => f.stage === f0.stage && f.round === f0.round && (f.leg || 1) === (f0.leg || 1) && !!f.replay === !!f0.replay);
+  return { stage: f0.stage, round: f0.round, leg: f0.leg || 1, replay: !!f0.replay, fixtures: same };
+}
+export function roundLabel(comp, cr) {
+  if (!cr) return '';
+  if (cr.stage === 'league') return 'Giornata ' + (cr.round + 1);
+  if (cr.stage === 'group') return 'Fase a gironi, giornata ' + (cr.round + 1);
+  const r = comp.bracket[cr.round];
+  return (r ? r.name : 'Turno') + (cr.replay ? ', ripetizioni' : r && r.ties[0] && r.ties[0].legs === 2 ? (cr.leg === 1 ? ', andata' : ', ritorno') : '');
+}
+export function compResults(comp, stage, group) {
+  return comp.fixtures.filter(f => f.played && f.stage === stage && (group === undefined || f.group === group))
+    .map(f => ({ home: f.home, away: f.away, h: f.h, a: f.a }));
+}
+export function leagueTable(comp) { return standings(comp.config.teams, compResults(comp, 'league')); }
+export function groupTables(comp) { return (comp.groups || []).map((g, gi) => standings(g, compResults(comp, 'group', gi))); }
+// punti per partita nelle ultime 5 (forma) per la simulazione
+export function formOf(comp, t) {
+  const last = comp.fixtures.filter(f => f.played && (f.home === t || f.away === t)).slice(-5);
+  if (!last.length) return 1.4;
+  return last.reduce((s, f) => { const gf = f.home === t ? f.h : f.a, gs = f.home === t ? f.a : f.h; return s + (gf > gs ? 3 : gf === gs ? 1 : 0); }, 0) / last.length;
+}
+export function compProgress(comp) {
+  return { played: comp.fixtures.filter(f => f.played).length, total: comp.fixtures.length };
+}
+// gol dell'andata per il ritorno, dal punto di vista della partita di ritorno [casa, trasferta]
+export function aggregateFor(comp, f) {
+  if (f.stage !== 'ko' || f.leg !== 2) return [0, 0];
+  const tie = comp.bracket[f.round].ties[f.tie];
+  const first = findFixture(comp, tie.fixtures[0]);
+  if (!first || !first.played) return [0, 0];
+  const g = (m, t) => (m.home === t ? m.h + (m.et ? m.et.h : 0) : m.a + (m.et ? m.et.a : 0));
+  return [g(first, f.home), g(first, f.away)];
+}
+// regole di una partita: in eliminazione diretta serve un vincitore (tranne all'andata)
+export function matchRules(comp, f) {
+  if (f.stage !== 'ko') return null;
+  const tie = comp.bracket[f.round].ties[f.tie];
+  if (tie.legs === 2 && f.leg === 1 && !f.replay) return null;
+  return { extraTime: comp.config.extraTime, penalties: comp.config.penalties, aggregate: f.replay ? [0, 0] : aggregateFor(comp, f), neutral: !!f.neutral };
+}
+
+// simulazione ufficiale: seme della competizione + partita (+ sale), quindi sempre lo stesso risultato
+export function simulateFixture(comp, f, ctx, salt) {
+  const ko = matchRules(comp, f);
+  const rng = compRng(seedFor(comp.seed, f.id + (salt ? ':' + salt : '')));
+  return simulateMatch(ctx.profile(f.home), ctx.profile(f.away), rng, Object.assign({
+    formHome: formOf(comp, f.home), formAway: formOf(comp, f.away), neutral: !!f.neutral,
+  }, ko ? { knockout: true, extraTime: ko.extraTime, penalties: ko.penalties, aggregate: ko.aggregate } : {}));
+}
+// registra un risultato (partita giocata o simulata) e fa avanzare la competizione. Un risultato già registrato
+// non cambia più: restituisce false.
+export function recordResult(comp, fid, r, how, at, ctx) {
+  const f = findFixture(comp, fid);
+  if (!f || f.played) return false;
+  Object.assign(f, {
+    played: true, how: how, at: at, inProgress: undefined,
+    h: r.h | 0, a: r.a | 0, et: r.et ? { h: r.et.h | 0, a: r.et.a | 0 } : null, pens: r.pens ? { h: r.pens.h | 0, a: r.pens.a | 0 } : null,
+    winner: r.winner === 0 || r.winner === 1 ? r.winner : null,
+    scorers: (r.scorers || []).slice(0, 30).map(s => ({ team: s.team === 1 ? 1 : 0, name: String(s.name || '').slice(0, 40), minute: s.minute | 0 })),
+  });
+  if (r.by) f.by = String(r.by).slice(0, 24);
+  advanceComp(comp, ctx);
+  return true;
+}
+// simula le partite della giornata in corso; skip(f) = true per lasciarne alcune (quelle dei giocatori)
+export function simulateCurrentRound(comp, ctx, at, skip) {
+  const cr = currentRound(comp);
+  if (!cr) return 0;
+  let n = 0;
+  for (const f of cr.fixtures) if (!f.played && !(skip && skip(f))) { recordResult(comp, f.id, simulateFixture(comp, f, ctx), 'sim', at, ctx); n++; }
+  return n;
+}
+// risultato di una partita lasciata a metà: il tempo che manca si simula partendo dal punteggio attuale.
+// score [casa, trasferta], fraction: parte della partita già giocata (0..1)
+export function resultFromScore(comp, f, score, fraction, scorers, ctx) {
+  const rest = simulateFixture(comp, f, ctx, 'resto');
+  const k = Math.min(1, Math.max(0, 1 - fraction));
+  const rnd = compRng(seedFor(comp.seed, f.id + ':resto2'));
+  const add = side => { const x = (side === 0 ? rest.h : rest.a) * k; return Math.floor(x) + (rnd() < x - Math.floor(x) ? 1 : 0); };
+  const h = (score[0] | 0) + add(0), a = (score[1] | 0) + add(1);
+  const ko = matchRules(comp, f);
+  const r = { h: h, a: a, et: null, pens: null, winner: h > a ? 0 : h < a ? 1 : null, scorers: scorers || [] };
+  if (ko) {
+    const agg = ko.aggregate, lvl = h + agg[0] === a + agg[1];
+    if (lvl) { r.et = ko.extraTime ? { h: 0, a: 0 } : null; if (ko.penalties) { r.pens = rest.pens || { h: 5, a: 4 }; r.winner = rest.pens ? rest.winner : 0; } else r.winner = null; }
+    else r.winner = h + agg[0] > a + agg[1] ? 0 : 1;
+  }
+  return r;
+}
+// completa il risultato dei 90 minuti di una partita a eliminazione diretta finita in parità (partita online tra
+// due giocatori, che si gioca senza supplementari): supplementari e rigori dalla simulazione ufficiale
+export function completeKnockout(comp, f, r, ctx) {
+  const ko = matchRules(comp, f);
+  const out = Object.assign({}, r, { et: null, pens: null });
+  out.winner = r.h > r.a ? 0 : r.h < r.a ? 1 : null;
+  if (!ko) return out;
+  const agg = ko.aggregate;
+  if (r.h + agg[0] !== r.a + agg[1]) { out.winner = r.h + agg[0] > r.a + agg[1] ? 0 : 1; return out; }
+  const rng = compRng(seedFor(comp.seed, f.id + ':supplementari'));
+  const [lh, la] = expectedGoals(ctx.profile(f.home), ctx.profile(f.away), { neutral: !!f.neutral });
+  let eh = 0, ea = 0;
+  if (ko.extraTime) { eh = poisson(lh * SIM.etShare * 0.9, rng); ea = poisson(la * SIM.etShare * 0.9, rng); out.et = { h: eh, a: ea }; out.etSimulated = true; }
+  if (r.h + eh + agg[0] !== r.a + ea + agg[1]) { out.winner = r.h + eh + agg[0] > r.a + ea + agg[1] ? 0 : 1; return out; }
+  if (ko.penalties) { const p = simulateShootout(ctx.profile(f.home), ctx.profile(f.away), rng); out.pens = { h: p.h, a: p.a }; out.winner = p.winner; out.pensSimulated = true; }
+  else out.winner = null;
+  return out;
+}
+// controlla un risultato dichiarato da un giocatore per la partita f (numeri interi, supplementari e rigori solo
+// quando le regole li prevedono e il punteggio li richiede). Restituisce il risultato pulito o lancia un errore.
+export function checkResult(comp, f, r) {
+  const int = (v, max) => Number.isInteger(v) && v >= 0 && v <= max;
+  if (!r || typeof r !== 'object' || !int(r.h, 30) || !int(r.a, 30)) throw new Error('Risultato non valido');
+  const out = { h: r.h, a: r.a, et: null, pens: null, winner: r.h > r.a ? 0 : r.h < r.a ? 1 : null, scorers: [] };
+  const ko = matchRules(comp, f);
+  if (ko) {
+    const agg = ko.aggregate;
+    let h = r.h + agg[0], a = r.a + agg[1];
+    if (h === a && ko.extraTime) {
+      if (!r.et || !int(r.et.h, 15) || !int(r.et.a, 15)) throw new Error('Mancano i supplementari');
+      out.et = { h: r.et.h, a: r.et.a }; h += r.et.h; a += r.et.a;
+    } else if (r.et) throw new Error('Supplementari non previsti');
+    if (h === a) {
+      if (ko.penalties) {
+        if (!r.pens || !int(r.pens.h, 40) || !int(r.pens.a, 40) || r.pens.h === r.pens.a) throw new Error('Mancano i rigori');
+        out.pens = { h: r.pens.h, a: r.pens.a }; out.winner = r.pens.h > r.pens.a ? 0 : 1;
+      } else out.winner = null;
+    } else { if (r.pens) throw new Error('Rigori non previsti'); out.winner = h > a ? 0 : 1; }
+  } else if (r.et || r.pens) throw new Error('Supplementari e rigori non previsti in questa partita');
+  const total = out.h + out.a + (out.et ? out.et.h + out.et.a : 0);
+  out.scorers = (Array.isArray(r.scorers) ? r.scorers : []).slice(0, total).filter(s => s && typeof s === 'object')
+    .map(s => ({ team: s.team === 1 ? 1 : 0, name: String(s.name || '').replace(/[<>]/g, '').slice(0, 40), minute: Math.max(0, Math.min(130, s.minute | 0)) }));
+  return out;
+}
+
+// ---------- avanzamento ----------
+export function advanceComp(comp, ctx) {
+  const cfg = comp.config;
+  if (comp.stage === 'league') {
+    if (comp.fixtures.every(f => f.played)) finishComp(comp, leagueTable(comp)[0].team, ctx);
+    return;
+  }
+  if (comp.stage === 'groups') {
+    const group = comp.fixtures.filter(f => f.stage === 'group');
+    if (!group.every(f => f.played)) return;
+    const tables = groupTables(comp);
+    comp.groupFinal = tables.map(t => t.map(r => r.team));
+    const qualified = new Set(tables.flatMap(t => t.slice(0, cfg.groups.qualify).map(r => r.team)));
+    if (cfg.userTeam >= 0 && !qualified.has(cfg.userTeam)) comp.userOut = true;
+    startKnockout(comp, knockoutSeedsFromGroups(tables, cfg.groups.qualify));
+    return;
+  }
+  if (comp.stage !== 'knockout') return;
+  for (let r = 0; r < comp.bracket.length; r++) {
+    const round = comp.bracket[r];
+    let allDone = true;
+    round.ties.forEach((t, i) => {
+      if (t.winner !== null && t.winner !== undefined) return;
+      if (t.a === null || t.b === null) { allDone = false; return; }
+      const ms = t.fixtures.map(id => findFixture(comp, id));
+      if (ms.some(m => !m.played)) { allDone = false; return; }
+      const out = tieOutcome(t, ms);
+      if (out) {
+        advanceBracket(comp.bracket, r, i, out.winner);
+        t.agg = out.agg;
+        const loser = out.winner === t.a ? t.b : t.a;
+        if (loser === cfg.userTeam) comp.userOut = true;
+      } else {
+        // parità senza rigori: si ripete in casa dell'altra squadra
+        const last = ms[ms.length - 1];
+        t.fixtures.push(addFixture(comp, { stage: 'ko', round: r, tie: i, leg: (last.leg || 1) + 1, replay: true, home: last.away, away: last.home, neutral: !!last.neutral }).id);
+        allDone = false;
+      }
+    });
+    if (!allDone) return;
+    if (r + 1 < comp.bracket.length) createTieFixtures(comp, r + 1);
+    else { finishComp(comp, round.ties[0].winner, ctx); return; }
+  }
+}
+export function finishComp(comp, champion, ctx) {
+  comp.status = 'finished';
+  comp.champion = champion;
+  const table = comp.kind === 'league' ? leagueTable(comp) : standings(comp.config.teams, comp.fixtures.filter(f => f.played).map(f => ({ home: f.home, away: f.away, h: f.h + (f.et ? f.et.h : 0), a: f.a + (f.et ? f.et.a : 0) })));
+  comp.summary = seasonSummary(table, comp.fixtures, ctx.nameOf);
+  comp.summary.champion = champion;
+  comp.summary.season = comp.season;
+  if (comp.kind !== 'league') {
+    const fin = comp.fixtures.filter(f => f.stage === 'ko' && f.round === comp.bracket.length - 1 && f.played).pop();
+    if (fin) comp.summary.final = { home: fin.home, away: fin.away, h: fin.h, a: fin.a, et: fin.et, pens: fin.pens };
+  }
+  comp.history = (comp.history || []).concat([{ season: comp.season, champion: champion, summary: comp.summary }]).slice(-20);
+}

@@ -2,13 +2,14 @@
 // Uso: node tests/competitions_test.js
 const fs = require('fs'), path = require('path');
 const src = path.join(__dirname, '../src');
-const files = fs.readdirSync(src).filter(f => /^0[1-8]_/.test(f)).sort().concat(['18_competitions.js']);
+const files = fs.readdirSync(src).filter(f => /^0[1-8]_/.test(f)).sort().concat(['18_competitions.js', '18_squadre.js']);
 const store = {};
 globalThis.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
 const cl = fs.readFileSync(path.join(__dirname, '../cloud/src/complogic.js'), 'utf8');
 const names = [...cl.matchAll(/^export (?:const|function\*?|let) (\w+)/gm)].map(m => m[1]);
-let code = files.map(f => fs.readFileSync(path.join(src, f), 'utf8')).join('\n');
-code += '\nvar CompLogic = (function () {\n' + cl.replace(/^export /gm, '') + '\nreturn { ' + names.join(', ') + ' };\n})();\n';
+// come nel gioco (build.js): le regole condivise prima del codice del gioco
+let code = 'var CompLogic = (function () {\n' + cl.replace(/^export /gm, '') + '\nreturn { ' + names.join(', ') + ' };\n})();\n';
+code += files.map(f => fs.readFileSync(path.join(src, f), 'utf8')).join('\n');
 code += ';globalThis.__api = { Career, buildDatabase, buildExtraTeams, setSeed, CompLogic, CUP_PRESETS, KnockoutMatch };';
 require('vm').runInThisContext(code);
 const A = globalThis.__api;
