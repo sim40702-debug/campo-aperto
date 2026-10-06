@@ -118,6 +118,21 @@ giornata si simulano. **Simula partita** usa la simulazione ufficiale (forza del
 partita dà sempre lo stesso risultato, quindi non si può "rilanciare". Uscire a metà simula il tempo che manca dal punteggio
 attuale; se il gioco si chiude a metà partita, al riavvio la partita si completa con la simulazione.
 
+## Amici e sfide tra amici
+
+Con l'account, nella Home c'è il pannello **Amici** a destra (si chiude e riapre con la linguetta):
+
+- **Tutti i giocatori**: chi è iscritto al server, con la ricerca per nome. **Aggiungi** manda la richiesta di amicizia;
+  l'altro la trova in **Richieste e inviti** (pallino rosso sulla linguetta) e la accetta.
+- **Sfida** accanto a un amico (o **Nuova sfida**): scegli campionato, torneo o coppa, le regole come nelle competizioni
+  e la tua squadra, invita gli amici. Ognuno accetta scegliendo una squadra libera; le altre le guida l'IA.
+  Quando ci siete, chi l'ha creata preme **Inizia la competizione**.
+- **Giocare**: contro l'IA premi **Gioca** (o **Simula partita**); contro un amico premi **Gioca online**: si apre la
+  stanza e l'amico, dalla sua competizione, preme **Entra nella partita**. A fine partita il risultato va al server da
+  solo e vale quando lo mandate uguale tutti e due. Le partite tra squadre dell'IA le simula il server.
+
+Le sfide stanno sul server: le ritrovi da qualunque computer e in **Competizioni → Con gli amici**.
+
 ## Monete, scommesse e negozio
 
 Con un account (nome utente e password, dal menu: **Accedi**) hai un portafoglio di monete salvato sul server: lo ritrovi

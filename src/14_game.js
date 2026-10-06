@@ -50,6 +50,7 @@ class Game {
     this.fxw = null;
     this.eco = new Economy(this);
     this.comps = new CompetitionsUI(this);
+    this.social = new SocialUI(this);
     this.compMatch = null;      // partita di una competizione in corso: { compId, fid }
     this.startDemo();
     this.showScreen('menu');
@@ -85,6 +86,7 @@ class Game {
     // nel menu principale il primo pulsante si evidenzia solo se si usa controller o tastiera
     if (first && (name !== 'menu' || this.input.lastDevice === 'pad')) setTimeout(() => first.focus({ preventScroll: true }), 30);
     if (this.eco) this.eco.onShow(name);
+    if (this.social && name === 'menu') this.social.onHome();
   }
 
   toast(text, isErr) {
@@ -143,7 +145,11 @@ class Game {
     $('ft-rematch').onclick = () => { if (this.mode === 'host') this.net.host.backToLobby(); else this.startMatch(); };
     $('ft-setup').onclick = () => { this.quitToMenu(); this.showScreen('setup'); };
     $('ft-menu').onclick = () => this.quitToMenu();
-    $('ft-comp').onclick = () => { const id = this.lastCompId; this.quitToMenu(); if (id) this.comps.open(id); };
+    $('ft-comp').onclick = () => {
+      const fr = this.net && this.net.friend ? this.net.friend.code : this.compMatch && this.compMatch.friend, id = this.lastCompId;
+      this.quitToMenu();
+      if (fr) this.comps.openFriend(fr); else if (id) this.comps.open(id);
+    };
     // online
     $('on-name').value = this.settings.name;
     $('on-name').onchange = () => { this.settings.name = $('on-name').value.trim().slice(0, 16) || this.settings.name; saveSettings(this.settings); };
@@ -279,8 +285,10 @@ class Game {
     this.eco.dressMatch(m, localId, names);
   }
 
-  // partita di una competizione: motore vero (con supplementari e rigori quando serve un vincitore)
-  startCompMatch(comp, f) {
+  // partita di una competizione: motore vero (con supplementari e rigori quando serve un vincitore).
+  // extra.friend: codice della sfida tra amici (il risultato va al server, non nella carriera sul computer)
+  startCompMatch(comp, f, extra) {
+    const friend = extra && extra.friend;
     const cfg = comp.config, C = this.comps.career;
     const side = f.home === cfg.userTeam ? 0 : f.away === cfg.userTeam ? 1 : -1;
     const team = (idx, mine) => {
@@ -293,8 +301,8 @@ class Game {
     const opts = { humanTeam: side, difficulty: cfg.difficulty, halfSeconds: cfg.halfSeconds };
     const m = rules ? new KnockoutMatch(team(f.home, side === 0), team(f.away, side === 1), Object.assign(opts, { knockout: rules }))
       : new Match(team(f.home, side === 0), team(f.away, side === 1), opts);
-    C.markInProgress(comp, f.id);
-    this.compMatch = { compId: comp.id, fid: f.id };
+    if (!friend) C.markInProgress(comp, f.id);
+    this.compMatch = { compId: comp.id, fid: f.id, friend: friend || null };
     this.lastCompId = comp.id;
     this.mode = 'offline';
     this.prepareMatchView(m, 'local', null);
@@ -341,7 +349,8 @@ class Game {
   quitToMenu() {
     if (this.mode === 'fixture') { this.stopFixtureWatch(true); return; }
     // partita di competizione lasciata a metà: il tempo che manca si simula dal punteggio attuale
-    if (this.compMatch && this.match && this.match.state !== 'FULLTIME') {
+    if (this.compMatch && this.compMatch.friend && this.match && this.match.state !== 'FULLTIME') this.comps.friendMatchAbandoned(this.compMatch, this.match);
+    else if (this.compMatch && this.match && this.match.state !== 'FULLTIME') {
       const f = this.comps.matchAbandoned(this.compMatch, this.match);
       if (f) this.toast('Partita lasciata a metà: il resto è stato simulato (' + this.teamName(f.home) + ' ' + f.h + '-' + f.a + ' ' + this.teamName(f.away) + ')');
     }
@@ -1273,11 +1282,25 @@ class Game {
     $('ft-stats').innerHTML = '<tr><th>' + a.data.short + '</th><th></th><th>' + b.data.short + '</th></tr>' +
       rows.map(r => '<tr><td>' + r[1] + '</td><th>' + r[0] + '</th><td>' + r[2] + '</td></tr>').join('');
     const cm = this.compMatch;
-    $('ft-rematch').hidden = this.mode === 'client' || this.mode === 'fixture' || !!cm;
+    const fo = this.net && this.net.friend;   // partita online di una sfida tra amici
+    $('ft-rematch').hidden = this.mode === 'client' || this.mode === 'fixture' || !!cm || !!fo;
     $('ft-setup').hidden = this.mode !== 'offline' || !!cm;
-    $('ft-comp').hidden = !cm;
-    $('ft-comp-note').hidden = !cm;
-    if (cm) {
+    $('ft-comp').hidden = !cm && !fo;
+    $('ft-comp-note').hidden = !cm && !fo;
+    if (fo && !fo.reported) {
+      fo.reported = true;
+      $('ft-comp-note').textContent = 'Mando il risultato al server…';
+      this.comps.friendOnlineFinished(fo, m).then(t => { $('ft-comp-note').textContent = t; });
+    }
+    if (cm && cm.friend) {
+      const r = m.result ? m.result() : null;
+      if (r && (r.et || r.pens)) $('ft-score').textContent += (r.et ? '  d.t.s.' : '') + (r.pens ? '  ·  rigori ' + r.pens.h + '-' + r.pens.a : '');
+      if (!cm.recorded) {
+        cm.recorded = true;
+        $('ft-comp-note').textContent = 'Mando il risultato al server…';
+        this.comps.friendMatchFinished(cm, m).then(t => { $('ft-comp-note').textContent = t; });
+      }
+    } else if (cm) {
       // il risultato del motore va nella competizione (una volta sola), poi si simula il resto della giornata
       const r = m.result ? m.result() : null;
       if (r && (r.et || r.pens)) $('ft-score').textContent += (r.et ? '  d.t.s.' : '') + (r.pens ? '  ·  rigori ' + r.pens.h + '-' + r.pens.a : '');
@@ -1339,6 +1362,7 @@ class Game {
     return this.settings.name;
   }
   onlineError(msg) {
+    if (this.screen !== 'online') this.toast(msg, true);   // partita avviata da una sfida tra amici
     this.busy(null);
     this.netNote(msg, true);
     const st = $('on-status');
@@ -1374,7 +1398,9 @@ class Game {
   }
 
   // where: 'server' (via internet, sul server online) oppure 'lan' (app desktop: ospitata su questo computer)
-  async createOnline(where) {
+  // opts.friend: partita di una sfida tra amici (squadre, durata e lati fissati dalla competizione)
+  async createOnline(where, opts) {
+    const friend = opts && opts.friend || null;
     const name = this.onlineName();
     const lan = !!window.campoLan && where === 'lan';
     const server = this.onlineServer();
@@ -1396,8 +1422,16 @@ class Game {
       if (cancelled) return;
       this.netNote('Partita creata, codice ' + link.code);
       const host = new HostSession(link, this.db, name);
+      if (friend) {
+        Object.assign(host.settings, { home: friend.home, away: friend.away, halfSeconds: friend.halfSeconds, difficulty: friend.difficulty });
+        host.lockSides = { [friend.homeUser]: 0, [friend.awayUser]: 1 };
+        host.members.get(link.id).side = name in host.lockSides ? host.lockSides[name] : -1;
+      }
       host.settings.names = [this.settings.teamNames[host.settings.home] || '', this.settings.teamNames[host.settings.away] || ''];
-      this.net = { link: link, host: host, lan: lan };
+      this.net = { link: link, host: host, lan: lan, friend: friend };
+      // il codice della stanza va al server: l'amico lo trova nella competizione e entra con un clic
+      if (friend) this.eco.api.post('/api/friendcomps/' + encodeURIComponent(friend.code) + '/room', { fixture: friend.fixture, room: link.code })
+        .catch(e => this.toast('Stanza aperta, ma il server non l\'ha registrata (' + e.message + '): dai al tuo amico il codice ' + link.code, true));
       host.onChange = () => { if (this.screen === 'lobby') this.renderLobby(); };
       this.bindLinkEvents(link);
       this.busy(null);
@@ -1416,9 +1450,11 @@ class Game {
     }
   }
 
-  async joinOnline() {
+  // opts: { code, friend } per entrare nella partita di una sfida tra amici senza scrivere il codice
+  async joinOnline(opts) {
+    const friend = opts && opts.friend || null;
     const name = this.onlineName();
-    const code = normalizeCode($('on-code').value);
+    const code = normalizeCode(opts && opts.code ? opts.code : $('on-code').value);
     this.netLog = []; this.netLastError = '';
     if (!NET.CODE_RE.test(code)) { this.onlineError('Codice partita non valido: sono 6 caratteri, lettere e numeri (senza 0, 1, I e O)'); return; }
     const lan = code[0] === 'L'; // le partite in rete locale hanno sempre codici con L, quelle dei server mai
@@ -1458,7 +1494,7 @@ class Game {
       this.netNote('Entrato nella partita ' + code);
       if (lan) { this.settings.lanHost = target.ip + (target.port === 8787 ? '' : ':' + target.port); saveSettings(this.settings); }
       const client = new ClientSession(link, this.db, name);
-      this.net = { link: link, client: client, lan: lan };
+      this.net = { link: link, client: client, lan: lan, friend: friend };
       client.onLobby = () => { if (this.screen === 'lobby') this.renderLobby(); };
       client.onStart = m => {
         // la prima istantanea arriva prima di qualunque lobby: la partita era già in corso
@@ -1623,7 +1659,7 @@ class Game {
     if (n) { if (n.client) n.client.close(); else n.link.leave(); }
     this.stopLan();
     $('netind').hidden = true;
-    if (toMenu) { this.mode = 'menu'; this.match = null; this.startDemo(); this.showScreen('online'); }
+    if (toMenu) { this.mode = 'menu'; this.match = null; this.startDemo(); if (n && n.friend) this.comps.openFriend(n.friend.code); else this.showScreen('online'); }
   }
 
   showLobby() {
@@ -1678,8 +1714,15 @@ class Game {
       btn.classList.toggle('on', !!me && me.side === side);
       btn.disabled = L.phase !== 'lobby' || (side >= 0 && list.length >= NET.MAX_PER_TEAM && !(me && me.side === side));
     }
-    $('lb-host-opts').hidden = !isHost;
-    if (isHost) {
+    const fr = this.net.friend;
+    if (fr) {
+      document.querySelectorAll('[data-side]').forEach(b => { b.disabled = true; });
+      $('lb-sub').textContent = fr.compName + ': ' + fr.homeUser + ' gioca con ' + teams[0].name + ', ' + fr.awayUser + ' con ' + teams[1].name + '. ' +
+        (isHost ? 'Avvia quando ci siete tutti e due.' : 'La partita la avvia chi ha aperto la stanza.');
+    }
+    $('lb-host-opts').hidden = !isHost || !!fr;
+    if (fr) $('lb-settings-ro').textContent = 'Squadre, durata (' + (s.halfSeconds / 60) + ' minuti a tempo) e IA ' + ['facile', 'normale', 'difficile'][s.difficulty] + ' fissate dalla competizione. A fine partita il risultato va al server da solo.';
+    if (isHost && !fr) {
       ['home', 'away'].forEach((which, i) => {
         const inp = $('lb-' + which + '-name');
         inp.placeholder = this.db[i === 0 ? s.home : s.away].name;
@@ -1690,7 +1733,9 @@ class Game {
       this.segmented('lb-diff', [{ label: 'Facile', value: 0 }, { label: 'Normale', value: 1 }, { label: 'Difficile', value: 2 }], s.difficulty, v => h.setSettings({ difficulty: v }));
       $('lb-start').disabled = !h.canStart();
       $('lb-settings-ro').textContent = '';
-    } else {
+    } else if (isHost) {
+      $('lb-start').disabled = !this.net.host.canStart();
+    } else if (!fr) {
       $('lb-settings-ro').textContent = 'Durata di un tempo ' + (s.halfSeconds / 60) + ' minuti, IA ' + ['facile', 'normale', 'difficile'][s.difficulty] + '.';
     }
     $('lb-start').hidden = !isHost;

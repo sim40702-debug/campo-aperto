@@ -2,6 +2,31 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.9.0 — 06/10/2026 (amici e sfide tra amici)
+- **Pannello Amici** nella Home, a destra a metà schermo (si chiude in una linguetta; su schermi stretti va in basso):
+  tutti i giocatori iscritti dal server con ricerca per nome, richieste di amicizia (accetta, rifiuta, annulla, togli),
+  amici, inviti alle sfide e le tue sfide in corso. Pallino rosso con le richieste e gli inviti in attesa. Degli altri si
+  vede solo il nome pubblico. Si aggiorna all'apertura, al ritorno nella Home e ogni 45 secondi solo se è aperto.
+- **Sfide tra amici**: «Sfida» accanto a un amico (o «Nuova sfida») crea un campionato, un torneo o una coppa con le
+  stesse opzioni delle competizioni (squadre, andata e ritorno, gironi, supplementari, rigori, durata, IA) e invita gli
+  amici. Ognuno accetta scegliendo una squadra libera; le altre le guida l'IA. Chi l'ha creata la avvia, può invitare
+  altri amici prima dell'inizio, simulare una partita bloccata, avviare la nuova stagione o eliminarla; gli altri possono
+  lasciarla (la loro squadra passa all'IA). Anche nel menu Competizioni, sezione «Con gli amici».
+- **Partite**: contro l'IA si gioca con il motore vero (risultato al server da solo; uscita a metà = resto simulato;
+  partita iniziata e mai finita = simulazione). Tra due amici si gioca online: uno apre la stanza dalla competizione,
+  l'altro entra con un clic (codice comunicato dal server), squadre e lati fissati; a fine partita il gioco di ognuno
+  manda il risultato e vale solo se coincide (o se entrambi chiedono la simulazione). Nell'eliminazione diretta una
+  parità tra amici va a supplementari e rigori della simulazione ufficiale. Partite tra squadre dell'IA simulate dal server.
+- **Tutto sul server**: stato, calendario e risultati delle sfide stanno nel database (migrazione 0005); nessuna richiesta
+  permette di scrivere un risultato a mano; controlli su squadre, turno, regole (supplementari e rigori solo se previsti)
+  e modifiche contemporanee (una partita si registra una volta sola).
+- **Un solo sistema di regole**: l'avanzamento delle competizioni (calendario, tabellone, gironi, risultati) è passato da
+  Career a `cloud/src/complogic.js`, usato identico dal gioco e dal server; le 24 squadre in più stanno in
+  `src/18_squadre.js`, incluse anche nel server (`npm run engine` genera `cloud/src/teams.gen.json`).
+- **Release**: solo Windows e Mac (le macchine Linux di GitHub restavano in coda); su Linux `npm run dist:linux`.
+- Test: cloud/test/friends_test.js (60, server vero), tests/social_browser_test.py (23, due giocatori nel browser,
+  partita contro l'IA e partita online tra amici), competizioni 32, regressioni invariate.
+
 ## 0.8.0 — 05/10/2026 (competizioni, reattività, personaggi)
 - **Competizioni** (menu Competizioni, al posto di "In costruzione"): Campionato all'italiana (6-20 squadre, andata o
   andata e ritorno, giornate, classifica con scontri diretti, forma, serie, porte inviolate, % vittorie, statistiche,

@@ -43,7 +43,7 @@ class SocialUI {
     const q = this.usersQ ? '?q=' + encodeURIComponent(this.usersQ) : '';
     this.busyReq = Promise.all([this.api.get('/api/friends'), this.api.get('/api/friendcomps'), this.api.get('/api/users' + q)]).then(([f, c, u]) => {
       this.friends = f; this.comps = c; this.users = u; this.err = '';
-    }).catch(e => { this.err = e.message; }).then(() => { this.busyReq = null; this.render(); if (this.g.screen === 'comps') this.g.comps.renderDashboard(); });
+    }).catch(e => { this.err = e.status === 404 && e.code === 'NOT_FOUND' ? 'Il server non ha ancora gli amici: va aggiornato alla 0.9 (nella cartella cloud: npm run deploy).' : e.message; }).then(() => { this.busyReq = null; this.render(); if (this.g.screen === 'comps') this.g.comps.renderDashboard(); });
     return this.busyReq;
   }
   searchUsers(q) {

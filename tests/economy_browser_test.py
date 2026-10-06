@@ -33,7 +33,7 @@ def start_server(persist):
     if not os.path.exists(os.path.join(CLOUD, '.dev.vars')):
         with open(os.path.join(CLOUD, '.dev.vars.example')) as f, open(os.path.join(CLOUD, '.dev.vars'), 'w') as g: g.write(f.read())
     subprocess.run([WRANGLER, 'd1', 'migrations', 'apply', 'campo-aperto', '--local', '--persist-to', persist], cwd=CLOUD, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(['node', 'build.js', 'engine'], cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(['npm', 'run', 'engine'], cwd=CLOUD, check=True, stdout=subprocess.DEVNULL)
     log = open(os.path.join(persist, 'wrangler.log'), 'w')
     print('log del server:', log.name, flush=True)
     p = subprocess.Popen([WRANGLER, 'dev', '--port', str(PORT), '--ip', '127.0.0.1', '--persist-to', persist], cwd=CLOUD, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)

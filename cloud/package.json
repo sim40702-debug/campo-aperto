@@ -1,6 +1,6 @@
 {
   "name": "campo-aperto-cloud",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Backend di Campo Aperto: account, monete, scommesse, negozio (Cloudflare Workers + D1 + Durable Objects)",
   "scripts": {
