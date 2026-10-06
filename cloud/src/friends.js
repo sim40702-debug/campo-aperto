@@ -44,7 +44,7 @@ export async function listUsers(env, user, q) {
   };
 }
 
-export async function myFriends(env, user) {
+export async function myFriends(env, user, t) {
   const { results } = await env.DB.prepare(
     'SELECT u.username, f.status, f.requested_by, f.created_at, f.accepted_at FROM friendships f JOIN users u ON u.id = (CASE WHEN f.user_a = ? THEN f.user_b ELSE f.user_a END) ' +
     'WHERE (f.user_a = ? OR f.user_b = ?) AND u.hidden = 0 ORDER BY u.username_lc').bind(user.id, user.id, user.id).all();
@@ -52,7 +52,37 @@ export async function myFriends(env, user) {
     friends: results.filter(r => r.status === 'ACCEPTED').map(r => ({ username: r.username, since: r.accepted_at })),
     incoming: results.filter(r => r.status === 'PENDING' && r.requested_by !== user.id).map(r => ({ username: r.username, at: r.created_at })),
     outgoing: results.filter(r => r.status === 'PENDING' && r.requested_by === user.id).map(r => ({ username: r.username, at: r.created_at })),
+    // inviti a partite online ricevuti (nella stessa risposta: nessuna richiesta in più per il pannello)
+    games: await incomingGames(env, user, t),
   };
+}
+
+// ---------- inviti alle partite online ----------
+const INVITE_TTL = 15 * 60 * 1000;
+const ROOM_RE = /^[A-HJ-NP-Z2-9]{6}$/;
+async function incomingGames(env, user, t) {
+  const { results } = await env.DB.prepare("SELECT g.id, g.room, g.created_at, u.username FROM game_invites g JOIN users u ON u.id = g.from_id " +
+    "WHERE g.to_id = ? AND g.status = 'PENDING' AND g.created_at > ? AND u.hidden = 0 ORDER BY g.id DESC LIMIT 10").bind(user.id, t - INVITE_TTL).all();
+  return results.map(r => ({ id: r.id, from: r.username, room: r.room, at: r.created_at }));
+}
+// invito di un amico nella stanza che ho aperto (codice del relay). Un nuovo invito sostituisce quello vecchio
+export async function inviteToGame(env, user, body, t) {
+  const other = await userByName(env, body.username);
+  if (other.id === user.id) fail(400, 'SELF', 'Non puoi invitare te stesso');
+  if (typeof body.room !== 'string' || !ROOM_RE.test(body.room)) fail(400, 'BAD_ROOM', 'Codice della partita non valido');
+  if (!(await areFriends(env, user.id, other.id))) fail(403, 'NOT_FRIEND', other.username + ' non è tra i tuoi amici');
+  const r = await env.DB.batch([
+    env.DB.prepare("UPDATE game_invites SET status = 'CANCELLED' WHERE from_id = ? AND to_id = ? AND status = 'PENDING'").bind(user.id, other.id),
+    env.DB.prepare("INSERT INTO game_invites (from_id, to_id, room, status, created_at) VALUES (?, ?, ?, 'PENDING', ?)").bind(user.id, other.id, body.room, t),
+  ]);
+  return { username: other.username, room: body.room, sent: !!r[1].meta.changes };
+}
+// risposta a un invito ricevuto: accept (si entra nella stanza) o decline
+export async function answerGameInvite(env, user, id, accept) {
+  const r = await env.DB.prepare("UPDATE game_invites SET status = ? WHERE id = ? AND to_id = ? AND status = 'PENDING' RETURNING room")
+    .bind(accept ? 'ACCEPTED' : 'DECLINED', Number(id) || 0, user.id).first();
+  if (!r) fail(404, 'NO_INVITE', 'Invito non più valido');
+  return { room: r.room };
 }
 
 // richiesta di amicizia; se l'altro l'aveva già chiesta a me, diventa amicizia subito

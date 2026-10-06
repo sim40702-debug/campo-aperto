@@ -917,6 +917,7 @@ class Game {
     if (pf.t < 1) return;
     const fps = pf.frames / pf.t;
     pf.t = 0; pf.frames = 0;
+    this.curFps = fps;   // anche per la diagnostica online (un host lento rallenta tutti)
     if (this.settings.showFps) { $('fps').hidden = false; $('fps').textContent = Math.round(fps) + ' fps, ' + Math.round(this.renderer.renderer.getPixelRatio() * 100) / 100 + 'x'; }
     if (!this.settings.dynamicRes) return;
     const target = this.settings.fpsLimit > 0 ? this.settings.fpsLimit : 60;
@@ -1399,6 +1400,7 @@ class Game {
 
   // where: 'server' (via internet, sul server online) oppure 'lan' (app desktop: ospitata su questo computer)
   // opts.friend: partita di una sfida tra amici (squadre, durata e lati fissati dalla competizione)
+  // opts.invite: nome di un amico da invitare appena la stanza è pronta (amichevole 1 contro 1 dal pannello Amici)
   async createOnline(where, opts) {
     const friend = opts && opts.friend || null;
     const name = this.onlineName();
@@ -1422,6 +1424,7 @@ class Game {
       if (cancelled) return;
       this.netNote('Partita creata, codice ' + link.code);
       const host = new HostSession(link, this.db, name);
+      host.stats = () => ({ fps: this.curFps || 0 });
       if (friend) {
         Object.assign(host.settings, { home: friend.home, away: friend.away, halfSeconds: friend.halfSeconds, difficulty: friend.difficulty });
         host.lockSides = { [friend.homeUser]: 0, [friend.awayUser]: 1 };
@@ -1430,6 +1433,7 @@ class Game {
       host.settings.names = [this.settings.teamNames[host.settings.home] || '', this.settings.teamNames[host.settings.away] || ''];
       this.net = { link: link, host: host, lan: lan, friend: friend };
       // il codice della stanza va al server: l'amico lo trova nella competizione e entra con un clic
+      if (opts && opts.invite && this.social) { this.net.invited = new Set([opts.invite]); this.social.inviteToRoom(opts.invite, link.code); }
       if (friend) this.eco.api.post('/api/friendcomps/' + encodeURIComponent(friend.code) + '/room', { fixture: friend.fixture, room: link.code })
         .catch(e => this.toast('Stanza aperta, ma il server non l\'ha registrata (' + e.message + '): dai al tuo amico il codice ' + link.code, true));
       host.onChange = () => { if (this.screen === 'lobby') this.renderLobby(); };
@@ -1494,6 +1498,7 @@ class Game {
       this.netNote('Entrato nella partita ' + code);
       if (lan) { this.settings.lanHost = target.ip + (target.port === 8787 ? '' : ':' + target.port); saveSettings(this.settings); }
       const client = new ClientSession(link, this.db, name);
+      client.stats = () => ({ fps: this.curFps || 0 });
       this.net = { link: link, client: client, lan: lan, friend: friend };
       client.onLobby = () => { if (this.screen === 'lobby') this.renderLobby(); };
       client.onStart = m => {
@@ -1709,12 +1714,20 @@ class Game {
       // i nomi vanno inseriti come testo (mai come HTML)
       const items = $('lb-list-' + side).querySelectorAll('.nm');
       const pings = $('lb-list-' + side).querySelectorAll('.ping');
-      list.forEach((m, i) => { if (items[i]) items[i].textContent = m.name; if (pings[i]) pings[i].textContent = m.isHost ? '' : m.connected ? m.ping + ' ms' : 'perso'; });
+      // ping all'host (quello che si sente in partita) e, tra parentesi, ping al server; per l'host i suoi fps
+      list.forEach((m, i) => {
+        if (items[i]) items[i].textContent = m.name;
+        if (!pings[i]) return;
+        pings[i].textContent = m.isHost ? 'server ' + m.srv + ' ms · ' + m.fps + ' fps' : m.connected ? m.ping + ' ms (server ' + m.srv + ')' : 'perso';
+        pings[i].title = m.isHost ? 'Ping dell\'host al server e fotogrammi al secondo del suo computer' : 'Ritardo verso l\'host (andata e ritorno, passando dal server); tra parentesi il ritardo verso il server';
+      });
       const btn = document.querySelector('[data-side="' + side + '"]');
       btn.classList.toggle('on', !!me && me.side === side);
       btn.disabled = L.phase !== 'lobby' || (side >= 0 && list.length >= NET.MAX_PER_TEAM && !(me && me.side === side));
     }
     const fr = this.net.friend;
+    this.renderLobbyInvites(L, code, fr);
+    $('lb-lag').textContent = lagAdvice(L.members);
     if (fr) {
       document.querySelectorAll('[data-side]').forEach(b => { b.disabled = true; });
       $('lb-sub').textContent = fr.compName + ': ' + fr.homeUser + ' gioca con ' + teams[0].name + ', ' + fr.awayUser + ' con ' + teams[1].name + '. ' +
@@ -1741,6 +1754,25 @@ class Game {
     $('lb-start').hidden = !isHost;
     $('lb-wait').hidden = isHost;
     $('lb-leave').textContent = isHost ? 'Chiudi la partita' : 'Esci dalla lobby';
+  }
+
+  // «Invita amici» nella lobby: amici dell'account non ancora nella stanza (solo stanze online, non in rete locale)
+  renderLobbyInvites(L, code, fr) {
+    const so = this.social, box = $('lb-invite');
+    const friends = so && so.ready() && so.friends ? so.friends.friends : null;
+    const ok = !!friends && !fr && L && L.phase === 'lobby' && code && code[0] !== 'L';
+    box.hidden = !ok;
+    if (!ok) { if (so && so.ready() && !so.friends) so.refresh().then(() => { if (this.screen === 'lobby') this.renderLobby(); }); return; }
+    const inRoom = new Set(L.members.map(m => m.name));
+    const sent = this.net.invited || (this.net.invited = new Set());
+    const list = friends.filter(f => !inRoom.has(f.username));
+    $('lb-invite-list').innerHTML = list.length ? list.map(f => '<button class="seg' + (sent.has(f.username) ? ' sent' : '') + '" data-inv="' + esc(f.username) + '">' +
+      (sent.has(f.username) ? 'Invitato: ' : 'Invita ') + esc(f.username) + '</button>').join('') : '<span class="small">Tutti i tuoi amici sono già qui (o non hai ancora amici: aggiungili dal pannello Amici).</span>';
+    $('lb-invite-list').querySelectorAll('[data-inv]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      if (await so.inviteToRoom(b.dataset.inv, code)) sent.add(b.dataset.inv);
+      if (this.screen === 'lobby') this.renderLobby();
+    });
   }
 
   pickSide(side) {
@@ -1792,13 +1824,26 @@ class Game {
       text = 'Host, ' + others.length + (others.length === 1 ? ' giocatore' : ' giocatori') + (lost ? ', ' + lost + ' in attesa' : '') + ', server ' + link.rtt + ' ms';
       if (lost) cls = 'dot warn';
     } else {
-      const r = n.client.rtt;
-      text = 'Online, ' + r + ' ms';
-      if (r > 150) cls = 'dot warn';
+      const r = n.client.rtt, hs = n.client.hostStats;
+      text = 'Online, ' + r + ' ms (server ' + link.rtt + ' ms' + (hs ? ', host ' + hs.fps + ' fps' : '') + ')';
+      if (r > 150 || (hs && hs.fps && hs.fps < 40)) cls = 'dot warn';
     }
     $('net-dot').className = cls;
     if ($('net-text').textContent !== text) $('net-text').textContent = text;
   }
+}
+
+// da dove viene il ritardo, dai numeri della lobby: rete verso il server, computer dell'host lento, o percorso lungo
+function lagAdvice(members) {
+  const host = members.find(m => m.isHost), others = members.filter(m => !m.isHost && m.connected);
+  if (!host || !others.length) return '';
+  const slowHost = host.fps > 0 && host.fps < 40;
+  const far = [host].concat(others).filter(m => m.srv > 120);
+  const laggy = others.filter(m => m.ping > 150);
+  if (slowHost) return 'Il computer dell\'host va a ' + host.fps + ' fotogrammi al secondo: rallenta la partita per tutti. Sull\'host abbassa la grafica (Impostazioni → Grafica: qualità bassa, risoluzione dinamica) oppure fate ospitare a chi ha il computer più veloce.';
+  if (far.length) return 'Ritardo di rete verso il server (' + far.map(m => m.name + ' ' + m.srv + ' ms').join(', ') + '): di solito sono reti con filtri o proxy (scuola, ufficio) o il Wi-Fi. Se siete nella stessa rete, con l\'app desktop usate «Crea in rete locale»: niente internet, ritardo di pochi millisecondi.';
+  if (laggy.length) return 'Ritardo alto verso l\'host pur con il server vicino: probabilmente la connessione dell\'host in uscita. Provate a far ospitare un altro.';
+  return '';
 }
 
 window.addEventListener('load', () => {

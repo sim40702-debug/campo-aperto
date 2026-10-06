@@ -439,7 +439,8 @@ class CompetitionsUI {
   // panoramica di una sfida in corso: la mia partita del turno e cosa si aspetta
   renderFriendOver(c) {
     const v = this.friend.view, u = v.myTeam, me = this.api.username;
-    let h = '<div class="cp-members">' + v.members.filter(m => m.team !== null && (m.status === 'ACCEPTED' || m.status === 'LEFT')).map(m => '<span>' + (m.status === 'LEFT' ? esc(m.username) + ': ' : '') + this.teamTag(m.team, m.me) + (m.status === 'LEFT' ? ' <span class="small">(ha lasciato, ora IA)</span>' : '') + '</span>').join('') + '</div>';
+    let h = '<div class="cp-members">' + v.members.filter(m => m.team !== null && (m.status === 'ACCEPTED' || m.status === 'LEFT')).map(m => '<span>' + (m.status === 'LEFT' ? esc(m.username) + ': ' : '') + this.teamTag(m.team, m.me) + (m.status === 'LEFT' ? ' <span class="small">(ha lasciato, ora IA)</span>' : '') +
+      (!m.me && m.status === 'ACCEPTED' ? ' <button class="ghost sm-btn" data-friendly="' + esc(m.username) + '" title="Partita online 1 contro 1, fuori dalla competizione">Amichevole</button>' : '') + '</span>').join('') + '</div>';
     if (c.status === 'finished') return h + this.championCard(c) + this.recentAndProgress(c);
     h += '<div class="cp-round"><span class="small">In corso</span><b>' + esc(v.round) + '</b></div>';
     const p = u === null ? null : v.pending.find(x => x.home === u || x.away === u);
@@ -495,6 +496,7 @@ class CompetitionsUI {
     if (b('cp-online')) b('cp-online').onclick = () => this.g.createOnline('server', { friend: this.friendMatchInfo(c, f, p) });
     if (b('cp-join')) b('cp-join').onclick = () => this.g.joinOnline({ code: p.room.code, friend: this.friendMatchInfo(c, f, p) });
     if (b('cp-newseason')) b('cp-newseason').onclick = () => this.friendPost('newseason', {}, c.kind === 'league' ? 'Nuova stagione: calendario pronto' : 'Nuova edizione: sorteggio fatto');
+    $('cp-body').querySelectorAll('[data-friendly]').forEach(x => x.onclick = () => this.g.createOnline('server', { invite: x.dataset.friendly }));
     $('cp-body').querySelectorAll('[data-force]').forEach(x => x.onclick = () => this.g.confirmClick(x, 'Sicuro?', () => this.friendPost('force', { fixture: x.dataset.force }, 'Partita simulata')));
     $('cp-body').querySelectorAll('[data-calr]').forEach(x => x.onclick = () => { this.calRound = Number(x.dataset.calr); this.render(); });
   }

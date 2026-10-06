@@ -299,6 +299,7 @@ Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'acc
 | `GET /friendcomps/:codice` | sì (partecipanti) | stato, partecipanti, partite del turno con risultati mandati e stanza |
 | `POST /friendcomps/:codice/invite\|team\|decline\|start\|leave\|cancel\|newseason` | sì | inviti, scelta della squadra, avvio, uscita, eliminazione, nuova stagione |
 | `POST /friendcomps/:codice/report` `{fixture, kind, result}` | sì | risultato della tua partita (score, sim, kickoff, abandon) |
+| `POST /invites` `{username, room}`, `POST /invites/:id/accept\|decline` | sì | invito di un amico in una partita online (valido 15 minuti; gli inviti ricevuti arrivano in `GET /friends` come `games`) |
 | `POST /friendcomps/:codice/room` `{fixture, room}`, `POST /friendcomps/:codice/force` `{fixture}` | sì | stanza online della partita tra amici; simulazione di una partita bloccata (chi l'ha creata) |
 
 ## Test

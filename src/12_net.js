@@ -27,6 +27,8 @@ const NET = {
   EV_TYPES: ['kick', 'whistle', 'post', 'save', 'goal', 'tackle', 'switch', 'ref'],
 };
 const netNow = () => performance.now() / 1000;
+// numeri di diagnostica ricevuti dalla rete (ping, fps): solo interi in un intervallo
+const netNum = (v, max) => Number.isFinite(v) ? Math.min(max, Math.max(0, Math.round(v))) : 0;
 
 // pulizia del codice inserito dall'utente: maiuscole, solo caratteri ammessi
 function normalizeCode(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); }
@@ -313,6 +315,7 @@ class HostSession {
     this.members.set(link.id, { id: link.id, name: myName, side: 0, connected: true, ping: 0, isHost: true });
     this.settings = { home: 0, away: 4, halfSeconds: 180, difficulty: 1, names: ['', ''] };
     this.match = null; this.phase = 'lobby';
+    this.stats = null;            // () => { fps }: fps di questo computer (dal gioco)
     this.lockSides = null;        // sfida tra amici: nome -> lato (ognuno con la sua squadra, gli altri guardano)
     this.inputs = new Map();      // id -> ultimo comando ricevuto
     this.slots = [];              // slot -> id
@@ -376,6 +379,7 @@ class HostSession {
         break;
       case 'ping':
         m.ping = Math.max(0, Math.min(9999, Number(d.rtt) || 0));
+        m.srv = netNum(d.srv, 9999); m.fps = netNum(d.fps, 500);
         this.link.to(from, { t: 'pong', n: d.n });
         break;
     }
@@ -396,7 +400,11 @@ class HostSession {
   lobbyState() {
     return {
       t: 'lobby', code: this.link.code, hostId: this.link.id, phase: this.phase, settings: this.settings,
-      members: [...this.members.values()].map(m => ({ id: m.id, name: m.name, side: m.side, connected: m.connected, ping: m.ping, isHost: !!m.isHost })),
+      members: [...this.members.values()].map(m => {
+        // per l'host: il suo ping al server e i suoi fps (un host lento rallenta tutti)
+        const st = m.isHost ? Object.assign({ srv: this.link.rtt }, this.stats ? this.stats() : {}) : m;
+        return { id: m.id, name: m.name, side: m.side, connected: m.connected, ping: m.ping, srv: netNum(st.srv, 9999), fps: netNum(st.fps, 500), isHost: !!m.isHost };
+      }),
     };
   }
   broadcastLobby() { this.link.toAll(this.lobbyState()); this.changed(); }
@@ -499,6 +507,7 @@ class HostSession {
       log: m.log.map(g => ({ minute: g.minute, scorer: g.scorer, own: !!g.own, team: g.team.index })),
       stats: m.teams.map(t => t.stats),
       online: this.slots.map(id => { const x = this.members.get(id); return x ? { id: id, connected: x.connected, ping: x.ping } : { id: id, connected: false, ping: 0 }; }),
+      host: Object.assign({ srv: this.link.rtt }, this.stats ? this.stats() : {}),
     });
   }
 
@@ -532,7 +541,9 @@ class ClientSession {
     link.on('msg', e => this.onMsg(e.d || {}));
     link.on('binary', buf => this.onSnapshot(buf));
     link.on('reconnected', () => this.hello());
-    this.pingTimer = setInterval(() => this.link.toHost({ t: 'ping', n: performance.now(), rtt: this.rtt }), 1000);
+    // ogni secondo: ping all'host, più il proprio ping al server e i propri fps (per capire da dove viene il ritardo)
+    this.stats = null;
+    this.pingTimer = setInterval(() => this.link.toHost(Object.assign({ t: 'ping', n: performance.now(), rtt: this.rtt, srv: this.link.rtt }, this.stats ? this.stats() : {})), 1000);
   }
   hello() { this.link.toHost({ t: 'hello', gv: String(GAME_VERSION), name: this.myName }); }
 
@@ -540,7 +551,7 @@ class ClientSession {
     switch (d.t) {
       case 'lobby': { const L = this.cleanLobby(d); if (L) { this.lobby = L; if (this.onLobby) this.onLobby(L); } break; }
       case 'start': this.buildMatch(d); break;
-      case 'meta': this.meta = d; this.applyMeta(); break;
+      case 'meta': this.meta = d; this.hostStats = d.host && typeof d.host === 'object' ? { srv: netNum(d.host.srv, 9999), fps: netNum(d.host.fps, 500) } : null; this.applyMeta(); break;
       case 'ev':
         if (!Array.isArray(d.l)) break;
         for (const e of d.l.slice(0, 64)) {
@@ -573,6 +584,7 @@ class ClientSession {
       side: m.side === 0 || m.side === 1 ? m.side : -1,
       connected: m.connected === true,
       ping: Number.isFinite(m.ping) ? Math.min(9999, Math.max(0, Math.round(m.ping))) : 0,
+      srv: netNum(m.srv, 9999), fps: netNum(m.fps, 500),
       isHost: m.isHost === true,
     }));
     return {

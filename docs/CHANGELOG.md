@@ -2,6 +2,20 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.9.2 — 06/10/2026 (inviti alle partite online, diagnosi del ritardo)
+- **Gioca con un amico in un clic**: nel pannello Amici, «Gioca» accanto a un amico apre una partita online e gli manda
+  l'invito; lui lo trova in «Richieste e inviti» (pallino e avviso anche a pannello chiuso) e preme «Entra»: niente codice
+  da passarsi. È un 1 contro 1 con le squadre complete da 11 (gli altri calciatori li guida l'IA, ognuno controlla il
+  suo e cambia giocatore come sempre). Nella lobby di ogni partita online c'è «Invita amici»; nelle sfide tra amici
+  c'è «Amichevole» accanto a ogni partecipante. Inviti sul server (migrazione 0007), validi 15 minuti, solo tra amici.
+- **Da dove viene il ritardo**: nella lobby, per ognuno, ping verso l'host e (tra parentesi) verso il server; per l'host
+  il suo ping al server e i suoi fotogrammi al secondo. Un avviso dice la causa probabile (computer dell'host lento, rete
+  con filtri o proxy, connessione dell'host) e cosa fare. In partita l'indicatore mostra gli stessi numeri.
+  Misura sul relay del server: 17 ms verso il server e 31-33 ms dal client all'host e ritorno, anche con il traffico di
+  una partita (il relay non aggiunge ritardo); con 300 ms il ritardo nasce prima, nella rete o nel computer dell'host.
+- Pannello Amici: aggiornamento ogni 30 secondi nella Home (anche chiuso, per gli inviti); account nascosti dalla 0.9.1.
+- Test: friends_test 74, social_browser_test 30, online 20, rete 87.
+
 ## 0.9.1 — 06/10/2026 (solo server: account nascosti)
 - L'account **admin** è nascosto: non compare tra i giocatori, nella ricerca, tra gli amici, negli inviti, nel profilo
   pubblico, nel feed, nelle classifiche e nei premi di stagione; non può chiedere né ricevere amicizie. Gioca normalmente.

@@ -74,6 +74,13 @@ Tutti si collegano allo stesso indirizzo (il server del gioco, `wss://…workers
 partita, quindi si possono giocare più partite contemporaneamente. Non servono indirizzi IP, porte o impostazioni.
 La partita la simula il computer di chi la crea: se lui esce, la partita finisce.
 
+### Se la partita va a scatti
+
+Nella lobby, accanto a ogni giocatore, c'è il ritardo verso l'host e (tra parentesi) verso il server; per l'host i suoi
+fotogrammi al secondo. Sotto compare la causa probabile: computer dell'host lento (abbassate la grafica sull'host o fate
+ospitare il PC più veloce), rete con filtri (scuola, ufficio: se siete nella stessa rete usate la partita in rete
+locale), connessione dell'host.
+
 ### In rete locale
 
 1. Nell'app desktop, chi ospita va su **Gioca online → Crea in rete locale** e riceve un codice che inizia con L.
@@ -124,6 +131,8 @@ Con l'account, nella Home c'è il pannello **Amici** a destra (si chiude e riapr
 
 - **Tutti i giocatori**: chi è iscritto al server, con la ricerca per nome. **Aggiungi** manda la richiesta di amicizia;
   l'altro la trova in **Richieste e inviti** (pallino rosso sulla linguetta) e la accetta.
+- **Gioca** accanto a un amico: partita online 1 contro 1, ognuno con la sua squadra da 11. L'amico riceve l'invito nel
+  pannello e preme **Entra**. Nella lobby di qualunque partita online c'è anche **Invita amici**.
 - **Sfida** accanto a un amico (o **Nuova sfida**): scegli campionato, torneo o coppa, le regole come nelle competizioni
   e la tua squadra, invita gli amici. Ognuno accetta scegliendo una squadra libera; le altre le guida l'IA.
   Quando ci siete, chi l'ha creata preme **Inizia la competizione**.
