@@ -116,6 +116,10 @@ body.pad-nav .home-tile:focus { border-left-color: var(--flood); outline: 2px so
 .so-pick .seg { font-size: 14px; }
 .tt .who { color: var(--sky); font-size: 11px; margin-left: 4px; text-transform: none; }
 .nextmatch .vsuser { color: var(--sky); }
+.lb-invite { margin: 4px 0 18px; }
+.ghost.sm-btn { padding: 2px 9px; font-size: 12.5px; margin-left: 4px; }
+.lb-invite h3 { margin: 0 0 6px; }
+.lb-invite .seg.sent { opacity: 0.6; }
 .cp-members { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 12px; font-size: 14px; }
 @media (max-width: 820px) {
   .social { top: auto; bottom: 12px; transform: none; max-height: 72vh; }
@@ -661,6 +665,11 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <div class="col" id="lb-col-1"><h3><span class="kitdot" id="lb-kit-1"></span><span id="lb-team-1">Ospiti</span></h3><ul id="lb-list-1"></ul><button class="seg" data-side="1">Gioca qui</button></div>
       <div class="col" id="lb-col--1"><h3>Spettatori</h3><ul id="lb-list--1"></ul><button class="seg" data-side="-1">Guarda</button></div>
     </div>
+    <div class="lb-invite" id="lb-invite" hidden>
+      <h3>Invita amici</h3>
+      <p class="small" style="margin:-4px 0 8px">L'invito arriva nel loro pannello Amici: entrano con un clic, senza scrivere il codice.</p>
+      <div class="so-pick" id="lb-invite-list"></div>
+    </div>
     <div id="lb-host-opts" class="opts">
       <span class="lbl">Squadra di casa</span><div class="segs"><button class="arrow" data-lcycle="home:-1" aria-label="Squadra di casa precedente">‹</button><input class="seg tn-seg" id="lb-home-name" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Nome della squadra di casa (scrivi per cambiarlo)" title="Scrivi per cambiare il nome; vuoto = nome originale"><button class="arrow" data-lcycle="home:1" aria-label="Squadra di casa successiva">›</button></div>
       <span class="lbl">Squadra ospite</span><div class="segs"><button class="arrow" data-lcycle="away:-1" aria-label="Squadra ospite precedente">‹</button><input class="seg tn-seg" id="lb-away-name" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Nome della squadra ospite (scrivi per cambiarlo)" title="Scrivi per cambiare il nome; vuoto = nome originale"><button class="arrow" data-lcycle="away:1" aria-label="Squadra ospite successiva">›</button></div>
@@ -668,6 +677,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <span class="lbl">Difficoltà IA</span><div class="segs" id="lb-diff"></div>
     </div>
     <p class="hintline" id="lb-settings-ro"></p>
+    <p class="status err" id="lb-lag" aria-live="polite"></p>
     <div class="actions">
       <button class="primary" id="lb-start">Inizia la partita</button>
       <span class="hintline" id="lb-wait" hidden>In attesa che l'host avvii la partita…</span>

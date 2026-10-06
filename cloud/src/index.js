@@ -11,7 +11,7 @@ import { claimDaily, claimWatch } from './rewards.js';
 import { engineVersion, gameVersion } from './simulate.js';
 import { leagueView } from './league.js';
 import { getCareer, putCareer, CAREER_MAX_BYTES } from './career.js';
-import { listUsers, myFriends, requestFriend, acceptFriend, removeFriend } from './friends.js';
+import { listUsers, myFriends, requestFriend, acceptFriend, removeFriend, inviteToGame, answerGameInvite } from './friends.js';
 import { listComps, compView, createComp, inviteFriend, chooseTeam, declineInvite, startComp, leaveComp, cancelComp, newSeason, reportResult, forceSim, setRoom } from './friendcomps.js';
 export { Engine } from './engine-do.js';
 export { Relay } from './relay-do.js';
@@ -82,7 +82,10 @@ async function route(request, env, ctx) {
   if (is('GET', 'league')) return env.TEST_MODE === '1' ? json(await leagueView(env, t)) : cached(request, 15, () => leagueView(env, t));
   // ---- amici e competizioni tra amici ----
   if (is('GET', 'users')) return json(await listUsers(env, await user(), q));
-  if (is('GET', 'friends')) return json(await myFriends(env, await user()));
+  if (is('GET', 'friends')) return json(await myFriends(env, await user(), t));
+  if (is('POST', 'invites')) return json(await inviteToGame(env, await user(), body, t));
+  if (is('POST', 'invites', '*', 'accept')) return json(await answerGameInvite(env, await user(), p[1], true));
+  if (is('POST', 'invites', '*', 'decline')) return json(await answerGameInvite(env, await user(), p[1], false));
   if (is('POST', 'friends', 'request')) return json(await requestFriend(env, await user(), body, t));
   if (is('POST', 'friends', 'accept')) return json(await acceptFriend(env, await user(), body, t));
   if (is('POST', 'friends', 'remove')) return json(await removeFriend(env, await user(), body));

@@ -104,6 +104,22 @@ async function main() {
   check('richiesta rifiutata: nessuna relazione', (await GET('/api/friends', D)).body.outgoing.length === 0 && (await GET('/api/users', A)).body.users.find(u => u.username === names.D).relation === null);
   check('risposte degli amici senza dati privati', forbiddenKeys(fa.body).length === 0, forbiddenKeys(fa.body));
 
+  // ===== inviti alle partite online =====
+  check('invito a partita: solo agli amici', (await POST('/api/invites', { username: names.D, room: 'QWERTY' }, A)).status === 403);
+  check('invito a partita: codice non valido rifiutato', (await POST('/api/invites', { username: names.B, room: 'abc' }, A)).status === 400);
+  await POST('/api/invites', { username: names.B, room: 'QWERTY' }, A);
+  const gi = await POST('/api/invites', { username: names.B, room: 'ZXCVBN' }, A);
+  let fg = (await GET('/api/friends', B)).body.games;
+  check('B vede l\'invito di A (solo l\'ultimo, con il codice della stanza)', gi.body.sent && fg.length === 1 && fg[0].from === names.A && fg[0].room === 'ZXCVBN', fg);
+  check('solo il destinatario può rispondere', (await POST('/api/invites/' + fg[0].id + '/accept', {}, C)).status === 404);
+  const acc = await POST('/api/invites/' + fg[0].id + '/accept', {}, B);
+  check('B accetta: riceve il codice per entrare, l\'invito sparisce', acc.body.room === 'ZXCVBN' && (await GET('/api/friends', B)).body.games.length === 0, acc.body);
+  check('un invito già usato non vale più', (await POST('/api/invites/' + fg[0].id + '/accept', {}, B)).status === 404);
+  await POST('/api/invites', { username: names.C, room: 'QWERTY' }, A);
+  fg = (await GET('/api/friends', C)).body.games;
+  await POST('/api/invites/' + fg[0].id + '/decline', {}, C);
+  check('C rifiuta: invito sparito', (await GET('/api/friends', C)).body.games.length === 0);
+
   // ===== account nascosto: "admin" non lo vede nessuno =====
   const adm = (await POST('/api/auth/register', { username: 'admin', password: 'password-admin' })).body.token;
   const usA = (await GET('/api/users', A)).body;
