@@ -89,7 +89,7 @@ export async function paySeasonPrizes(env, t) {
   if (await env.DB.prepare('SELECT 1 FROM meta WHERE key = ?').bind(flag).first()) return 0;
   const { results } = await env.DB.prepare(
     "SELECT b.user_id, SUM(b.payout - b.stake) AS profit, COUNT(*) AS n FROM bets b JOIN users u ON u.id = b.user_id " +
-    "WHERE b.status IN ('WON','LOST','VOID') AND b.settled_at >= ? AND b.settled_at < ? AND u.public_bets = 1 " +
+    "WHERE b.status IN ('WON','LOST','VOID') AND b.settled_at >= ? AND b.settled_at < ? AND u.public_bets = 1 AND u.hidden = 0 " +
     'GROUP BY b.user_id HAVING n >= ? AND profit > 0 ORDER BY profit DESC, b.user_id LIMIT ?')
     .bind(prev.start, prev.end, SEASON_MIN_BETS, SEASON_PRIZES.length).all();
   let paid = 0;

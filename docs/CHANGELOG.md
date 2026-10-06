@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.9.1 — 06/10/2026 (solo server: account nascosti)
+- L'account **admin** è nascosto: non compare tra i giocatori, nella ricerca, tra gli amici, negli inviti, nel profilo
+  pubblico, nel feed, nelle classifiche e nei premi di stagione; non può chiedere né ricevere amicizie. Gioca normalmente.
+- Migrazione 0006: colonna `users.hidden`; toglie le amicizie e le richieste dell'account nascosto, elimina le sue sfide
+  e lo toglie da quelle degli altri (la sua squadra passa all'IA, il turno si completa da solo). Un nuovo account
+  "admin" nasce già nascosto.
+- Solo il server cambia: `npm run deploy` nella cartella cloud, il gioco 0.9.0 resta valido. Test: friends_test 67.
+
 ## 0.9.0 — 06/10/2026 (amici e sfide tra amici)
 - **Pannello Amici** nella Home, a destra a metà schermo (si chiude in una linguetta; su schermi stretti va in basso):
   tutti i giocatori iscritti dal server con ricerca per nome, richieste di amicizia (accetta, rifiuta, annulla, togli),

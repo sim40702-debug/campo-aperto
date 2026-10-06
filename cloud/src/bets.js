@@ -179,7 +179,7 @@ export async function placeBet(env, user, body, t) {
 }
 
 // ---------- lettura ----------
-const BET_COLS = 'b.id, b.code, b.user_id, b.stake, b.odds, b.base_odds, b.bonus_pct, b.potential_payout, b.status, b.payout, b.visibility, b.shared, b.copied_from, b.created_at, b.settled_at, u.username, u.public_bets';
+const BET_COLS = 'b.id, b.code, b.user_id, b.stake, b.odds, b.base_odds, b.bonus_pct, b.potential_payout, b.status, b.payout, b.visibility, b.shared, b.copied_from, b.created_at, b.settled_at, u.username, u.public_bets, u.hidden';
 
 async function betRow(env, code) {
   return env.DB.prepare('SELECT ' + BET_COLS + ' FROM bets b JOIN users u ON u.id = b.user_id WHERE b.code = ?').bind(code).first();
@@ -190,7 +190,7 @@ async function betRow(env, code) {
 export function visibleTo(b, viewer) {
   if (viewer && viewer.id === b.user_id) return true;
   if (b.shared) return true;
-  return b.visibility === 'public' && !!b.public_bets;
+  return b.visibility === 'public' && !!b.public_bets && !b.hidden;
 }
 
 // vista pubblica di più scommesse: niente id interni, niente dati dell'account oltre al nome

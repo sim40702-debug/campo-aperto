@@ -107,9 +107,17 @@ async function viewOf(env, c, user, t) {
   return out;
 }
 export async function compView(env, user, code, t) {
-  const c = await load(env, code);
+  let c = await load(env, code);
   const me = memberOf(c, user);
   if (!me || me.status === 'DECLINED' || me.status === 'EXPIRED') fail(404, 'NO_COMP', 'Competizione non trovata');
+  // un partecipante tolto (account nascosto) lascia partite senza giocatori nel turno: si simulano subito
+  if (c.status === 'ACTIVE' && c.comp) {
+    const humans = humanTeams(c), cr = L.currentRound(c.comp);
+    if (cr && cr.fixtures.some(f => !f.played && !humans.has(f.home) && !humans.has(f.away))) {
+      await mutate(env, code, t, async c2 => { autoSim(c2, t); return { save: true, out: null }; });
+      c = await load(env, code);
+    }
+  }
   return viewOf(env, c, user, t);
 }
 
