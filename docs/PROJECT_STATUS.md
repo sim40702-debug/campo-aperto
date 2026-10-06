@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 05/10/2026, sessione 10, versione 0.8.0
+Aggiornato: 06/10/2026, sessione 10, versione 0.9.0
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -23,7 +23,8 @@ Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a 
 09 render 3D (preset qualità, HiDPI, particelle), 10 audio (tre canali), 11 input (tastiera, mouse, controller, rimappabile, navigazione menu), 12 rete (NetLink,
 HostSession, ClientSession), 13 impostazioni (localStorage), 14 gioco (schermate, HUD, loop, online), shell.html (UI).
 15 account (client dell'API, solo il token in localStorage), 16 economia (schermate partite, centro partita, schedina, feed social,
-negozio, personaggio, inventario, profilo, classifiche, anteprime 2D), 17 visione sincronizzata delle partite del server.
+negozio, personaggio, inventario, profilo, classifiche, anteprime 2D), 17 visione sincronizzata delle partite del server, 18 competizioni (Career) e 18_squadre (24 squadre in più, anche nel
+server), 19 schermate delle competizioni (anche sfide tra amici), 20 pannello Amici.
 server/relay.js: lobby e inoltro messaggi.
 cloud/: server dell'economia (Cloudflare Worker + D1 + Durable Object "Engine" e "Relay", una stanza per codice su
 wss://…/relay), vedi docs/ECONOMIA.md. Regole delle schedine in cloud/src/betlogic.js, lo stesso file nel server e nel gioco. Il motore del server è
@@ -38,6 +39,9 @@ browser, server locale, multipla della stessa partita, conflitti, transizioni, q
 visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio compreso).
 
 ## Funzionalità completate (verificate)
+- 0.9.0: amici (pannello a destra nella Home, tutti i giocatori, richieste), sfide tra amici sul server (campionato,
+  torneo, coppa con inviti, squadre scelte, partite contro l'IA e online tra amici con risultato concordato); avanzamento
+  delle competizioni condiviso gioco/server in complogic.js; release solo Windows e Mac.
 - 0.8.0: Competizioni (campionato, torneo, coppe configurabili, supplementari e rigori nel motore), Serie del server per
   le scommesse, carriera sull'account, reattività (movimento, buffer dei comandi, predizione online), personaggi.
 - 0.7.1: nomi delle squadre personalizzabili (anche online, scelti dall'host) e nome della squadra di casa di nuovo visibile.

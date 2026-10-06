@@ -313,6 +313,7 @@ class HostSession {
     this.members.set(link.id, { id: link.id, name: myName, side: 0, connected: true, ping: 0, isHost: true });
     this.settings = { home: 0, away: 4, halfSeconds: 180, difficulty: 1, names: ['', ''] };
     this.match = null; this.phase = 'lobby';
+    this.lockSides = null;        // sfida tra amici: nome -> lato (ognuno con la sua squadra, gli altri guardano)
     this.inputs = new Map();      // id -> ultimo comando ricevuto
     this.slots = [];              // slot -> id
     this.acc = 0; this.steps = 0; this.simTime = 0; this.seq = 0;
@@ -331,6 +332,7 @@ class HostSession {
       let side = count(0) <= count(1) ? 0 : 1;
       if (count(side) >= NET.MAX_PER_TEAM) side = side === 0 ? 1 : 0;
       if (count(side) >= NET.MAX_PER_TEAM || this.phase !== 'lobby') side = -1;
+      if (this.lockSides) side = e.name in this.lockSides && this.phase === 'lobby' && count(this.lockSides[e.name]) < NET.MAX_PER_TEAM ? this.lockSides[e.name] : -1;
       this.members.set(e.id, { id: e.id, name: e.name, side: side, connected: true, ping: 0 });
     } else if (e.ev === 'leave') {
       this.members.delete(e.id);
@@ -383,6 +385,7 @@ class HostSession {
     side = side === 0 || side === 1 ? side : -1;
     const m = this.members.get(id);
     if (!m) return false;
+    if (this.lockSides) return false;   // sfida tra amici: i lati non si cambiano
     if (side >= 0 && [...this.members.values()].filter(x => x.side === side && x !== m).length >= NET.MAX_PER_TEAM) return false;
     m.side = side;
     this.broadcastLobby();
@@ -400,6 +403,8 @@ class HostSession {
 
   canStart() {
     const ok = [...this.members.values()].filter(m => m.connected);
+    // sfida tra amici: servono i due giocatori della partita
+    if (this.lockSides) return this.phase === 'lobby' && Object.keys(this.lockSides).every(n => ok.some(m => m.name === n && m.side === this.lockSides[n]));
     return this.phase === 'lobby' && ok.length >= 1;
   }
 

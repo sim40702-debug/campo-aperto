@@ -29,7 +29,9 @@ if (target === 'engine') {
   let mod = '// GENERATO da "node build.js engine": motore di Campo Aperto per il server. Non modificare a mano.\n' +
     'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = "engine";\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
   for (const f of simFiles) mod += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
-  mod += 'export { Match, KnockoutMatch, buildDatabase, setSeed, makeRng, CONFIG, GAME_VERSION, ENGINE_ID };\n';
+  // le 24 squadre in più delle competizioni (non cambiano la simulazione, quindi non entrano nell'impronta)
+  mod += '// ---- 18_squadre.js ----\n' + fs.readFileSync(path.join(srcDir, '18_squadre.js'), 'utf8') + '\n';
+  mod += 'export { Match, KnockoutMatch, buildDatabase, buildExtraTeams, setSeed, makeRng, CONFIG, GAME_VERSION, ENGINE_ID };\n';
   const out = path.join(root, 'cloud', 'src', 'engine.gen.js');
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, mod);
@@ -54,9 +56,10 @@ const files = fs.readdirSync(srcDir).filter(f => /^\d\d_.*\.js$/.test(f)).sort()
 const apiUrl = String(process.env.CAMPO_API_URL || pkg.campoApiUrl || '').trim();
 if (apiUrl && !/^https?:\/\/[^\s"'<>]+$/i.test(apiUrl)) { console.error('CAMPO_API_URL non valido: ' + apiUrl); process.exit(1); }
 let code = 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = ' + JSON.stringify(target) + ';\nvar DEFAULT_API_URL = ' + JSON.stringify(apiUrl) + ';\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
-for (const f of files) code += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
+// regole condivise con il server prima del codice del gioco (sono funzioni pure: il gioco le usa già in fase di caricamento)
 code += '// ---- cloud/src/betlogic.js ----\n' + betLogicModule();
 code += '// ---- cloud/src/complogic.js ----\n' + sharedModule('complogic.js', 'CompLogic');
+for (const f of files) code += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
 
 // 2. three.js e font: da internet (web) oppure file locali (test, desktop)
 let threeTag, fontsTag;

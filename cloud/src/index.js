@@ -11,6 +11,8 @@ import { claimDaily, claimWatch } from './rewards.js';
 import { engineVersion, gameVersion } from './simulate.js';
 import { leagueView } from './league.js';
 import { getCareer, putCareer, CAREER_MAX_BYTES } from './career.js';
+import { listUsers, myFriends, requestFriend, acceptFriend, removeFriend } from './friends.js';
+import { listComps, compView, createComp, inviteFriend, chooseTeam, declineInvite, startComp, leaveComp, cancelComp, newSeason, reportResult, forceSim, setRoom } from './friendcomps.js';
 export { Engine } from './engine-do.js';
 export { Relay } from './relay-do.js';
 import { relayFetch } from './relay-do.js';
@@ -78,6 +80,25 @@ async function route(request, env, ctx) {
   if (is('POST', 'me', 'career')) return json(await putCareer(env, await user(), body, t));
   // campionato del server: classifica, giornata, marcatori (uguale per tutti: in cache per pochi secondi)
   if (is('GET', 'league')) return env.TEST_MODE === '1' ? json(await leagueView(env, t)) : cached(request, 15, () => leagueView(env, t));
+  // ---- amici e competizioni tra amici ----
+  if (is('GET', 'users')) return json(await listUsers(env, await user(), q));
+  if (is('GET', 'friends')) return json(await myFriends(env, await user()));
+  if (is('POST', 'friends', 'request')) return json(await requestFriend(env, await user(), body, t));
+  if (is('POST', 'friends', 'accept')) return json(await acceptFriend(env, await user(), body, t));
+  if (is('POST', 'friends', 'remove')) return json(await removeFriend(env, await user(), body));
+  if (is('GET', 'friendcomps')) return json(await listComps(env, await user()));
+  if (is('POST', 'friendcomps')) return json(await createComp(env, await user(), body, t), 201);
+  if (is('GET', 'friendcomps', '*')) return json(await compView(env, await user(), p[1], t));
+  if (is('POST', 'friendcomps', '*', 'invite')) return json(await inviteFriend(env, await user(), p[1], body, t));
+  if (is('POST', 'friendcomps', '*', 'team')) return json(await chooseTeam(env, await user(), p[1], body, t));
+  if (is('POST', 'friendcomps', '*', 'decline')) return json(await declineInvite(env, await user(), p[1], t));
+  if (is('POST', 'friendcomps', '*', 'start')) return json(await startComp(env, await user(), p[1], t));
+  if (is('POST', 'friendcomps', '*', 'leave')) return json(await leaveComp(env, await user(), p[1], t));
+  if (is('POST', 'friendcomps', '*', 'cancel')) return json(await cancelComp(env, await user(), p[1], t));
+  if (is('POST', 'friendcomps', '*', 'newseason')) return json(await newSeason(env, await user(), p[1], t));
+  if (is('POST', 'friendcomps', '*', 'report')) return json(await reportResult(env, await user(), p[1], body, t));
+  if (is('POST', 'friendcomps', '*', 'force')) return json(await forceSim(env, await user(), p[1], body, t));
+  if (is('POST', 'friendcomps', '*', 'room')) return json(await setRoom(env, await user(), p[1], body, t));
   if (is('POST', 'me', 'avatar')) return json(await setAvatar(env, await user(), body));
   if (is('POST', 'me', 'daily')) return json(await claimDaily(env, await user(), t));
   if (is('GET', 'players', '*')) return json(await publicProfile(env, p[1]));

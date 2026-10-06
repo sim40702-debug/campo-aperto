@@ -243,6 +243,18 @@ lo stesso file usato dal gioco per Campionato, Torneo e Coppe della carriera (bu
 La carriera del giocatore si salva sul computer e, con l'account, anche sul server (`/api/me/career`): sono dati del gioco
 senza monete, il server ne controlla forma e dimensione.
 
+## Amici e competizioni tra amici
+
+Dalla 0.9.0 (migrazione 0005): elenco dei giocatori (solo nome e data di iscrizione), amicizie con richiesta e conferma,
+competizioni tra amici. Una competizione tra amici (`cloud/src/friendcomps.js`) usa le stesse regole del gioco
+(`complogic.js`) e le 32 squadre del gioco (`cloud/src/teams.gen.json`, generato da `npm run engine` con lo stesso codice
+del gioco). Lo stato (calendario, risultati, tabellone) è solo sul server, con una versione per le modifiche
+contemporanee. Risultati: partite tra squadre dell'IA simulate dal server con seme; giocatore contro IA: risultato del
+motore del gioco (controllato: interi, supplementari e rigori solo se le regole li prevedono) oppure simulazione; una
+partita iniziata e mai finita al secondo avvio si simula; tra due amici: valgono due risultati uguali (o due richieste di
+simulazione), nell'eliminazione diretta la parità si completa con supplementari e rigori simulati. Le partite tra due
+persone si giocano con il relay del Worker: il codice della stanza passa dal server (`friend_comp_rooms`, valido 3 ore).
+
 ## Indirizzi dell'API
 
 Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'accesso.
@@ -271,6 +283,13 @@ Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'acc
 | `GET /shop`, `POST /shop/buy`, `GET /inventory`, `POST /inventory/equip`, `POST /inventory/unequip` | — / sì | negozio e inventario |
 | `GET /league` | — | campionato del server: stagione, giornata, classifica e marcatori (solo partite finite, in cache 15 s) |
 | `GET /me/career`, `POST /me/career` `{data, updatedAt}` | sì | carriera del giocatore (competizioni del gioco): vince la copia più recente, massimo 400 KB |
+| `GET /users?q=&after=` | sì | giocatori iscritti (50 per pagina): nome, iscrizione, relazione con te |
+| `GET /friends`, `POST /friends/request\|accept\|remove` `{username}` | sì | amici, richieste ricevute e mandate; chiedi, accetta, togli o rifiuta |
+| `GET /friendcomps`, `POST /friendcomps` `{kind, name, teams, team, invite, …}` | sì | le tue competizioni tra amici e gli inviti; crea (solo amici invitati) |
+| `GET /friendcomps/:codice` | sì (partecipanti) | stato, partecipanti, partite del turno con risultati mandati e stanza |
+| `POST /friendcomps/:codice/invite\|team\|decline\|start\|leave\|cancel\|newseason` | sì | inviti, scelta della squadra, avvio, uscita, eliminazione, nuova stagione |
+| `POST /friendcomps/:codice/report` `{fixture, kind, result}` | sì | risultato della tua partita (score, sim, kickoff, abandon) |
+| `POST /friendcomps/:codice/room` `{fixture, room}`, `POST /friendcomps/:codice/force` `{fixture}` | sì | stanza online della partita tra amici; simulazione di una partita bloccata (chi l'ha creata) |
 
 ## Test
 
