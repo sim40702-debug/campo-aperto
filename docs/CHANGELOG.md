@@ -11,6 +11,9 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
 - **Release anche per Linux**: `.AppImage` (tutte le distribuzioni) e `.deb` (Ubuntu, Debian, Mint), compilati con
   GitHub Actions insieme a Windows e Mac. Se la macchina Linux di GitHub resta in coda si può annullare solo quel lavoro.
 - README aggiornato con tutte le novità, l'installazione su Linux e come aggiungere una traduzione.
+- **Server aggiornato da solo**: nuovo flusso GitHub Actions «Aggiorna il server» che pubblica `cloud/` (motore,
+  migrazioni, Worker) quando nel `main` cambiano il server o il motore. Servono i segreti `CLOUDFLARE_API_TOKEN` e
+  `CLOUDFLARE_ACCOUNT_ID` (docs/ECONOMIA.md).
 
 ## 0.12.0 — 08/10/2026 (carriera da allenatore, telecronaca, editor di squadre)
 - **Carriera da allenatore** (Competizioni → Carriera da allenatore): scegli una delle 8 squadre e guidala per più

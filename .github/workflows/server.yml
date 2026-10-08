@@ -1,0 +1,64 @@
+# Pubblica il server dell'economia (cartella cloud/, Cloudflare Worker + D1) da solo.
+# Parte quando nel ramo main cambia il codice del server o il motore della partita (src/01..08): il server rigioca
+# le partite con lo stesso motore del gioco, quindi deve essere aggiornato insieme. Si può lanciare anche a mano
+# dalla scheda Actions.
+# Fa la stessa cosa di "npm run deploy" nella cartella cloud: motore del gioco, migrazioni del database, Worker.
+# Servono due segreti del repository (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN  token Cloudflare con i permessi Workers Scripts (modifica) e D1 (modifica)
+#   CLOUDFLARE_ACCOUNT_ID l'id dell'account Cloudflare
+# Senza i segreti il flusso non pubblica niente e lo dice nel riepilogo.
+name: Aggiorna il server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cloud/**'
+      - 'src/0[1-8]_*.js'
+      - 'src/18_squadre.js'
+      - 'build.js'
+      - 'package.json'
+  workflow_dispatch:
+
+# un aggiornamento alla volta: se ne arriva un altro, quello in corso finisce prima
+concurrency:
+  group: server-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - name: Controlla i segreti di Cloudflare
+        id: secrets
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "### Server non aggiornato" >> "$GITHUB_STEP_SUMMARY"
+            echo "Mancano i segreti CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID (vedi docs/ECONOMIA.md)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Installa
+        if: steps.secrets.outputs.ok == 'true'
+        run: cd cloud && npm ci
+      - name: Test del server (regole di scommesse, competizioni, mercati)
+        if: steps.secrets.outputs.ok == 'true'
+        run: cd cloud && npm run engine && node test/markets_test.js && node test/betlogic_test.js && node test/complogic_test.js
+      - name: Pubblica (migrazioni del database e Worker)
+        if: steps.secrets.outputs.ok == 'true'
+        run: cd cloud && npm run deploy
+      - name: Riepilogo
+        if: steps.secrets.outputs.ok == 'true'
+        run: |
+          v=$(node -p "require('./package.json').version")
+          id=$(grep -o 'motore [0-9a-f]*' <(node build.js engine) | cut -d' ' -f2)
+          echo "### Server aggiornato" >> "$GITHUB_STEP_SUMMARY"
+          echo "Versione del gioco $v, motore $id." >> "$GITHUB_STEP_SUMMARY"
