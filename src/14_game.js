@@ -10,6 +10,7 @@ class Game {
   constructor() {
     this.settings = loadSettings();
     setLanguage(this.settings.lang);   // lingua scelta nelle impostazioni (src/00_i18n.js)
+    this.commentary = new Commentary($('commentary'));   // telecronaca a scritte (src/21_commentary.js)
     if (!this.settings.name) { this.settings.name = 'Giocatore ' + (10 + Math.floor(Math.random() * 90)); saveSettings(this.settings); }
     // le 8 squadre del server (stesso seme) più le altre della carriera (sempre uguali, per tornei fino a 32)
     this.db = buildDatabase(2026).concat(buildExtraTeams());
@@ -721,6 +722,8 @@ class Game {
       });
     }
     $('st-full').textContent = document.fullscreenElement ? 'Disattiva' : 'Attiva';
+    $('st-commentary').checked = s.commentary;
+    $('st-commentary').onchange = () => { s.commentary = $('st-commentary').checked; if (!s.commentary && this.commentary) this.commentary.reset(); save(); };
     $('st-showfps').checked = s.showFps;
     $('st-showfps').onchange = () => { s.showFps = $('st-showfps').checked; $('fps').hidden = !s.showFps; save(); };
     this.updateDrawInfo();
@@ -898,6 +901,11 @@ class Game {
       else if (this.mode === 'client') this.updateClient(dt);
       else if (this.mode === 'fixture' && this.fxw) this.fxw.update(dt);
       this.updateHeldChips(dt);
+      // telecronaca: una partita nuova parte pulita, le frasi scadute spariscono
+      if (this.commentary) {
+        if (this.commentary.match !== this.match) { this.commentary.match = this.match; this.commentary.reset(); }
+        this.commentary.update(this.time);
+      }
     } else if (this.screen === 'fulltime' && this.match) {
       if (this.mode === 'host') this.tickHost(dt, false);
       else if (this.mode === 'client' && this.net) { const ev = this.net.client.update(dt); for (const e of ev) this.handleEvent(e); R.syncFromMatch(this.match, dt); }
@@ -1072,6 +1080,7 @@ class Game {
   }
   handleEvent(e) {
     const R = this.renderer, m = this.match;
+    if (this.commentary) { this.commentary.enabled = this.settings.commentary && !this.replay; this.commentary.onEvent(e, m, this.time); }
     switch (e.type) {
       case 'kick': {
         this.audio.kick(e.power || 10); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });

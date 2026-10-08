@@ -70,5 +70,12 @@ const realNames = changed.filter(c => !traits.has(c.split(': ')[1].split(' -> ')
 check('nomi delle squadre e dei giocatori mai tradotti (' + names.length + ' nomi)', names.length > 100 && realNames.length === 0, realNames.slice(0, 5));
 check('anche in frasi: "Falchi di Brera 2-1 Orsi di Valle"', T('en', 'Falchi di Brera 2-1 Orsi di Valle') === 'Falchi di Brera 2-1 Orsi di Valle');
 
+// ---- telecronaca: ogni frase ha la sua traduzione
+const comm = fs.readFileSync(path.join(root, 'src', '21_commentary.js'), 'utf8');
+const phrases = [...comm.slice(comm.indexOf('const COMMENTARY ='), comm.indexOf('const COMMENTARY_RANK')).matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => m[1].replace(/\\'/g, "'"));
+const untranslated = [];
+for (const l of ['en', 'de', 'fr']) for (const p of phrases) { ctx.setLanguage(l); if (ctx.trf(p, 'X') === p.replace('{0}', 'X')) untranslated.push(l + ': ' + p); }
+check('telecronaca: tutte le ' + phrases.length + ' frasi tradotte', phrases.length > 30 && untranslated.length === 0, untranslated.slice(0, 5));
+
 console.log('\nRisultato: ' + ok + ' superati, ' + ko + ' falliti');
 process.exit(ko ? 1 : 0);
