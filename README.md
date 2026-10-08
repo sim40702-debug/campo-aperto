@@ -8,8 +8,9 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.12)
+### Le novità (0.10 – 0.13)
 
+- **Aggiornamenti automatici** (0.13): l'app desktop avvisa quando c'è una versione nuova e si aggiorna da sola.
 - **Lingue**: italiano, English, Deutsch, Français, da Impostazioni → Generale.
 - **Telecronaca** scritta e **a voce**, nella lingua del gioco (si sceglie prima della partita, in pausa o nelle impostazioni).
 - **Cambi** durante la partita dal menu di pausa, **finta** per saltare l'uomo, **mirino** su punizioni e rigori.
@@ -62,6 +63,22 @@ xattr -cr "/Applications/Campo Aperto.app"
   e lo trovi tra le applicazioni come **Campo Aperto**. Per toglierlo: `sudo apt remove campo-aperto`.
 
 Per la partita in rete locale il firewall (per esempio `ufw`) deve lasciar passare la porta TCP 8787 e la UDP 8788.
+
+### Aggiornamenti
+
+Dalla versione 0.13 non serve più tornare qui per ogni versione nuova. All'avvio (e poi ogni 6 ore) l'app controlla le
+Releases di GitHub; se c'è una versione più recente compare in alto a destra **● Nuovo aggiornamento disponibile**.
+Cliccando si vedono la versione installata, quella nuova e le novità: **Aggiorna ora** scarica il file giusto per il tuo
+sistema (con percentuale e MB), lo controlla, chiude il gioco, lo installa e lo riapre. Si può anche controllare a mano da
+Impostazioni → Generale → Aggiornamenti.
+
+- **Windows:** funziona con l'installer e con la versione portable (la portable deve stare in una cartella dove puoi scrivere).
+- **macOS:** l'app deve stare nella cartella **Applicazioni** (non aperta dal disco `.dmg`).
+- **Linux:** `.AppImage` si sostituisce da solo; con il `.deb` il sistema chiede la password per installare.
+
+Il file scaricato si installa solo se è identico a quello della release (impronta sha512) e mai se è una versione più
+vecchia; se il download non riesce il gioco resta com'era. La versione 0.12 non ha ancora questa funzione: la 0.13 va
+scaricata a mano un'ultima volta.
 
 ---
 
@@ -272,12 +289,16 @@ Per compilare Windows, macOS e Linux insieme con GitHub Actions basta pubblicare
 `package.json`:
 
 ```bash
-git tag v0.12.1 && git push --tags
+git tag v0.13.0 && git push --tags
 ```
 
 Dopo qualche minuto i file dei tre sistemi compaiono in **Releases**, con le note prese dal
 [CHANGELOG](docs/CHANGELOG.md). Se la macchina di un sistema resta in coda a lungo, annulla solo quel lavoro nella
 scheda **Actions**: la release esce con gli altri e rilanciando il flusso più tardi si aggiungono i file mancanti.
+
+Appena la release è pubblicata, le app già installate (dalla 0.13) la vedono da sole e propongono l'aggiornamento.
+Il flusso pubblica anche i file `latest.yml`, `latest-mac.yml`, `latest-linux.yml` e `latest-portable.yml`: servono
+all'app per scegliere il file giusto e controllarne l'impronta, quindi non vanno tolti dalla release.
 
 Quando cambia il **motore della partita** (i file di `src/engine/`) o il codice di `cloud/`, il **server dell'economia si
 aggiorna da solo** appena le modifiche arrivano nel `main` (flusso **Aggiorna il server** in Actions), perché le
@@ -298,10 +319,11 @@ src/
   game/      menu, impostazioni, account ed economia, competizioni, telecronaca, editor squadre, carriera
   i18n/      lingue: 00_i18n.js (il sistema) e un file per lingua (en.json, de.json, fr.json)
   shell.html la pagina in cui build.js inserisce tutto il codice
-scripts/   aiuti per build e app (sorgenti.js trova i file in src/, prepara-windows.js per npm run dist:win)
+desktop/   app Electron (main.js; aggiornamenti.js controlla GitHub Releases e installa le versioni nuove)
+scripts/   aiuti per build e app (sorgenti.js trova i file in src/, prepara-windows.js per npm run dist:win,
+           latest-portable.js crea l'impronta della versione portable per gli aggiornamenti)
 server/    server lobby/relay per l'online
 cloud/     server dell'economia (Cloudflare Worker + D1 + Durable Object), con migrazioni e test
-desktop/   app Electron
 tests/     test automatici
 docs/      roadmap, changelog, guida dell'economia
 ```
@@ -340,6 +362,7 @@ Poi prepara la build di test e lancia i test:
 ```bash
 npm run build:test
 python3 tests/browser_test.py            # menu, partita, tastiera, impostazioni, risoluzioni
+python3 tests/updates_browser_test.py    # avviso e schermata degli aggiornamenti (app desktop simulata)
 python3 tests/controls_browser_test.py   # controller simulato, comandi, rimappatura
 python3 tests/online_browser_test.py     # due giocatori online con il server relay
 python3 tests/economy_browser_test.py    # account, scommesse, social, negozio, partite del server (serve cloud/: npm install)

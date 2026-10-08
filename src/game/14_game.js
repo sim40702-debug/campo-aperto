@@ -3,7 +3,7 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['manager', 'menu', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
+const SCREENS = ['manager', 'menu', 'update', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 
 class Game {
@@ -77,7 +77,7 @@ class Game {
     this.screen = name;
     if (name !== 'match' && this.commentary) this.commentary.stopVoice();   // fuori dalla partita la voce tace
     for (const id of SCREENS) $(id).hidden = true;
-    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
+    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
     if (panel) {
       const el = $(panel);
       el.hidden = false;
@@ -88,6 +88,7 @@ class Game {
     if (name === 'online') this.renderOnline();
     if (name === 'settings') this.renderSettings();
     if (name === 'help') this.renderHelp();
+    if (name === 'update') this.renderUpdate();
     // in partita i tasti di gioco non devono far scorrere la pagina o spostare il focus
     this.input.gameKeysActive = name === 'match';
     if (name === 'match') { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
@@ -129,6 +130,7 @@ class Game {
     $('help-keys').onclick = () => { const r = this.helpReturn; this.openSettings('controlli', r === 'pause' ? 'pause' : 'menu'); };
     $('version').textContent = 'Versione ' + GAME_VERSION + (IS_DESKTOP ? ', app desktop' : ', browser');
     if (IS_DESKTOP) { $('li-quit').hidden = false; $('btn-quit').onclick = () => window.close(); }
+    this.initUpdates();   // aggiornamenti dell'app desktop (src/game/25_updates.js)
     $('setup-back').onclick = () => { if (this.setup.side === -1) this.setup.side = 0; this.showScreen('menu'); };
     $('setup-start').onclick = () => this.startMatch();
     $('setup-teams').onclick = () => this.teamEditor.open('setup');
@@ -537,7 +539,7 @@ class Game {
   navRoot() {
     if (!$('busy').hidden) return $('busy');
     if (this.screen === 'match') return this.paused && !$('pause').hidden ? $('pause') : null;
-    const id = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime' }[this.screen] || (ECO_SCREENS.includes(this.screen) || COMP_SCREENS.includes(this.screen) ? this.screen : null);
+    const id = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update' }[this.screen] || (ECO_SCREENS.includes(this.screen) || COMP_SCREENS.includes(this.screen) ? this.screen : null);
     return id ? $(id) : null;
   }
   navItems(root) {
@@ -594,6 +596,7 @@ class Game {
       case 'online': $('on-back').click(); break;
       case 'settings': this.closeSettings(); break;
       case 'help': this.closeHelp(); break;
+      case 'update': this.showScreen('menu'); break;
       case 'center': this.eco.open('fixtures'); break;
       case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': case 'comps': this.showScreen('menu'); break;
       case 'comp': case 'comp-new': case 'manager': this.comps.openDashboard(); break;
@@ -769,6 +772,7 @@ class Game {
     }
     $('st-full').textContent = document.fullscreenElement ? 'Disattiva' : 'Attiva';
     this.renderCommentaryOpt('st-commentary');
+    this.renderUpdateOpt();
     $('st-showfps').checked = s.showFps;
     $('st-showfps').onchange = () => { s.showFps = $('st-showfps').checked; $('fps').hidden = !s.showFps; save(); };
     this.updateDrawInfo();
