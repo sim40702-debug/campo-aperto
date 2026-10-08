@@ -2,6 +2,19 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.12.0 — 08/10/2026 (carriera da allenatore, telecronaca, editor di squadre)
+- **Carriera da allenatore** (Competizioni → Carriera da allenatore): scegli una delle 8 squadre e guidala per più
+  stagioni in un campionato a 8 con andata e ritorno. Rosa con età, forza, potenziale e valore; scegli titolari (i primi
+  11, scambio con due clic) e formazione. **Mercato** con budget: giocatori delle altre squadre e svincolati, si compra e
+  si vende (rosa da 16 a 23). **Fine stagione**: premio in base alla posizione, i giovani crescono fino al potenziale, dai
+  30 anni si cala, dai 34 ci si ritira e arriva un ragazzo del vivaio; mercato nuovo e calendario nuovo. Le rose stanno
+  su questo computer; il campionato è una competizione normale (si gioca con il motore o si simula, con le rose vere).
+- **Telecronaca a scritte**: frasi brevi in basso durante la partita (gol, parate, pali, tiri, falli, cartellini...),
+  nelle 4 lingue, si spegne in Impostazioni → Generale.
+- **Editor di squadre** (Nuova partita → Le mie squadre): fino a 8 squadre tue con nome, sigla, colori, forza,
+  formazione e giocatori; si usano nella partita rapida.
+- Test: lingue_test (anche le frasi della telecronaca), motore_test; prove nel browser di carriera ed editor.
+
 ## 0.11.0 — 08/10/2026 (cambi, finta, mirino)
 - **Sostituzioni**: nel menu di pausa, sezione «Cambi»: scegli chi esce (con la barra dell'energia) e chi entra dalla
   panchina; fino a 5 cambi, il cambio avviene alla prossima palla ferma (un portiere solo con un portiere). Anche l'IA

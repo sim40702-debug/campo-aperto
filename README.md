@@ -62,6 +62,12 @@ Nel **menu di pausa** si fanno i cambi (fino a 5): scegli chi esce e chi entra, 
 
 Ogni tasto si può rimappare in **Impostazioni → Controlli**. Nell'app desktop **F11** attiva lo schermo intero.
 
+## Modalità
+
+- **Partita rapida** contro l'IA, anche con le tue squadre (Nuova partita → Le mie squadre).
+- **Competizioni**: campionato, torneo, coppe, e la **carriera da allenatore** con più stagioni, mercato e giovani che crescono.
+- **Multiplayer** online o in rete locale, **partite del server** con le scommesse.
+
 ## Lingue
 
 Il gioco è in **italiano, inglese, tedesco e francese**: si sceglie in **Impostazioni → Generale → Lingua** e
