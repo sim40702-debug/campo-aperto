@@ -2,6 +2,20 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.11.0 — 08/10/2026 (cambi, finta, mirino)
+- **Sostituzioni**: nel menu di pausa, sezione «Cambi»: scegli chi esce (con la barra dell'energia) e chi entra dalla
+  panchina; fino a 5 cambi, il cambio avviene alla prossima palla ferma (un portiere solo con un portiere). Anche l'IA
+  cambia i più stanchi dal 58' (al massimo 3). Solo nella partita rapida e nelle competizioni.
+- **Finta / dribbling** (U, sul controller L3): scarto di lato per saltare l'uomo, verso la direzione o lontano
+  dall'avversario; per mezzo secondo i contrasti riescono meno (di più con un buon dribbling o «Dribblatore»). Costa
+  energia, si rifà dopo poco più di un secondo. Solo per chi gioca: l'IA non la usa.
+- **Mirino su punizioni e rigori**: con la direzione si sposta un anello sulla porta (di lato e in altezza), poi si
+  carica e si rilascia il tiro. La barriera sulle punizioni vicine c'era già.
+- **Server**: le partite del server non cambiano (stesso seme, stesso risultato: controllato in motore_test), ma
+  l'impronta del motore sì, perché i file 08 sono cambiati. Serve `npm run deploy` nella cartella cloud, altrimenti il
+  gioco nuovo dice «altro motore» e non mostra le partite del server in 3D.
+- Test: motore_test (20, nel `npm test`), con le partite tra IA confrontate con la 0.10.0.
+
 ## 0.10.0 — 08/10/2026 (lingue: inglese, tedesco, francese)
 - **Quattro lingue**: italiano, English, Deutsch, Français. Si sceglie in Impostazioni → **Generale** (scheda nuova, la
   prima) → Lingua; il cambio è immediato, anche sulle schermate già aperte, e la scelta resta nelle impostazioni
