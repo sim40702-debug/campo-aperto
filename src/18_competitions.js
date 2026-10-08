@@ -28,6 +28,8 @@ class Career {
     this.data = { v: 1, comps: [], updatedAt: 0 };
     this.profiles = new Map();
     this.ctx = { profile: t => this.profile(t), nameOf: t => this.nameOf(t) };
+    // carriera da allenatore (src/24_manager.js): le sue competizioni usano le rose che cambiano di stagione in stagione
+    this.rosterTeam = null;   // (comp, t) -> squadra con la rosa della carriera, oppure null
     try {
       const raw = localStorage.getItem(CAREER_KEY);
       if (raw) this.data = this.clean(JSON.parse(raw)) || this.data;
@@ -58,6 +60,11 @@ class Career {
     return this.profiles.get(t);
   }
   strength(t) { const p = this.profile(t); return p.ovr; }
+  // contesto delle regole per una competizione: quella della carriera da allenatore usa le sue rose
+  ctxFor(comp) {
+    if (!comp || !comp.manager || !this.rosterTeam) return this.ctx;
+    return { profile: t => CompLogic.teamProfile(this.rosterTeam(comp, t) || this.db[t]), nameOf: this.ctx.nameOf };
+  }
 
   // ---------- creazione ----------
   // cfg: { kind, name, teams: [indici], userTeam (-1 = nessuna), legs, groups: {count, qualify, legs} | null,
@@ -69,16 +76,17 @@ class Career {
       id: 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
       kind: made.kind, name: made.name, season: 1, config: made.config, history: [], createdAt: Date.now(),
     };
+    if (cfg.manager) comp.manager = true;   // competizione della carriera da allenatore
     this.startSeason(comp, Math.floor(Math.random() * 2 ** 31) || 1);
     this.data.comps.unshift(comp);
     this.save();
     return comp;
   }
   remove(id) { this.data.comps = this.data.comps.filter(c => c.id !== id); this.save(); }
-  startSeason(comp, seed) { CompLogic.startSeason(comp, seed, this.ctx); }
+  startSeason(comp, seed) { CompLogic.startSeason(comp, seed, this.ctxFor(comp)); }
   newSeason(id) {
     const comp = this.byId(id);
-    if (!comp || !CompLogic.nextSeason(comp, this.ctx)) return null;
+    if (!comp || !CompLogic.nextSeason(comp, this.ctxFor(comp))) return null;
     this.save();
     return comp;
   }
@@ -101,10 +109,10 @@ class Career {
 
   // ---------- risultati ----------
   // simulazione ufficiale: seme della competizione + partita, quindi sempre lo stesso risultato
-  simulate(comp, f, opts) { return CompLogic.simulateFixture(comp, f, this.ctx, opts && opts.salt); }
+  simulate(comp, f, opts) { return CompLogic.simulateFixture(comp, f, this.ctxFor(comp), opts && opts.salt); }
   // registra un risultato (partita giocata o simulata) e fa avanzare la competizione
   record(comp, fid, r, how) {
-    if (!CompLogic.recordResult(comp, fid, r, how, Date.now(), this.ctx)) return false;
+    if (!CompLogic.recordResult(comp, fid, r, how, Date.now(), this.ctxFor(comp))) return false;
     this.save();
     return true;
   }
@@ -115,14 +123,14 @@ class Career {
   }
   // simula la giornata in corso (except: partita da lasciare al giocatore)
   simulateRound(comp, except) {
-    const n = CompLogic.simulateCurrentRound(comp, this.ctx, Date.now(), f => f.id === except);
+    const n = CompLogic.simulateCurrentRound(comp, this.ctxFor(comp), Date.now(), f => f.id === except);
     if (n) this.save();
     return n;
   }
   // fino alla fine (squadra eliminata o nessuna squadra del giocatore)
   simulateToEnd(comp) {
     let guard = 0;
-    while (comp.status === 'active' && guard++ < 2000) { if (!CompLogic.currentRound(comp)) break; CompLogic.simulateCurrentRound(comp, this.ctx, Date.now()); }
+    while (comp.status === 'active' && guard++ < 2000) { if (!CompLogic.currentRound(comp)) break; CompLogic.simulateCurrentRound(comp, this.ctxFor(comp), Date.now()); }
     this.save();
   }
 
@@ -140,7 +148,7 @@ class Career {
   finishFromScore(comp, fid, score, fraction, scorers) {
     const f = this.fixture(comp, fid);
     if (!f || f.played) return null;
-    this.record(comp, fid, CompLogic.resultFromScore(comp, f, score, fraction, scorers, this.ctx), 'abbandonata');
+    this.record(comp, fid, CompLogic.resultFromScore(comp, f, score, fraction, scorers, this.ctxFor(comp)), 'abbandonata');
     return f;
   }
 

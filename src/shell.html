@@ -330,6 +330,18 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 .ps-bar { display: block; height: 6px; background: rgba(243,245,238,0.12); } .ps-bar i { display: block; height: 100%; }
 .ps-pend { margin-left: 12px; font-size: 14px; }
 @media (max-width: 640px) { .ps-grid { grid-template-columns: 1fr; } }
+/* carriera da allenatore */
+.mg-teams { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 14px; }
+.mg-team { display: flex; align-items: center; gap: 10px; font: inherit; color: var(--chalk); background: var(--night-2); border: 1px solid transparent; padding: 12px 14px; cursor: pointer; text-align: left; }
+.mg-team:hover { border-color: var(--flood); } .mg-team small { margin-left: auto; color: var(--slate); }
+.mg-head, .mg-row { display: grid; grid-template-columns: 34px minmax(150px, 2fr) 90px 44px 54px 74px 80px 84px; gap: 8px; align-items: center; font-size: 14px; }
+.mg-head { color: var(--slate); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 8px; margin-top: 8px; }
+.mg-row { background: var(--night-2); border: 1px solid transparent; padding: 5px 8px; margin-top: 3px; cursor: pointer; }
+.mg-row.on { border-color: var(--flood); background: rgba(255,216,74,0.12); }
+.mg-row.off span:nth-child(3) { color: #ff8a7a; }
+.mg-row small { color: var(--slate); }
+.mg-row button.sm { padding: 3px 10px; font-size: 13px; }
+@media (max-width: 760px) { .mg-head { display: none; } .mg-row { grid-template-columns: 30px 1fr 60px 70px; } .mg-row > span:nth-child(4), .mg-row > span:nth-child(6), .mg-row > span:nth-child(7) { display: none; } }
 #note { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(12,26,43,0.9); padding: 6px 14px; font-size: 15px; }
 #fps { position: fixed; top: 8px; right: 10px; font-size: 12px; color: var(--slate); font-variant-numeric: tabular-nums; background: rgba(12,26,43,0.6); padding: 2px 6px; z-index: 40; }
 .ft-score { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 4.5vw, 46px); margin: 0 0 6px; }
@@ -848,6 +860,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
   <div class="sheet wide">
     <h2>Competizioni</h2>
     <div class="comp-secs">
+      <section class="comp-sec"><header><h3>Carriera da allenatore</h3><button class="ghost" id="cl-manager-open">Nuova carriera</button></header><div class="comp-list" id="cl-manager"></div></section>
       <section class="comp-sec"><header><h3>Campionato</h3><button class="ghost" data-new="league">Nuovo campionato</button></header><div class="comp-list" id="cl-league"></div></section>
       <section class="comp-sec"><header><h3>Torneo</h3><button class="ghost" data-new="tournament">Nuovo torneo</button></header><div class="comp-list" id="cl-tournament"></div></section>
       <section class="comp-sec"><header><h3>Coppe</h3><button class="ghost" data-new="cup">Nuova coppa</button></header><div class="comp-list" id="cl-cup"></div></section>
@@ -855,6 +868,15 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <section class="comp-sec" id="cs-server" hidden><header><h3>Serie del server</h3><span class="pill">scommesse</span></header><div id="cl-server"></div></section>
     </div>
     <div class="actions"><button class="ghost" id="comps-back">Indietro</button></div>
+  </div>
+</section>
+
+<section id="manager" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2 id="mg-title" translate="no">Carriera da allenatore</h2><span class="pill" id="mg-sub"></span></div>
+    <div id="mg-body"></div>
+    <div class="status" id="mg-status" aria-live="polite"></div>
+    <div class="actions"><button class="ghost" id="mg-back">Competizioni</button><button class="ghost danger" id="mg-quit" hidden>Abbandona la carriera</button></div>
   </div>
 </section>
 
