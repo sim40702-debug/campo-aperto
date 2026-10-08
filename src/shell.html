@@ -294,6 +294,12 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
   .chip .cl { display: none; }
   .chip b { margin-right: 0; }
 }
+/* telecronaca a scritte: in basso al centro, sopra i comandi */
+#commentary { position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20; pointer-events: none;
+  max-width: min(560px, calc(100vw - 32px)); padding: 6px 16px; background: rgba(12,26,43,0.85); border-left: 4px solid var(--flood);
+  font-family: var(--display); font-weight: 700; font-style: italic; font-size: clamp(17px, 2.2vw, 22px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#commentary.in { animation: comm-in 0.22s ease-out; }
+@keyframes comm-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 #note { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(12,26,43,0.9); padding: 6px 14px; font-size: 15px; }
 #fps { position: fixed; top: 8px; right: 10px; font-size: 12px; color: var(--slate); font-variant-numeric: tabular-nums; background: rgba(12,26,43,0.6); padding: 2px 6px; z-index: 40; }
 .ft-score { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 4.5vw, 46px); margin: 0 0 6px; }
@@ -698,6 +704,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
     <div data-pane="generale" class="opts">
       <span class="lbl">Lingua</span><div class="segs" id="st-lang"></div>
+      <span class="lbl">Telecronaca</span><label class="check"><input type="checkbox" id="st-commentary"> Frasi brevi durante la partita (gol, parate, falli, cartellini)</label>
     </div>
     <div data-pane="grafica" class="opts">
       <span class="lbl">Qualità</span><div class="segs" id="st-quality"></div>
@@ -972,6 +979,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
   <div class="netind" id="netind" hidden><span class="dot" id="net-dot"></span><span id="net-text"></span></div>
   <div id="banner" class="banner" hidden></div>
   <div id="scorer" hidden></div>
+  <div id="commentary" hidden role="status" aria-live="polite"></div>
   <div id="replay-tag" hidden>Replay<small></small></div>
   <div class="pc" id="pc" hidden>
     <div class="pc-top"><span id="pc-num"></span><span id="pc-name"></span><span id="pc-role"></span></div>
