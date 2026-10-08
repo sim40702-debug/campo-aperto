@@ -2,6 +2,13 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.12.1 — 08/10/2026 (telecronaca a voce)
+- La **telecronaca parla**: le frasi si sentono anche a voce, con la sintesi vocale del computer nella lingua del gioco
+  (italiano, inglese, tedesco, francese). Una frase importante (gol, rosso) interrompe quella in corso, una meno
+  importante mentre si parla si salta. Segue il volume generale e l'audio muto; in pausa e fuori dalla partita tace.
+- Scelta **Spenta / Solo scritte / Scritte e voce** prima della partita (Nuova partita), nel menu di pausa e in
+  Impostazioni → Generale.
+
 ## 0.12.0 — 08/10/2026 (carriera da allenatore, telecronaca, editor di squadre)
 - **Carriera da allenatore** (Competizioni → Carriera da allenatore): scegli una delle 8 squadre e guidala per più
   stagioni in un campionato a 8 con andata e ritorno. Rosa con età, forza, potenziale e valore; scegli titolari (i primi

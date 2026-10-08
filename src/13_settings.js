@@ -31,8 +31,9 @@ function defaultSettings() {
     server: '',               // server online (wss://...), facoltativo: senza, le partite si ospitano in rete locale
     apiUrl: '',               // server dell'economia (https://...): vuoto = quello incluso nella versione (DEFAULT_API_URL)
     lanHost: '',              // ultimo indirizzo dell'host in rete locale con cui sei entrato (IP o IP:porta)
-    netDebug: false,
-    commentary: true,         // telecronaca a scritte durante la partita          // pannello di diagnostica della rete
+    netDebug: false,          // pannello di diagnostica della rete
+    commentary: true,         // telecronaca a scritte durante la partita
+    commentaryVoice: true,    // la telecronaca si sente anche a voce (sintesi vocale del computer)
     controlsUpdatedAt: 0,     // ultima modifica dei comandi (per scegliere tra computer e account la più recente)
   };
 }
