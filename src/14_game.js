@@ -3,7 +3,7 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['menu', 'setup', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
+const SCREENS = ['menu', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 
 class Game {
@@ -44,6 +44,9 @@ class Game {
     this.netLog = []; this.netLastError = ''; this.lanStatus = null;
     this.paused = false; this.replay = null; this.replayPending = null;
     this.setup = { home: 0, away: 4, side: 0, difficulty: 1, halfSeconds: 180, formation: null, mentality: 1 };
+    // le tue squadre (src/22_team_editor.js): solo nella partita rapida, dopo quelle del database
+    this.teamEditor = new TeamEditor(this);
+    this.myTeams = this.teamEditor.teams();
     this.restoreSetup();
     this.acc = 0; this.last = performance.now(); this.time = 0; this.lastFrameAt = performance.now();
     this.perf = { t: 0, frames: 0, good: 0 };
@@ -70,7 +73,7 @@ class Game {
   showScreen(name) {
     this.screen = name;
     for (const id of SCREENS) $(id).hidden = true;
-    const panel = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
+    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
     if (panel) {
       const el = $(panel);
       el.hidden = false;
@@ -124,6 +127,8 @@ class Game {
     if (IS_DESKTOP) { $('li-quit').hidden = false; $('btn-quit').onclick = () => window.close(); }
     $('setup-back').onclick = () => { if (this.setup.side === -1) this.setup.side = 0; this.showScreen('menu'); };
     $('setup-start').onclick = () => this.startMatch();
+    $('setup-teams').onclick = () => this.teamEditor.open('setup');
+    this.teamEditor.bind();
     // nome della squadra: si scrive direttamente nella scheda; vuoto = nome originale. Resta salvato per quella squadra
     ['home', 'away'].forEach(which => {
       const inp = $(which + '-name');
@@ -133,7 +138,7 @@ class Game {
     });
     document.querySelectorAll('[data-cycle]').forEach(b => b.onclick = () => {
       const [which, delta] = b.dataset.cycle.split(':');
-      this.cycleTeam(this.setup, which, Number(delta));
+      this.cycleTeam(this.setup, which, Number(delta), this.db.length + this.myTeams.length);
       this.setup.formation = null;
       this.renderSetup();
     });
@@ -199,8 +204,9 @@ class Game {
     document.addEventListener('fullscreenchange', () => { this.renderer.resize(); if (this.screen === 'settings') this.renderSettings(); });
   }
 
-  cycleTeam(s, which, delta) {
-    const n = this.db.length;
+  // n: quante squadre si possono scegliere (nella partita rapida anche le tue, online solo quelle del database)
+  cycleTeam(s, which, delta, n) {
+    n = n || this.db.length;
     let v = (s[which] + delta + n) % n;
     const other = which === 'home' ? s.away : s.home;
     if (v === other) v = (v + delta + n) % n;
@@ -223,8 +229,19 @@ class Game {
   }
 
   // nome scelto per una squadra (o quello originale)
-  teamName(idx) { return this.settings.teamNames[idx] || this.db[idx].name; }
+  teamName(idx) { return idx >= this.db.length ? this.setupTeam(idx).name : this.settings.teamNames[idx] || this.db[idx].name; }
+  // squadra della partita rapida: prima quelle del database, poi le tue
+  setupTeam(idx) { return idx < this.db.length ? this.db[idx] : this.myTeams[idx - this.db.length] || this.db[0]; }
+  // dopo l'editor: squadre aggiornate e scelte ancora valide
+  refreshMyTeams() {
+    this.myTeams = this.teamEditor.teams();
+    const n = this.db.length + this.myTeams.length, s = this.setup;
+    if (s.home >= n) s.home = 0;
+    if (s.away >= n || s.away === s.home) s.away = s.home === 4 ? 0 : 4;
+    s.formation = null;
+  }
   setTeamName(idx, v) {
+    if (idx >= this.db.length) return;   // le tue squadre si rinominano nell'editor
     const n = cleanTeamName(v);
     if (n && n !== this.db[idx].name) this.settings.teamNames[idx] = n; else delete this.settings.teamNames[idx];
     saveSettings(this.settings);
@@ -236,15 +253,16 @@ class Game {
       const inp = $(prefix + '-name');
       inp.placeholder = t.name;
       if (document.activeElement !== inp) inp.value = this.teamName(s[prefix]);
+      inp.readOnly = s[prefix] >= this.db.length;   // le tue squadre si rinominano nell'editor
       $(prefix + '-meta').textContent = 'Forza ' + t.rating + ', allenatore ' + t.coach;
       const k = t.kits[kitName];
       $(prefix + '-kit').innerHTML = k.map(c => '<span style="background:' + c + '"></span>').join('');
       const best = t.players.slice(0, 11).slice().sort((a, b) => b.overall - a.overall).slice(0, 3);
       $(prefix + '-stars').textContent = 'Da tenere d\'occhio: ' + best.map(p => p.name + ' (' + p.overall + ')').join(', ');
     };
-    fill('home', this.db[s.home], 'home');
-    fill('away', this.db[s.away], 'away');
-    const mine = s.side === 1 ? this.db[s.away] : this.db[s.home];
+    fill('home', this.setupTeam(s.home), 'home');
+    fill('away', this.setupTeam(s.away), 'away');
+    const mine = s.side === 1 ? this.setupTeam(s.away) : this.setupTeam(s.home);
     if (!s.formation) s.formation = mine.formation;
     this.segmented('opt-side', [{ label: 'Casa', value: 0 }, { label: 'Ospiti', value: 1 }, { label: 'Nessuna (guardo)', value: -1 }], s.side, v => { s.side = v; s.formation = null; this.renderSetup(); });
     this.segmented('opt-diff', [{ label: 'Facile', value: 0 }, { label: 'Normale', value: 1 }, { label: 'Difficile', value: 2 }], s.difficulty, v => { s.difficulty = v; this.renderSetup(); });
@@ -255,8 +273,8 @@ class Game {
   }
 
   teamForMatch(idx, isMine) {
-    const t = this.db[idx];
-    const copy = Object.assign({}, namedTeam(t, this.settings.teamNames[idx]));
+    const t = this.setupTeam(idx);
+    const copy = Object.assign({}, idx < this.db.length ? namedTeam(t, this.settings.teamNames[idx]) : t);
     copy.tactics = Object.assign({}, t.tactics);
     if (isMine) { copy.formation = this.setup.formation || t.formation; copy.tactics.mentality = this.setup.mentality; }
     return copy;
@@ -449,7 +467,7 @@ class Game {
   // ---------- ULTIMA PARTITA ----------
   // ripristina squadre e opzioni dell'ultima partita giocata (controllando che siano ancora valide)
   restoreSetup() {
-    const l = this.settings.lastSetup, s = this.setup, n = this.db.length;
+    const l = this.settings.lastSetup, s = this.setup, n = this.db.length + this.myTeams.length;
     if (!l) return;
     const okIdx = v => Number.isInteger(v) && v >= 0 && v < n;
     if (okIdx(l.home) && okIdx(l.away) && l.home !== l.away) { s.home = l.home; s.away = l.away; }
@@ -493,7 +511,7 @@ class Game {
   navRoot() {
     if (!$('busy').hidden) return $('busy');
     if (this.screen === 'match') return this.paused && !$('pause').hidden ? $('pause') : null;
-    const id = { menu: 'menu', setup: 'setup', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime' }[this.screen] || (ECO_SCREENS.includes(this.screen) || COMP_SCREENS.includes(this.screen) ? this.screen : null);
+    const id = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime' }[this.screen] || (ECO_SCREENS.includes(this.screen) || COMP_SCREENS.includes(this.screen) ? this.screen : null);
     return id ? $(id) : null;
   }
   navItems(root) {
@@ -546,6 +564,7 @@ class Game {
     switch (this.screen) {
       case 'match': if (this.paused) this.togglePause(false); break;
       case 'setup': $('setup-back').click(); break;
+      case 'teams': if (this.teamEditor.edit) { this.teamEditor.edit = null; this.teamEditor.render(); } else this.teamEditor.close(); break;
       case 'online': $('on-back').click(); break;
       case 'settings': this.closeSettings(); break;
       case 'help': this.closeHelp(); break;
