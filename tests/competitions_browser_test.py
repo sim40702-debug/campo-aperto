@@ -29,7 +29,7 @@ async def main():
         await pg.click('#btn-comps')
         await pg.wait_for_function("game.screen==='comps'", timeout=5000)
         secs = await pg.evaluate("[...document.querySelectorAll('#comps .comp-sec:not([hidden]) h3')].map(e=>e.textContent)")
-        check('Competizioni: Campionato, Torneo, Coppe', secs[:3] == ['Campionato', 'Torneo', 'Coppe'], secs)
+        check('Competizioni: Carriera da allenatore, Campionato, Torneo, Coppe', secs[:4] == ['Carriera da allenatore', 'Campionato', 'Torneo', 'Coppe'], secs)
         await pg.wait_for_timeout(400); await pg.screenshot(path=HERE + '/shots/70_competizioni_vuoto.png')
 
         # ---- nuovo campionato a 8 con la squadra 0
@@ -55,12 +55,14 @@ async def main():
         check('partita di competizione avviata con il motore (segnata in corso: non si può rigiocare)', inprog)
         check('in pausa niente "Ricomincia" nelle competizioni', await pg.evaluate("game.togglePause(true); const h = document.getElementById('pause-restart').hidden; game.togglePause(false); h"))
         # fine partita veloce: si porta l'orologio alla fine del secondo tempo con 2-1 per la tua squadra
-        await pg.evaluate("""(()=>{const m=game.match; m.half=2; m.clock=2695; m.setState('PLAY'); m.teams[0].score=2; m.teams[1].score=1;
-            m.log.push({team:m.teams[0], scorer:m.teams[0].players[9].data.name, own:false, minute:30}, {team:m.teams[0], scorer:m.teams[0].players[9].data.name, own:false, minute:70}, {team:m.teams[1], scorer:m.teams[1].players[10].data.name, own:false, minute:80});})()""")
+        await pg.evaluate("""(()=>{const m=game.match; m.half=2; m.clock=2695; m.setState('PLAY');
+            // la tua squadra vince 2-1 (in casa o in trasferta: dipende dal calendario)
+            const u=m.humans[0].team, W=m.teams[u], L=m.teams[1-u]; W.score=2; L.score=1;
+            m.log.push({team:W, scorer:W.players[9].data.name, own:false, minute:30}, {team:W, scorer:W.players[9].data.name, own:false, minute:70}, {team:L, scorer:L.players[10].data.name, own:false, minute:80});})()""")
         await pg.wait_for_function("game.screen==='fulltime'", timeout=30000, polling=200)
         await pg.screenshot(path=HERE + '/shots/73_fine_partita_competizione.png')
         rec = await pg.evaluate("(()=>{const c=game.comps.career.byId(%s); const f=game.comps.career.fixture(c, %s); return {played:f.played, how:f.how, h:f.h, a:f.a, sc:f.scorers.length, round:c.fixtures.filter(x=>x.round===0).every(x=>x.played), inprog:!!f.inProgress}})()" % (json.dumps(comp_id), json.dumps(fid)))
-        check('fischio finale: risultato del motore registrato da solo (2-1, marcatori), giornata completata con le simulazioni', rec['played'] and rec['how'] == 'played' and rec['h'] == 2 and rec['a'] == 1 and rec['sc'] == 3 and rec['round'] and not rec['inprog'], rec)
+        check('fischio finale: risultato del motore registrato da solo (2-1, marcatori), giornata completata con le simulazioni', rec['played'] and rec['how'] == 'played' and sorted([rec['h'], rec['a']]) == [1, 2] and rec['sc'] == 3 and rec['round'] and not rec['inprog'], rec)
         check('fine partita: "Torna alla competizione", niente Rivincita', await pg.is_visible('#ft-comp') and not await pg.is_visible('#ft-rematch') and 'risultato registrato' in await pg.text_content('#ft-comp-note'))
         await pg.click('#ft-comp')
         await pg.wait_for_function("game.screen==='comp'", timeout=10000)
