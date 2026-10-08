@@ -8,6 +8,9 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
   importante mentre si parla si salta. Segue il volume generale e l'audio muto; in pausa e fuori dalla partita tace.
 - Scelta **Spenta / Solo scritte / Scritte e voce** prima della partita (Nuova partita), nel menu di pausa e in
   Impostazioni → Generale.
+- **Release anche per Linux**: `.AppImage` (tutte le distribuzioni) e `.deb` (Ubuntu, Debian, Mint), compilati con
+  GitHub Actions insieme a Windows e Mac. Se la macchina Linux di GitHub resta in coda si può annullare solo quel lavoro.
+- README aggiornato con tutte le novità, l'installazione su Linux e come aggiungere una traduzione.
 
 ## 0.12.0 — 08/10/2026 (carriera da allenatore, telecronaca, editor di squadre)
 - **Carriera da allenatore** (Competizioni → Carriera da allenatore): scegli una delle 8 squadre e guidala per più

@@ -1,9 +1,9 @@
-# Compila l'app per Windows e Mac e la pubblica in una release (tag v<versione di package.json>).
+# Compila l'app per Windows, Mac e Linux e la pubblica in una release (tag v<versione di package.json>).
 # Parte con un tag di versione (es. v0.5.0) o a mano dalla scheda Actions.
-# I due sistemi compilano senza pubblicare; quando hanno finito, l'ultimo passo crea (o completa) la release con i
-# file pronti e la pubblica. Se un sistema non parte (GitHub senza macchine libere per quel sistema) la release esce con
-# gli altri; rilanciando il flusso più tardi i file mancanti si aggiungono alla stessa release. Un errore vero di
-# compilazione o dei test, invece, ferma tutto.
+# I tre sistemi compilano senza pubblicare; quando hanno finito, l'ultimo passo crea (o completa) la release con i
+# file pronti e la pubblica. Se un sistema non parte (GitHub senza macchine libere per quel sistema) lo si può annullare
+# dalla scheda Actions e la release esce con gli altri; rilanciando il flusso più tardi i file mancanti si aggiungono
+# alla stessa release. Un errore vero di compilazione o dei test, invece, ferma tutto.
 name: Rilascio app desktop
 
 on:
@@ -20,8 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # niente Linux: le macchine Linux di GitHub restavano in coda e bloccavano la release (in locale: npm run dist:linux)
-        os: [windows-latest, macos-latest]
+        # Linux: .AppImage e .deb. Se la macchina Linux resta in coda, annullare solo quel lavoro: la release parte lo stesso
+        os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     # bash anche su Windows: PowerShell spezza gli argomenti tipo "-c.publish.x=y"
     defaults:
@@ -39,6 +39,7 @@ jobs:
           case "$RUNNER_OS" in
             Windows) npm run dist:win -- --publish never ;;
             macOS) npm run dist:mac -- --publish never ;;
+            Linux) npm run dist:linux -- --publish never ;;
           esac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false

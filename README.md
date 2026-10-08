@@ -4,7 +4,18 @@
 
 # Campo Aperto
 
-**Calcio 3D originale, undici contro undici.** Si gioca nel browser o come app desktop su Windows, macOS e Linux: contro l'IA, con gli amici in rete locale oppure online tramite il tuo server.
+**Calcio 3D originale, undici contro undici.** Si gioca nel browser o come app desktop su Windows, macOS e Linux: contro l'IA, con gli amici in rete locale oppure online, in competizioni o in una carriera da allenatore di più stagioni.
+
+In italiano, inglese, tedesco e francese.
+
+### Le novità (0.10 – 0.12)
+
+- **Lingue**: italiano, English, Deutsch, Français, da Impostazioni → Generale.
+- **Telecronaca** scritta e **a voce**, nella lingua del gioco (si sceglie prima della partita, in pausa o nelle impostazioni).
+- **Cambi** durante la partita dal menu di pausa, **finta** per saltare l'uomo, **mirino** su punizioni e rigori.
+- **Le mie squadre**: crea la tua squadra con nome, colori, forza e giocatori.
+- **Carriera da allenatore**: più stagioni, mercato con budget, giovani che crescono e ragazzi del vivaio.
+- **App per Linux** nelle release (`.AppImage` e `.deb`).
 
 ---
 
@@ -33,8 +44,24 @@ xattr -cr "/Applications/Campo Aperto.app"
 
 ### Linux
 
-Le release pubblicano solo Windows e macOS. Su Linux si compila in locale con `npm run dist:linux` (`.AppImage` e
-`.deb` in `release/<versione>/`), oppure si gioca dal sorgente con `npm start`.
+- **AppImage** (tutte le distribuzioni): scarica `CampoAperto-<versione>-linux-x86_64.AppImage`, rendilo eseguibile e
+  aprilo:
+
+  ```bash
+  chmod +x CampoAperto-*-linux-x86_64.AppImage
+  ./CampoAperto-*-linux-x86_64.AppImage
+  ```
+
+  Se non parte, su Ubuntu 22.04 e successive serve la libreria FUSE: `sudo apt install libfuse2`.
+- **Pacchetto .deb** (Ubuntu, Debian, Linux Mint): installalo con
+
+  ```bash
+  sudo apt install ./CampoAperto-*-linux-amd64.deb
+  ```
+
+  e lo trovi tra le applicazioni come **Campo Aperto**. Per toglierlo: `sudo apt remove campo-aperto`.
+
+Per la partita in rete locale il firewall (per esempio `ufw`) deve lasciar passare la porta TCP 8787 e la UDP 8788.
 
 ---
 
@@ -57,21 +84,44 @@ Le release pubblicano solo Windows e macOS. Su Linux si compila in locale con `n
 | Audio on/off | M | — |
 | Guida comandi | F1 / H | — |
 
-Nelle **punizioni e nei rigori** si mira con la direzione: un anello sulla porta mostra dove va il tiro (di lato e in alto), poi si carica e si rilascia il tiro.
-Nel **menu di pausa** si fanno i cambi (fino a 5): scegli chi esce e chi entra, il cambio avviene alla prossima palla ferma.
-
 Ogni tasto si può rimappare in **Impostazioni → Controlli**. Nell'app desktop **F11** attiva lo schermo intero.
+
+### In partita
+
+- **Finta**: con la palla, U (o L3) fa uno scarto di lato verso la direzione scelta, oppure lontano dall'avversario
+  più vicino. Per mezzo secondo i contrasti riescono meno, di più con un buon dribbling o con la caratteristica
+  «Dribblatore». Costa un po' di energia e si rifà dopo circa un secondo.
+- **Punizioni e rigori**: con la direzione si sposta un **anello giallo sulla porta** (di lato e in alto), poi si tiene
+  premuto il tiro per caricarlo e si rilascia. Sulle punizioni vicine alla porta c'è la barriera.
+- **Cambi**: nel **menu di pausa** (Esc) c'è la sezione **Cambi**. Scegli chi esce (vedi la sua energia) e chi entra
+  dalla panchina, fino a 5 cambi; il cambio avviene alla prossima palla ferma. Un portiere si cambia solo con un
+  portiere. Anche l'IA cambia i giocatori più stanchi dal 58'. I cambi ci sono nella partita rapida e nelle competizioni.
+- **Telecronaca**: frasi brevi in basso («Gran parata!», «Giallo per…», «Rete di…») e, se vuoi, anche **a voce** con la
+  sintesi vocale del computer, nella lingua del gioco. Si sceglie **Spenta / Solo scritte / Scritte e voce** in Nuova
+  partita, nel menu di pausa o in Impostazioni → Generale. La voce segue il volume generale e il tasto M.
 
 ## Modalità
 
-- **Partita rapida** contro l'IA, anche con le tue squadre (Nuova partita → Le mie squadre).
-- **Competizioni**: campionato, torneo, coppe, e la **carriera da allenatore** con più stagioni, mercato e giovani che crescono.
-- **Multiplayer** online o in rete locale, **partite del server** con le scommesse.
+- **Partita rapida** contro l'IA (o IA contro IA da guardare), con le 8 squadre del gioco o con le tue.
+- **Competizioni**: campionato, torneo, coppe e la **carriera da allenatore**.
+- **Multiplayer** online o in rete locale, fino a 8 persone.
+- **Partite del server** da guardare in 3D, con scommesse in monete (serve un account).
 
 ## Lingue
 
 Il gioco è in **italiano, inglese, tedesco e francese**: si sceglie in **Impostazioni → Generale → Lingua** e
-cambia subito, senza riavviare. La scelta resta salvata sul computer.
+cambia subito, senza riavviare. Anche numeri e date seguono la lingua. La scelta resta salvata sul computer.
+
+## Le mie squadre
+
+In **Nuova partita → Le mie squadre** crei fino a 8 squadre tue:
+
+- nome, sigla del tabellone, allenatore, colori della maglia di casa e da trasferta (con l'anteprima);
+- forza della squadra (da 50 a 92) e formazione;
+- i 18 giocatori: nome, numero, caratteristica (Bomber, Regista, Muro…) e piede. **Nomi casuali** li rigenera.
+
+Le squadre si salvano su questo computer e compaiono nella partita rapida, dopo quelle del gioco. Online e nelle
+competizioni si usano solo le squadre del gioco, perché tutti devono avere le stesse.
 
 **Arbitro:** il contatto da solo non è fallo. Se prendi prima il pallone il contrasto è regolare; da dietro, attraverso le gambe, è fallo; le scivolate imprudenti o violente portano giallo o rosso. C'è il vantaggio e il doppio giallo espelle. Dettagli su arbitro e fisica in [`docs/ARBITRO_E_FISICA.md`](docs/ARBITRO_E_FISICA.md).
 
@@ -127,6 +177,7 @@ Metti davanti un reverse proxy HTTPS (nginx o Caddy) che inoltri `wss://calcio.t
 
 Dal menu **Competizioni**:
 
+- **Carriera da allenatore**: vedi sotto.
 - **Campionato**: da 6 a 20 squadre, solo andata o andata e ritorno. Calendario all'italiana generato da solo, classifica
   (punti, PG, V, N, P, GF, GS, DR, forma delle ultime 5, serie, porte inviolate, percentuale di vittorie), statistiche,
   marcatori e, a fine stagione, campione, miglior attacco e difesa, capocannoniere. **Nuova stagione** tiene lo storico.
@@ -139,6 +190,24 @@ Dal menu **Competizioni**:
 giornata si simulano. **Simula partita** usa la simulazione ufficiale (forza delle rose, forma, fattore campo): la stessa
 partita dà sempre lo stesso risultato, quindi non si può "rilanciare". Uscire a metà simula il tempo che manca dal punteggio
 attuale; se il gioco si chiude a metà partita, al riavvio la partita si completa con la simulazione.
+
+## Carriera da allenatore
+
+Da **Competizioni → Carriera da allenatore** scegli una delle 8 squadre e la guidi stagione dopo stagione, in un
+campionato a 8 squadre con andata e ritorno.
+
+- **Rosa**: età, forza, potenziale e valore di ogni giocatore. I primi 11 sono i titolari: clicca un giocatore e poi
+  un altro per scambiarli. Scegli anche la formazione; un giocatore fuori ruolo è segnato in rosso. In porta va un portiere.
+- **Mercato**: parti con 6 M di budget. Compri riserve e titolari delle altre squadre o giocatori svincolati, vendi i
+  tuoi all'85% del valore. La rosa va da 16 a 23 giocatori. Il mercato si rinnova a ogni stagione.
+- **Le partite**: **Vai al campionato** apre la competizione; ogni partita si gioca con il motore o si simula, sempre
+  con le rose vere della carriera.
+- **Fine stagione**: **Chiudi la stagione** dà il premio in base alla posizione (da 9 M per il primo a 2,5 M per
+  l'ultimo). I giovani crescono fino al loro potenziale, dai 30 anni si cala e dai 34 ci si ritira: al posto di chi si
+  ritira arriva un ragazzo del vivaio. Poi parte la stagione dopo, con calendario e mercato nuovi.
+- **Storico**: posizione, punti, premio, chi è cresciuto e chi si è ritirato in ogni stagione.
+
+La carriera si salva su questo computer.
 
 ## Amici e sfide tra amici
 
@@ -184,7 +253,7 @@ Richiede **Node.js 22, 24 o 26**.
 
 ```bash
 npm install
-npm test     # regole, partite simulate e online
+npm test     # lingue, motore, regole, arbitro, partite simulate, rigori, competizioni e online
 npm start    # apre il gioco in una finestra desktop
 ```
 
@@ -194,26 +263,50 @@ npm start    # apre il gioco in una finestra desktop
 |---|---|
 | `npm run dist:win` | Installer `.exe` + portable |
 | `npm run dist:mac` | `.dmg` e `.zip` per Intel e Apple Silicon |
-| `npm run dist:linux` | `.AppImage` e `.deb` (solo in locale, non nelle release) |
+| `npm run dist:linux` | `.AppImage` e `.deb` |
 
-Per compilare Windows e macOS insieme con GitHub Actions basta pubblicare un tag:
+Per compilare Windows, macOS e Linux insieme con GitHub Actions basta pubblicare un tag con la versione di
+`package.json`:
 
 ```bash
-git tag v0.4.2 && git push --tags
+git tag v0.12.1 && git push --tags
 ```
 
-Dopo qualche minuto i file compaiono in **Releases**, dentro una release in bozza.
+Dopo qualche minuto i file dei tre sistemi compaiono in **Releases**, con le note prese dal
+[CHANGELOG](docs/CHANGELOG.md). Se la macchina di un sistema resta in coda a lungo, annulla solo quel lavoro nella
+scheda **Actions**: la release esce con gli altri e rilanciando il flusso più tardi si aggiungono i file mancanti.
+
+Quando cambia il **motore della partita** (i file `src/01..08`), va aggiornato anche il server dell'economia, perché
+le partite del server si rigiocano nel gioco con lo stesso motore:
+
+```bash
+cd cloud
+npm run deploy
+```
 
 ### Struttura
 
 ```
-src/       codice del gioco (simulazione, grafica, audio, input, rete, account ed economia)
+src/       codice del gioco (simulazione, grafica, audio, input, rete, account ed economia, telecronaca,
+           editor delle squadre, carriera)
+src/lingue traduzioni: ogni riga è [italiano, inglese, tedesco, francese]
 server/    server lobby/relay per l'online
 cloud/     server dell'economia (Cloudflare Worker + D1 + Durable Object), con migrazioni e test
 desktop/   app Electron
 tests/     test automatici
 docs/      roadmap, changelog, guida dell'economia
 ```
+
+### Aggiungere una traduzione
+
+Le frasi nel codice restano in italiano. Per tradurne una nuova aggiungi una riga in uno dei file di `src/lingue/`:
+
+```js
+["Gran parata!", "Great save!", "Starke Parade!", "Superbe arrêt !"],
+```
+
+Una frase con dei valori usa `{0}`, `{1}`… al posto dei valori, per esempio `"Giallo per {0}"`. Una frase senza
+traduzione resta semplicemente in italiano. `node tests/lingue_test.js` controlla che le righe siano complete.
 
 ### Test nel browser e nell'app desktop
 
@@ -234,6 +327,7 @@ python3 tests/online_browser_test.py     # due giocatori online con il server re
 python3 tests/economy_browser_test.py    # account, scommesse, social, negozio, partite del server (serve cloud/: npm install)
 python3 tests/competitions_browser_test.py  # campionato, torneo con supplementari e rigori, coppa con gironi
 python3 tests/feel_browser_test.py       # reattività: tasti al fotogramma dopo, pulsanti, cambio schermata
+python3 tests/social_browser_test.py     # amici, inviti e sfide tra amici (serve cloud/: npm install)
 ```
 
 Per provare la vera app desktop:
