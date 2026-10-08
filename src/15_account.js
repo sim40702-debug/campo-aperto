@@ -96,7 +96,7 @@ class CampoApi {
 // importi: 1.250 (separatore delle migliaia all'italiana)
 function fmtCoins(n) {
   if (n === null || n === undefined || !isFinite(n)) return '—';
-  return Math.round(n).toLocaleString('it-IT');
+  return Math.round(n).toLocaleString(uiLocale());
 }
 function fmtOdds(o) { return o ? Number(o).toFixed(2) : '—'; }
 // testo sicuro per innerHTML

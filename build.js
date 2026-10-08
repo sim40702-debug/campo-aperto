@@ -1,5 +1,5 @@
 // ============================================================
-// BUILD — unisce src/01..17 dentro shell.html
+// BUILD — unisce src/00..20 (e le traduzioni in src/lingue/) dentro shell.html
 // uso:
 //   node build.js web      -> dist/index.html   (browser, three.js e font da internet)
 //   node build.js test     -> dist/test.html    (test locali con node_modules/three)
@@ -59,7 +59,15 @@ let code = 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGE
 // regole condivise con il server prima del codice del gioco (sono funzioni pure: il gioco le usa già in fase di caricamento)
 code += '// ---- cloud/src/betlogic.js ----\n' + betLogicModule();
 code += '// ---- cloud/src/complogic.js ----\n' + sharedModule('complogic.js', 'CompLogic');
-for (const f of files) code += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
+for (const f of files) {
+  code += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
+  // subito dopo il sistema delle lingue: le traduzioni (src/lingue/*.js)
+  if (f === '00_i18n.js') {
+    const langDir = path.join(srcDir, 'lingue');
+    for (const l of fs.readdirSync(langDir).filter(x => x.endsWith('.js')).sort())
+      code += '// ---- lingue/' + l + ' ----\n' + fs.readFileSync(path.join(langDir, l), 'utf8') + '\n';
+  }
+}
 
 // 2. three.js e font: da internet (web) oppure file locali (test, desktop)
 let threeTag, fontsTag;

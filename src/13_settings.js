@@ -7,6 +7,7 @@ const QUALITY_LEVELS = [
 ];
 function defaultSettings() {
   return {
+    lang: 'it',               // lingua del gioco: it, en, de, fr (vedi src/00_i18n.js)
     quality: 'alta',          // bassa, media, alta, ultra
     resScale: 1,              // scala di risoluzione (0.5 - 1)
     renderRes: 0,             // risoluzione di disegno: 0 = nativa, altrimenti l'altezza (720, 900, 1080, 1440, 2160)
@@ -59,6 +60,7 @@ function loadSettings() {
     }
   } catch (e) { /* impostazioni rovinate o archivio non disponibile: si usano quelle predefinite */ }
   if (QUALITY_LEVELS.every(q => q.id !== s.quality)) s.quality = 'alta';
+  if (LANGUAGES.every(l => l.id !== s.lang)) s.lang = 'it';
   // vecchio valore predefinito (fino alla 0.4.1): indicava il computer di ciascun giocatore, mai quello dell'host
   if (/^ws:\/\/(localhost|127\.0\.0\.1):8787\/?$/.test(s.server)) s.server = '';
   s.resScale = clamp(Number(s.resScale) || 1, 0.5, 1);

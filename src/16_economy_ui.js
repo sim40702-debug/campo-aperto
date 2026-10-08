@@ -167,7 +167,7 @@ class Economy {
         '<div class="tbl-wrap"><table class="stand"><thead><tr><th>Pos</th><th class="tl">Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>PT</th><th class="tl">Forma</th></tr></thead><tbody>' +
         top.map(r => '<tr><td>' + r.pos + '</td><td class="tl"><span class="tt"><i class="kd" style="background:' + esc(r.kit) + '"></i>' + esc(r.name) + '</span></td><td>' + r.pg + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td><td>' + (r.dr > 0 ? '+' : '') + r.dr + '</td><td><b>' + r.pt + '</b></td><td class="tl"><span class="form">' + r.form.map(x => '<i class="f' + x + '">' + x + '</i>').join('') + '</span></td></tr>').join('') +
         '</tbody></table></div></div><div><h3 class="gsub">Giornata ' + L.round + '</h3><div class="fx-list">' +
-        L.fixtures.map(f => '<div class="fx-item"><span class="h">' + esc(f.home) + '</span>' + (f.score ? '<span class="sc">' + f.score[0] + '-' + f.score[1] + '</span>' : '<span class="sc none">' + (f.phase === 'LIVE' ? 'in corso' : new Date(f.kickoffAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })) + '</span>') + '<span class="a">' + esc(f.away) + '</span><span></span></div>').join('') + '</div>' +
+        L.fixtures.map(f => '<div class="fx-item"><span class="h">' + esc(f.home) + '</span>' + (f.score ? '<span class="sc">' + f.score[0] + '-' + f.score[1] + '</span>' : '<span class="sc none">' + (f.phase === 'LIVE' ? 'in corso' : new Date(f.kickoffAt).toLocaleTimeString(uiLocale(), { hour: '2-digit', minute: '2-digit' })) + '</span>') + '<span class="a">' + esc(f.away) + '</span><span></span></div>').join('') + '</div>' +
         (L.scorers.length ? '<p class="small" style="margin-top:10px">Marcatori: ' + L.scorers.slice(0, 5).map(x => esc(x.name) + ' ' + x.goals).join(', ') + '</p>' : '') +
         '<div class="actions" style="margin-top:12px"><button class="primary sm" id="srv-fixtures">Partite e scommesse</button></div></div></div>';
       $('srv-fixtures').onclick = () => this.open('fixtures');
@@ -325,7 +325,7 @@ class Economy {
   whenText(f) {
     const t = this.now();
     if (f.phase === 'LIVE' || (t >= f.kickoffAt && f.phase !== 'FINISHED' && !f.result)) return 'In corso';
-    if (f.phase === 'FINISHED' || f.result) return new Date(f.kickoffAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    if (f.phase === 'FINISHED' || f.result) return new Date(f.kickoffAt).toLocaleTimeString(uiLocale(), { hour: '2-digit', minute: '2-digit' });
     const s = Math.max(0, Math.round((f.kickoffAt - t) / 1000));
     return 'tra ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   }
@@ -526,11 +526,11 @@ class Economy {
     const badge = st === 'WON' ? '<span class="pill won">✅ Vinta +' + fmtCoins(b.payout) + '</span>' : st === 'LOST' ? '<span class="pill lost">❌ Persa</span>' : st === 'VOID' ? '<span class="pill void">↩ Annullata</span>' : '<span class="pill">In corso</span>';
     const itemIcon = s => s === 'WON' ? '✅' : s === 'LOST' ? '❌' : s === 'VOID' ? '↩' : '•';
     const anyOpen = b.items.some(i => i.status === 'OPEN' && i.kickoffAt > this.now());
-    const when = new Date(b.createdAt).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const when = new Date(b.createdAt).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     return '<div class="betcard ' + (st === 'WON' ? 'won' : st === 'LOST' ? 'lost' : st === 'OPEN' ? 'open' : '') + '" data-bet="' + esc(b.code) + '" data-status="' + st + '">' +
       '<div class="who"><b>' + esc(b.user) + '</b>' + (b.mine ? '<span class="pill">Tua</span>' : '') + '<span>' + (b.type === 'MULTIPLA' ? 'Multipla' : 'Singola') + '</span><span>' + when + '</span><span>' + esc(b.code) + '</span>' + badge +
       (b.copiedFrom ? '<span>copiata da ' + esc(b.copiedFrom) + '</span>' : '') + (b.mine && b.visibility === 'private' ? '<span class="pill">Privata</span>' : '') + '</div>' +
-      '<div class="items">' + b.items.map(i => '<div class="it"><span>' + itemIcon(i.status) + '</span><span><b>' + esc(i.selectionLabel) + '</b> <span class="small">' + esc(i.marketLabel) + ' · ' + esc(i.home) + ' – ' + esc(i.away) + '</span></span><span class="small" style="margin-left:auto">@' + fmtOdds(i.odds) + '</span></div>').join('') + '</div>' +
+      '<div class="items">' + b.items.map(i => '<div class="it"><span>' + itemIcon(i.status) + '</span><span><b>' + esc(i.selectionLabel) + '</b> <span class="small">' + esc(tr(i.marketLabel)) + ' · ' + esc(i.home) + ' – ' + esc(i.away) + '</span></span><span class="small" style="margin-left:auto">@' + fmtOdds(i.odds) + '</span></div>').join('') + '</div>' +
       '<div class="money">' + fmtCoins(b.stake) + ' 🪙 @' + fmtOdds(b.odds) + ' <span class="small">→ ' + fmtCoins(b.potentialPayout) + ' 🪙 possibili</span></div>' +
       '<div class="acts">' + REACTIONS.map(r => '<button class="react' + (b.myReactions.includes(r) ? ' on' : '') + '" data-react="' + r + '"' + (b.mine ? ' disabled title="Non puoi reagire alle tue scommesse"' : '') + '>' + r + (b.reactions[r] ? ' ' + b.reactions[r] : '') + '</button>').join('') +
       (!b.mine && anyOpen ? '<button class="ghost" data-copy="1">Copia scommessa</button>' : '') +
@@ -595,7 +595,7 @@ class Economy {
     this.renderSlip();
   }
   conflictText(c) {
-    const lab = x => '«' + x.marketLabel + ': ' + x.selectionLabel + '»';
+    const lab = x => '«' + tr(x.marketLabel) + ': ' + tr(x.selectionLabel) + '»';
     const others = c.with.map(k => this.slip.items[k]).filter(Boolean);
     return others.length === 1 ? lab(c.item) + ' non si può combinare con ' + lab(others[0]) + '.'
       : lab(c.item) + ' non può vincere insieme a ' + others.map(lab).join(' e ') + '.';
@@ -653,7 +653,7 @@ class Economy {
       groups.map(g => {
         const qg = q && q.groups.find(x => x.fixture === g.fixture);
         return '<div class="slip-match"><div class="slip-mh"><b>' + esc(g.home) + ' – ' + esc(g.away) + '</b><span class="small">' +
-          new Date(g.kickoffAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + '</span></div>' +
+          new Date(g.kickoffAt).toLocaleTimeString(uiLocale(), { hour: '2-digit', minute: '2-digit' }) + '</span></div>' +
           g.idx.map(k => item(sl.items[k], k)).join('') +
           (qg && qg.correlated ? '<div class="slip-corr">Selezioni collegate della stessa partita: quota della partita <b>' + fmtOdds(qg.odds) + '</b> invece di ' + fmtOdds(qg.product) + '</div>' : '') + '</div>';
       }).join('');
@@ -867,7 +867,7 @@ class Economy {
     const bal = this.balance();
     const items = this.shopItems.filter(i => this.shopCat === 'tutti' || i.category === this.shopCat);
     $('sh-grid').innerHTML = items.map(i => '<div class="item ' + esc(i.rarity) + '"><canvas width="370" height="236" data-prev="' + esc(i.id) + '"></canvas>' +
-      '<span class="rar">' + esc(RARITY_NAMES[i.rarity] || i.rarity) + ' · ' + esc(SLOT_NAMES[i.category] || i.category) + '</span><b>' + esc(i.name) + '</b>' +
+      '<span class="rar">' + esc(tr(RARITY_NAMES[i.rarity] || i.rarity)) + ' · ' + esc(tr(SLOT_NAMES[i.category] || i.category)) + '</span><b>' + esc(i.name) + '</b>' +
       (i.owned ? '<span class="small">' + (i.equipped ? 'Indossato' : 'Nel tuo inventario') + '</span><button class="seg' + (i.equipped ? ' on' : '') + '" data-eq="' + esc(i.id) + '"' + (i.equipped ? ' disabled' : '') + '>' + (i.equipped ? 'Indossato' : 'Indossa') + '</button>'
         : '<span class="price">' + fmtCoins(i.price) + ' 🪙</span><button class="seg" data-buy="' + esc(i.id) + '"' + (bal !== null && bal < i.price ? ' disabled title="Saldo insufficiente"' : '') + '>Compra</button>') + '</div>').join('');
     $('sh-grid').querySelectorAll('[data-prev]').forEach(cv => {
@@ -979,7 +979,7 @@ class Economy {
       $('pf-daily').innerHTML = (d.claimed ? '<p class="small">Già riscosso oggi (serie di ' + d.streak + ' giorni). Torna domani.</p>'
         : '<p class="small">Serie: giorno ' + d.streak + (d.weekendEvent ? '. Evento del fine settimana: bonus doppio!' : '') + '</p><button class="primary" id="pf-claim">Riscuoti +' + d.amount + ' 🪙</button>');
       if ($('pf-claim')) $('pf-claim').onclick = () => this.claimDaily();
-      $('pf-since').textContent = 'Account creato il ' + new Date(me.createdAt).toLocaleDateString('it-IT') + '. Nome pubblico: ' + me.username + '. Gli altri vedono solo il nome, mai saldo o dati dell\'account.';
+      $('pf-since').textContent = 'Account creato il ' + new Date(me.createdAt).toLocaleDateString(uiLocale()) + '. Nome pubblico: ' + me.username + '. Gli altri vedono solo il nome, mai saldo o dati dell\'account.';
       this.loadTx(false);
     } catch (e) { this.msg('pf-msg', this.errText(e), true); }
   }
@@ -994,7 +994,7 @@ class Economy {
   async loadTx(more) {
     try {
       const r = await this.api.get('/api/me/transactions' + (more && this.txCursor ? '?before=' + this.txCursor : ''));
-      const html = r.transactions.map(t => '<div class="txrow"><span class="small">' + new Date(t.createdAt).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</span>' +
+      const html = r.transactions.map(t => '<div class="txrow"><span class="small">' + new Date(t.createdAt).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</span>' +
         '<span>' + esc(TX_NAMES[t.type] || t.type) + (/^BET-/.test(t.reference) ? ' <span class="small">' + esc(t.reference) + '</span>' : '') + '</span>' +
         '<span class="amt ' + (t.amount >= 0 ? 'pos' : 'neg') + '">' + (t.amount > 0 ? '+' : '') + fmtCoins(t.amount) + '</span><span class="small">saldo ' + fmtCoins(t.balanceAfter) + '</span></div>').join('');
       if (more) $('pf-tx').insertAdjacentHTML('beforeend', html); else $('pf-tx').innerHTML = html || '<p class="empty">Nessun movimento.</p>';

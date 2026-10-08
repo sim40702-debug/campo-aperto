@@ -174,11 +174,14 @@ class CompetitionsUI {
         const rules = this.career.matchRules(c, f);
         const where = f.neutral ? 'Campo neutro' : f.home === u ? 'In casa' : 'In trasferta';
         let note = '';
-        if (rules && f.leg === 2 && !f.replay) note = 'Ritorno: all\'andata ' + this.name(f.home) + ' ' + rules.aggregate[0] + ', ' + this.name(f.away) + ' ' + rules.aggregate[1] + '. ';
-        if (f.replay) note = 'Ripetizione dopo il pareggio. ';
-        if (rules) note += 'Serve un vincitore: ' + [rules.extraTime ? 'supplementari' : null, rules.penalties ? 'rigori' : 'ripetizione in caso di parità'].filter(Boolean).join(' e ') + '.';
+        if (rules && f.leg === 2 && !f.replay) note = trf('Ritorno: all\'andata {0} {1}, {2} {3}.', this.name(f.home), rules.aggregate[0], this.name(f.away), rules.aggregate[1]) + ' ';
+        if (f.replay) note = tr('Ripetizione dopo il pareggio.') + ' ';
+        if (rules) {
+          const how = [rules.extraTime ? 'supplementari' : null, rules.penalties ? 'rigori' : 'ripetizione in caso di parità'].filter(Boolean).map(tr);
+          note += trf('Serve un vincitore: {0}.', how.length === 2 ? trf('{0} e {1}', how[0], how[1]) : how[0]);
+        }
         h += '<div class="nextmatch"><div class="nm-teams">' + this.teamTag(f.home, f.home === u) + '<span class="vs">contro</span>' + this.teamTag(f.away, f.away === u) + '</div>' +
-          '<p class="small">' + where + ' · tempi da ' + (c.config.halfSeconds / 60) + ' minuti · IA ' + ['facile', 'normale', 'difficile'][c.config.difficulty] + (note ? ' · ' + note : '') + '</p>' +
+          '<p class="small">' + tr(where) + ' · ' + trf('tempi da {0} minuti', c.config.halfSeconds / 60) + ' · ' + trf('IA {0}', tr(['facile', 'normale', 'difficile'][c.config.difficulty])) + (note ? ' · ' + note : '') + '</p>' +
           '<div class="actions" style="margin-top:12px"><button class="primary" id="cp-play">Gioca</button><button class="ghost" id="cp-sim">Simula partita</button></div>' +
           '<p class="small">Il risultato torna da solo nella competizione; le altre partite della giornata si simulano.</p></div>';
       } else {
@@ -198,22 +201,22 @@ class CompetitionsUI {
       h += '<h3 style="margin-top:22px">Ultimi risultati · ' + esc(this.career.roundLabel(c, { stage: last.stage, round: last.round, leg: last.leg || 1, replay: !!last.replay })) + '</h3>' + this.fixtureList(c, same);
     }
     const pr = this.career.progress(c), pct = pr.total ? Math.round(pr.played / pr.total * 100) : 0;
-    h += '<div class="cc-prog big"><i style="width:' + pct + '%"></i></div><p class="small">' + pr.played + ' di ' + pr.total + ' partite giocate · ' + c.fixtures.filter(f => f.how === 'played').length + (this.friend ? ' giocate dagli amici' : ' giocate da te') + '</p>';
+    h += '<div class="cc-prog big"><i style="width:' + pct + '%"></i></div><p class="small">' + trf('{0} di {1} partite giocate', pr.played, pr.total) + ' · ' + trf(this.friend ? '{0} giocate dagli amici' : '{0} giocate da te', c.fixtures.filter(f => f.how === 'played').length) + '</p>';
     return h;
   }
   userStrip(c) {
     const o = this.career.overview(c);
     const parts = [];
-    if (o.position) parts.push((o.group ? 'Girone ' + o.group + ': ' : '') + o.position + 'º posto' + (c.kind === 'league' ? ', ' + o.points + ' punti' : ''));
-    if (o.last) parts.push('ultima: ' + this.name(o.last.home) + ' ' + o.last.h + '-' + o.last.a + ' ' + this.name(o.last.away));
-    if (c.kind === 'league') { const row = this.career.table(c).find(r => r.team === c.config.userTeam); if (row && row.form.length) parts.push('forma ' + this.formDots(row.form)); }
+    if (o.position) parts.push((o.group ? trf('Girone {0}', o.group) + ': ' : '') + trf('{0}º posto', o.position) + (c.kind === 'league' ? ', ' + trf('{0} punti', o.points) : ''));
+    if (o.last) parts.push(trf('ultima: {0}', this.name(o.last.home) + ' ' + o.last.h + '-' + o.last.a + ' ' + this.name(o.last.away)));
+    if (c.kind === 'league') { const row = this.career.table(c).find(r => r.team === c.config.userTeam); if (row && row.form.length) parts.push(tr('forma') + ' ' + this.formDots(row.form)); }
     return '<p class="cp-strip">' + this.teamTag(c.config.userTeam, true) + ' ' + parts.join(' · ') + '</p>';
   }
-  formDots(form) { return '<span class="form">' + form.map(r => '<i class="f' + r + '" title="' + { V: 'Vittoria', N: 'Pareggio', P: 'Sconfitta' }[r] + '">' + r + '</i>').join('') + '</span>'; }
+  formDots(form) { return '<span class="form">' + form.map(r => '<i class="f' + r + '" title="' + { V: 'Vittoria', N: 'Pareggio', P: 'Sconfitta' }[r] + '">' + trf(r) + '</i>').join('') + '</span>'; }
   championCard(c) {
     const s = c.summary || {};
     let h = '<div class="champion"><span class="small">' + (c.kind === 'league' ? 'Campione' : 'Vincitore') + ' · ' + (c.kind === 'league' ? 'stagione ' : 'edizione ') + c.season + '</span><b>🏆 ' + this.name(c.champion) + '</b>';
-    if (s.final) h += '<p>Finale: ' + this.name(s.final.home) + ' ' + s.final.h + '-' + s.final.a + ' ' + this.name(s.final.away) + (s.final.et ? ' (d.t.s. ' + (s.final.h + s.final.et.h) + '-' + (s.final.a + s.final.et.a) + ')' : '') + (s.final.pens ? ', rigori ' + s.final.pens.h + '-' + s.final.pens.a : '') + '</p>';
+    if (s.final) h += '<p>' + trf('Finale: {0}', this.name(s.final.home) + ' ' + s.final.h + '-' + s.final.a + ' ' + this.name(s.final.away)) + (s.final.et ? ' (' + tr('d.t.s.') + ' ' + (s.final.h + s.final.et.h) + '-' + (s.final.a + s.final.et.a) + ')' : '') + (s.final.pens ? ', ' + trf('rigori {0}-{1}', s.final.pens.h, s.final.pens.a) : '') + '</p>';
     h += '<div class="champ-grid">';
     if (c.kind === 'league' && s.bestAttack) h += '<div><span class="small">Miglior attacco</span><b>' + this.name(s.bestAttack.team) + '</b><span>' + s.bestAttack.gf + ' gol fatti</span></div><div><span class="small">Miglior difesa</span><b>' + this.name(s.bestDefense.team) + '</b><span>' + s.bestDefense.gs + ' gol subiti</span></div>';
     if (s.topScorers && s.topScorers[0]) h += '<div><span class="small">Capocannoniere</span><b>' + esc(s.topScorers[0].name) + '</b><span>' + s.topScorers[0].goals + ' gol, ' + this.name(s.topScorers[0].team) + '</span></div>';
@@ -233,8 +236,8 @@ class CompetitionsUI {
 
   tableHtml(rows, c, qualify) {
     const u = c.config.userTeam;
-    return '<div class="tbl-wrap"><table class="stand"><thead><tr><th>Pos</th><th class="tl">Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>PT</th><th class="tl">Forma</th><th title="Partite senza subire gol">CS</th><th>% V</th><th>Serie</th></tr></thead><tbody>' +
-      rows.map(r => '<tr class="' + (r.team === u ? 'mine' : '') + (qualify && r.pos <= qualify ? ' q' : '') + '"><td>' + r.pos + '</td><td class="tl">' + this.teamTag(r.team, r.team === u) + '</td><td>' + r.pg + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td><td>' + (r.dr > 0 ? '+' : '') + r.dr + '</td><td><b>' + r.pt + '</b></td><td class="tl">' + this.formDots(r.form) + '</td><td>' + r.cleanSheets + '</td><td>' + r.winPct + '</td><td>' + (r.streak || '—') + '</td></tr>').join('') +
+    return '<div class="tbl-wrap"><table class="stand"><thead><tr>' + ['Pos', 'Squadra', 'PG', 'V', 'N', 'P', 'GF', 'GS', 'DR', 'PT', 'Forma', 'CS', '% V', 'Serie'].map(h => '<th' + (h === 'Squadra' || h === 'Forma' ? ' class="tl"' : '') + (h === 'CS' ? ' title="Partite senza subire gol"' : '') + '>' + trf(h) + '</th>').join('') + '</tr></thead><tbody>' +
+      rows.map(r => '<tr class="' + (r.team === u ? 'mine' : '') + (qualify && r.pos <= qualify ? ' q' : '') + '"><td>' + r.pos + '</td><td class="tl">' + this.teamTag(r.team, r.team === u) + '</td><td>' + r.pg + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td><td>' + (r.dr > 0 ? '+' : '') + r.dr + '</td><td><b>' + r.pt + '</b></td><td class="tl">' + this.formDots(r.form) + '</td><td>' + r.cleanSheets + '</td><td>' + r.winPct + '</td><td>' + (r.streak ? trf(r.streak[0]) + r.streak.slice(1) : '—') + '</td></tr>').join('') +
       '</tbody></table></div>';
   }
   renderTable(c) {
@@ -396,7 +399,7 @@ class CompetitionsUI {
     $('cp-delete').textContent = v.isOwner ? 'Elimina' : 'Lascia';
     $('cp-delete').hidden = v.myStatus !== 'ACCEPTED';
     const taken = new Map(v.members.filter(m => m.status === 'ACCEPTED' && m.team !== null).map(m => [m.team, m.username]));
-    let h = '<p class="small" style="line-height:1.5">' + esc(v.owner) + ' ha creato questa ' + COMP_KINDS[v.kind].toLowerCase() + ' con ' + cfg.teams.length + ' squadre. ' + esc(this.friendRules(v)) +
+    let h = '<p class="small" style="line-height:1.5">' + esc(trf('{0} ha creato questa competizione ({1}) con {2} squadre.', v.owner, tr(COMP_KINDS[v.kind]).toLowerCase(), cfg.teams.length)) + ' ' + esc(this.friendRules(v)) +
       ' Ognuno sceglie una squadra; le altre le guida l\'IA.</p>';
     h += '<h3>Partecipanti</h3><div class="fx-list">' + v.members.map(m => '<div class="fx-item' + (m.me ? ' mine' : '') + '"><span class="h"><b>' + esc(m.username) + '</b>' + (m.owner ? ' <span class="pill">organizza</span>' : '') + '</span>' +
       '<span class="sc none"></span><span class="a">' + (m.status === 'ACCEPTED' && m.team !== null ? this.teamTag(m.team, m.me) : '<span class="small">' + (m.status === 'INVITED' ? 'invitato, deve rispondere' : 'ha lasciato') + '</span>') + '</span></div>').join('') + '</div>';
@@ -412,7 +415,7 @@ class CompetitionsUI {
         : '<p class="empty">Nessun altro amico da invitare (aggiungili dal pannello Amici nella Home).</p>');
       const waiting = v.members.filter(m => m.status === 'INVITED').length;
       h += '<div class="actions" style="margin-top:22px"><button class="primary" id="cpf-start">Inizia la competizione</button></div><p class="small">' +
-        (waiting ? waiting + (waiting === 1 ? ' invito senza risposta: se inizi ora scade' : ' inviti senza risposta: se inizi ora scadono') + ' e quelle squadre le guida l\'IA.' : 'Quando inizi si fa il calendario (o il sorteggio) e non si entra più.') + '</p>';
+        (waiting ? trf(waiting === 1 ? '{0} invito senza risposta: se inizi ora scade e quelle squadre le guida l\'IA.' : '{0} inviti senza risposta: se inizi ora scadono e quelle squadre le guida l\'IA.', waiting) : tr('Quando inizi si fa il calendario (o il sorteggio) e non si entra più.')) + '</p>';
     } else if (v.myStatus === 'ACCEPTED') h += '<p class="small" style="margin-top:18px">Aspetta che ' + esc(v.owner) + ' avvii la competizione: la vedrai partire qui e nel pannello Amici.</p>';
     $('cp-body').innerHTML = h;
     $('cp-status').textContent = '';
@@ -422,17 +425,17 @@ class CompetitionsUI {
     if (b('cpf-change')) b('cpf-change').onclick = () => this.friendPost('team', { team: team() }, 'Ora giochi con ' + g.teamName(team()));
     if (b('cpf-decline')) b('cpf-decline').onclick = () => this.friendPost('decline', {}, 'Invito rifiutato', true);
     if (b('cpf-invite')) b('cpf-invite').onclick = () => this.friendPost('invite', { username: b('cpf-friend').value }, 'Invito mandato a ' + b('cpf-friend').value);
-    if (b('cpf-start')) b('cpf-start').onclick = () => this.friendPost('start', {}, 'Si parte! ' + (v.kind === 'league' ? 'Calendario pronto' : 'Sorteggio fatto'));
+    if (b('cpf-start')) b('cpf-start').onclick = () => this.friendPost('start', {}, tr('Si parte!') + ' ' + tr(v.kind === 'league' ? 'Calendario pronto' : 'Sorteggio fatto'));
   }
   friendRules(v) {
     const cfg = v.config, parts = [];
-    if (v.kind === 'league') parts.push(cfg.legs === 2 ? 'Andata e ritorno.' : 'Solo andata.');
+    if (v.kind === 'league') parts.push(tr(cfg.legs === 2 ? 'Andata e ritorno.' : 'Solo andata.'));
     else {
-      if (cfg.groups) parts.push(cfg.groups.count + ' gironi, passano le prime ' + cfg.groups.qualify + ', poi eliminazione diretta.');
-      else parts.push('Eliminazione diretta' + (cfg.legs === 2 ? ' con andata e ritorno (finale secca).' : '.'));
-      parts.push((cfg.extraTime ? 'Supplementari' : 'Niente supplementari') + ', ' + (cfg.penalties ? 'rigori.' : 'ripetizione in caso di parità.'));
+      if (cfg.groups) parts.push(trf('{0} gironi, passano le prime {1}, poi eliminazione diretta.', cfg.groups.count, cfg.groups.qualify));
+      else parts.push(tr(cfg.legs === 2 ? 'Eliminazione diretta con andata e ritorno (finale secca).' : 'Eliminazione diretta.'));
+      parts.push(tr(cfg.extraTime ? 'Supplementari' : 'Niente supplementari') + ', ' + tr(cfg.penalties ? 'rigori.' : 'ripetizione in caso di parità.'));
     }
-    parts.push('Tempi da ' + (cfg.halfSeconds / 60) + ' minuti, IA ' + ['facile', 'normale', 'difficile'][cfg.difficulty] + '.');
+    parts.push(trf('Tempi da {0} minuti, IA {1}.', cfg.halfSeconds / 60, tr(['facile', 'normale', 'difficile'][cfg.difficulty])));
     return parts.join(' ');
   }
 
@@ -449,23 +452,23 @@ class CompetitionsUI {
       const opp = p.home === u ? p.awayUser : p.homeUser;
       const where = f.neutral ? 'Campo neutro' : f.home === u ? 'In casa' : 'In trasferta';
       let note = '';
-      if (rules && f.leg === 2 && !f.replay) note = 'Ritorno: all\'andata ' + this.name(f.home) + ' ' + rules.aggregate[0] + ', ' + this.name(f.away) + ' ' + rules.aggregate[1] + '. ';
-      if (rules) note += 'Serve un vincitore. ';
+      if (rules && f.leg === 2 && !f.replay) note = trf('Ritorno: all\'andata {0} {1}, {2} {3}.', this.name(f.home), rules.aggregate[0], this.name(f.away), rules.aggregate[1]) + ' ';
+      if (rules) note += tr('Serve un vincitore.') + ' ';
       h += '<div class="nextmatch"><div class="nm-teams">' + this.teamTag(f.home, f.home === u) + '<span class="vs">contro</span>' + this.teamTag(f.away, f.away === u) + '</div>';
       if (!opp) {
-        h += '<p class="small">' + where + ' · contro l\'IA · tempi da ' + (c.config.halfSeconds / 60) + ' minuti · IA ' + ['facile', 'normale', 'difficile'][c.config.difficulty] + (note ? ' · ' + esc(note) : '') + '</p>' +
+        h += '<p class="small">' + tr(where) + ' · ' + tr('contro l\'IA') + ' · ' + trf('tempi da {0} minuti', c.config.halfSeconds / 60) + ' · ' + trf('IA {0}', tr(['facile', 'normale', 'difficile'][c.config.difficulty])) + (note ? ' · ' + esc(note) : '') + '</p>' +
           '<div class="actions" style="margin-top:12px"><button class="primary" id="cp-play">Gioca</button><button class="ghost" id="cp-sim">Simula partita</button></div>' +
           '<p class="small">Il risultato della partita va sul server da solo. Se esci a metà, il resto si simula dal punteggio; una partita iniziata e mai finita non si rigioca (decide la simulazione).</p>';
       } else {
         const mine = p.reports.find(r => r.username === me), theirs = p.reports.find(r => r.username === opp);
         const txt = r => r.kind === 'sim' ? 'la simulazione' : r.h + '-' + r.a;
         const lines = [];
-        if (p.room) lines.push(p.room.host === me ? 'Hai aperto la stanza <b>' + esc(p.room.code) + '</b>: aspetta che ' + esc(opp) + ' entri.' : '<b>' + esc(opp) + '</b> ti aspetta nella stanza <b>' + esc(p.room.code) + '</b>.');
-        if (mine) lines.push('Hai mandato: ' + txt(mine) + '.');
-        if (theirs) lines.push(esc(opp) + ' ha mandato: ' + txt(theirs) + '.');
+        if (p.room) lines.push(p.room.host === me ? trf('Hai aperto la stanza {0}: aspetta che {1} entri.', '<b>' + esc(p.room.code) + '</b>', esc(opp)) : trf('{0} ti aspetta nella stanza {1}.', '<b>' + esc(opp) + '</b>', '<b>' + esc(p.room.code) + '</b>'));
+        if (mine) lines.push(trf('Hai mandato: {0}.', txt(mine)));
+        if (theirs) lines.push(trf('{0} ha mandato: {1}.', esc(opp), txt(theirs)));
         if (mine && theirs) lines.push('<b>I due risultati non coincidono:</b> rigiocate la partita o chiedete entrambi la simulazione.');
         const joinable = p.room && p.room.host !== me;
-        h += '<p class="small">' + where + ' · contro <b class="vsuser">' + esc(opp) + '</b> · si gioca online · tempi da ' + (c.config.halfSeconds / 60) + ' minuti' + (note ? ' · ' + esc(note) : '') + '</p>' +
+        h += '<p class="small">' + tr(where) + ' · ' + trf('contro {0}', '<b class="vsuser" translate="no">' + esc(opp) + '</b>') + ' · ' + tr('si gioca online') + ' · ' + trf('tempi da {0} minuti', c.config.halfSeconds / 60) + (note ? ' · ' + esc(note) : '') + '</p>' +
           (lines.length ? '<p>' + lines.join(' ') + '</p>' : '') +
           '<div class="actions" style="margin-top:12px">' + (joinable ? '<button class="primary" id="cp-join">Entra nella partita</button>' : '<button class="primary" id="cp-online">' + (p.room ? 'Riapri la stanza' : 'Gioca online') + '</button>') +
           '<button class="ghost" id="cp-fsim">' + (theirs && theirs.kind === 'sim' ? 'Simula (l\'ha chiesto ' + esc(opp) + ')' : 'Chiedi la simulazione') + '</button></div>' +
@@ -480,7 +483,7 @@ class CompetitionsUI {
       h += '<h3 style="margin-top:20px">Partite in attesa</h3><div class="fx-list">' + others.map(x => {
         const who = [x.homeUser, x.awayUser].filter(Boolean).filter(n => !x.reports.some(r => r.username === n));
         return '<div class="fx-item"><span class="h">' + this.teamTag(x.home) + '</span><span class="sc none">–</span><span class="a">' + this.teamTag(x.away) + '</span>' +
-          '<span class="small">' + (who.length ? 'tocca a ' + who.map(esc).join(' e ') : 'risultati diversi') + '</span>' +
+          '<span class="small">' + (who.length ? trf('tocca a {0}', who.length === 2 ? trf('{0} e {1}', esc(who[0]), esc(who[1])) : esc(who[0])) : tr('risultati diversi')) + '</span>' +
           (v.isOwner ? '<button class="ghost" data-force="' + x.fixture + '" title="Partita bloccata: decide la simulazione ufficiale">Simula</button>' : '') + '</div>';
       }).join('') + '</div>';
     }
@@ -619,11 +622,11 @@ class CompetitionsUI {
     sel.value = String(d.userTeam);
     // riepilogo del formato
     const teams = this.draftTeams();
-    let sum = teams.length + ' squadre: ' + teams.map(t => g.teamName(t)).join(', ') + '. ';
-    if (d.kind === 'league') { const r = (teams.length % 2 ? teams.length : teams.length - 1) * d.legs; sum += r + ' giornate, ' + (teams.length * (teams.length - 1) / 2 * d.legs) + ' partite.'; }
-    else if (d.kind === 'cup' && d.format === 'groups') sum += (teams.length / 4) + ' gironi da 4 (' + (d.legs === 2 ? 'andata e ritorno' : 'solo andata') + '), passano le prime 2, poi eliminazione diretta fino alla finale.';
-    else { let n = teams.length; const rs = []; while (n >= 2) { rs.push(CompLogic.roundName(n)); n /= 2; } sum += rs.join(' → ') + '.'; }
-    if (d.friends) sum += ' Ogni amico sceglie una squadra libera quando accetta; le altre le guida l\'IA. Si gioca online tra amici, contro l\'IA da soli.';
+    let sum = trf('{0} squadre: {1}.', teams.length, teams.map(t => g.teamName(t)).join(', ')) + ' ';
+    if (d.kind === 'league') { const r = (teams.length % 2 ? teams.length : teams.length - 1) * d.legs; sum += trf('{0} giornate, {1} partite.', r, teams.length * (teams.length - 1) / 2 * d.legs); }
+    else if (d.kind === 'cup' && d.format === 'groups') sum += trf(d.legs === 2 ? '{0} gironi da 4 (andata e ritorno), passano le prime 2, poi eliminazione diretta fino alla finale.' : '{0} gironi da 4 (solo andata), passano le prime 2, poi eliminazione diretta fino alla finale.', teams.length / 4);
+    else { let n = teams.length; const rs = []; while (n >= 2) { rs.push(tr(CompLogic.roundName(n))); n /= 2; } sum += rs.join(' → ') + '.'; }
+    if (d.friends) sum += ' ' + tr('Ogni amico sceglie una squadra libera quando accetta; le altre le guida l\'IA. Si gioca online tra amici, contro l\'IA da soli.');
     $('cn-summary').textContent = sum;
     $('cn-status').textContent = '';
     $('cn-create').textContent = d.friends ? 'Crea e invita' : 'Crea';

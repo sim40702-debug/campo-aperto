@@ -2,6 +2,21 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.10.0 — 08/10/2026 (lingue: inglese, tedesco, francese)
+- **Quattro lingue**: italiano, English, Deutsch, Français. Si sceglie in Impostazioni → **Generale** (scheda nuova, la
+  prima) → Lingua; il cambio è immediato, anche sulle schermate già aperte, e la scelta resta nelle impostazioni
+  (`lang`, predefinita italiano). Numeri e date seguono la lingua (1'000 in tedesco svizzero, 1 000 in francese).
+- Tradotto tutto quello che si vede: menu, impostazioni, comandi, scritte della partita e dell'arbitro, multiplayer e
+  rete locale, partite del server e scommesse (anche i mercati), negozio e oggetti, profilo, competizioni e sfide tra
+  amici, pannello Amici, messaggi di errore del server.
+- Come funziona: il codice resta in italiano. `src/00_i18n.js` guarda le scritte della pagina e le sostituisce con la
+  traduzione (righe `[italiano, inglese, tedesco, francese]` in `src/lingue/*.js`); le frasi con valori usano `{0}`,
+  `{t0}` (valore da tradurre) e `{#0}` (solo numeri). Così si traducono anche le frasi della simulazione e del server
+  senza toccarli: **motore e server non cambiano** (stessa impronta del motore, nessun deploy). Le frasi composte più
+  complicate (competizioni) usano `trf()` direttamente nel codice. I nomi di squadre e giocatori non si traducono mai.
+- Test: lingue_test (18, nel `npm test`); browser, comandi, competizioni, sensazioni ed economia invariati e superati;
+  prove con le competizioni in tedesco e con l'economia in francese senza scritte italiane rimaste.
+
 ## 0.9.2 — 06/10/2026 (inviti alle partite online, diagnosi del ritardo)
 - **Gioca con un amico in un clic**: nel pannello Amici, «Gioca» accanto a un amico apre una partita online e gli manda
   l'invito; lui lo trova in «Richieste e inviti» (pallino e avviso anche a pannello chiuso) e preme «Entra»: niente codice

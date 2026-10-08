@@ -128,6 +128,7 @@ async def main():
         check('risoluzione dinamica: con il rendering software la scala scende', dyn < 1, dyn)
         # schermo intero (API del browser)
         await pg.click('#btn-settings'); await pg.wait_for_timeout(200)
+        await pg.click('[data-tab=grafica]'); await pg.wait_for_timeout(200)
         await pg.click('#st-full'); await pg.wait_for_timeout(600)
         fs = await pg.evaluate("!!document.fullscreenElement")
         check('schermo intero attivato dal pulsante', fs)
