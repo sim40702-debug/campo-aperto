@@ -690,10 +690,14 @@ select.sel:focus { outline: none; border-color: var(--flood); }
   <div class="sheet">
     <h2>Impostazioni</h2>
     <div class="tabs" role="tablist">
+      <button class="tab" data-tab="generale" role="tab">Generale</button>
       <button class="tab" data-tab="grafica" role="tab">Grafica</button>
       <button class="tab" data-tab="audio" role="tab">Audio</button>
       <button class="tab" data-tab="controlli" role="tab">Controlli</button>
       <button class="tab" data-tab="online" role="tab">Online</button>
+    </div>
+    <div data-pane="generale" class="opts">
+      <span class="lbl">Lingua</span><div class="segs" id="st-lang"></div>
     </div>
     <div data-pane="grafica" class="opts">
       <span class="lbl">Qualità</span><div class="segs" id="st-quality"></div>

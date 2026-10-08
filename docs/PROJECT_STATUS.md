@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 06/10/2026, sessione 10, versione 0.9.0
+Aggiornato: 08/10/2026, sessione 11, versione 0.10.0
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -18,7 +18,8 @@ Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a 
 - Passo fisso 1/60 s. Coordinate: x lunghezza (±52.5), z larghezza (±34), y altezza.
 
 ## Architettura (src/)
-01 config e RNG, 02 database, 03 fisica palla (aria, effetto, rimbalzo), 04 giocatore, 05 squadra e tattica, 06 azioni (volo dei calci calcolato), 07 IA,
+00 lingue (it, en, de, fr: traduzione delle scritte della pagina con un MutationObserver, `tr()` e `trf()`; righe in src/lingue/*.js,
+vedi l'intestazione del file; il codice e il server restano in italiano), 01 config e RNG, 02 database, 03 fisica palla (aria, effetto, rimbalzo), 04 giocatore, 05 squadra e tattica, 06 azioni (volo dei calci calcolato), 07 IA,
 08 partita e regole (più umani) + 08_referee arbitro (contrasti, falli, vantaggio, cartellini; vedi docs/ARBITRO_E_FISICA.md),
 09 render 3D (preset qualità, HiDPI, particelle), 10 audio (tre canali), 11 input (tastiera, mouse, controller, rimappabile, navigazione menu), 12 rete (NetLink,
 HostSession, ClientSession), 13 impostazioni (localStorage), 14 gioco (schermate, HUD, loop, online), shell.html (UI).
@@ -30,7 +31,7 @@ cloud/: server dell'economia (Cloudflare Worker + D1 + Durable Object "Engine" e
 wss://…/relay), vedi docs/ECONOMIA.md. Regole delle schedine in cloud/src/betlogic.js, lo stesso file nel server e nel gioco. Il motore del server è
 generato da `node build.js engine` con gli stessi file 01..08 (impronta ENGINE_ID = SHA-256 dei file); RNG per partita
 (Match opts.rng) per rigiocare uguale una partita dal seme. Quote da cloud/src/odds-model.json (Monte Carlo col motore vero).
-Test: rules_test.js, referee_test.js, sim_test.js, net_test.js (87, relay e WebSocket veri), browser_test.py (31), controls_browser_test.py (27,
+Test: lingue_test.js (18, righe complete, segnaposto, nomi mai tradotti), rules_test.js, referee_test.js, sim_test.js, net_test.js (87, relay e WebSocket veri), browser_test.py (31), controls_browser_test.py (27,
 controller simulato, Home nuova), online_browser_test.py (18, due giocatori), electron_smoke.js (16, app vera con tasti reali e due finestre online).
 
 Test dell'economia: cloud/test/markets_test.js (22), cloud/test/betlogic_test.js (68, regole delle schedine),
@@ -39,6 +40,8 @@ browser, server locale, multipla della stessa partita, conflitti, transizioni, q
 visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio compreso).
 
 ## Funzionalità completate (verificate)
+- 0.10.0: lingue italiano, inglese, tedesco, francese (Impostazioni → Generale → Lingua), cambio immediato; anche scritte
+  della simulazione, mercati e messaggi del server, tradotti nel gioco (motore e server invariati).
 - 0.9.0: amici (pannello a destra nella Home, tutti i giocatori, richieste), sfide tra amici sul server (campionato,
   torneo, coppa con inviti, squadre scelte, partite contro l'IA e online tra amici con risultato concordato); avanzamento
   delle competizioni condiviso gioco/server in complogic.js; release solo Windows e Mac.
@@ -98,5 +101,9 @@ Sostituzioni, finte, tiro a giro manuale, barriera controllabile, editor giocato
 4. M3: salvataggi (localStorage), editor giocatori, creazione squadra.
 
 ## Decisioni tecniche
+- Lingue (0.10.0): le frasi restano scritte in italiano nel codice e si traducono sulla pagina (src/00_i18n.js). Una frase
+  nuova va aggiunta in src/lingue/*.js con le tre traduzioni; senza riga resta in italiano (nessun errore). Frasi con valori:
+  `{0}`, `{t0}` (valore tradotto), `{#0}` (solo numeri, per frasi corte che potrebbero toccare nomi). Le frasi lunghe composte
+  in più pezzi meglio con `trf('modello {0}', valore)` nel codice. I nomi (squadre, giocatori) non vanno mai nel dizionario.
 - Pagina singola per poterla pubblicare come artifact; i documenti di stato sono incorporati nell'HTML (`<script type="text/markdown" id="doc-...">`) perché il filesystem di lavoro non persiste tra le sessioni.
 - Tutto originale: nomi, squadre, marchi dei cartelloni inventati; grafica solo da primitive e texture canvas.

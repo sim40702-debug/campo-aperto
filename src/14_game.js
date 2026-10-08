@@ -9,6 +9,7 @@ const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 class Game {
   constructor() {
     this.settings = loadSettings();
+    setLanguage(this.settings.lang);   // lingua scelta nelle impostazioni (src/00_i18n.js)
     if (!this.settings.name) { this.settings.name = 'Giocatore ' + (10 + Math.floor(Math.random() * 90)); saveSettings(this.settings); }
     // le 8 squadre del server (stesso seme) più le altre della carriera (sempre uguali, per tornei fino a 32)
     this.db = buildDatabase(2026).concat(buildExtraTeams());
@@ -112,7 +113,7 @@ class Game {
     $('btn-quick').onclick = () => { this.setup.side = this.setup.side === -1 ? 0 : this.setup.side; this.showScreen('setup'); };
     $('btn-watch').onclick = () => this.eco.open('fixtures');
     $('btn-online').onclick = () => this.showScreen('online');
-    $('btn-settings').onclick = () => this.openSettings('grafica', 'menu');
+    $('btn-settings').onclick = () => this.openSettings('generale', 'menu');
     $('btn-graphics').onclick = () => this.openSettings('grafica', 'menu');
     $('btn-audio').onclick = () => this.openSettings('audio', 'menu');
     $('btn-controls').onclick = () => this.openHelp('menu');
@@ -137,7 +138,7 @@ class Game {
     });
     $('pause-resume').onclick = () => this.togglePause(false);
     $('pause-camera').onclick = () => this.cycleCamera();
-    $('pause-settings').onclick = () => { $('pause').hidden = true; this.openSettings('grafica', 'pause'); };
+    $('pause-settings').onclick = () => { $('pause').hidden = true; this.openSettings('generale', 'pause'); };
     $('pause-help').onclick = () => { $('pause').hidden = true; this.openHelp('pause'); };
     // ricominciare o uscire fanno perdere la partita: serve una conferma (secondo clic)
     $('pause-restart').onclick = () => this.confirmClick($('pause-restart'), 'Sicuro? Ricomincia', () => { this.togglePause(false); this.startMatch(); });
@@ -212,6 +213,7 @@ class Game {
     options.forEach(o => {
       const b = document.createElement('button');
       b.textContent = o.label;
+      if (o.noTranslate) b.setAttribute('translate', 'no');   // es. i nomi delle lingue, sempre nella loro lingua
       b.className = 'seg' + (o.value === value ? ' on' : '');
       b.setAttribute('aria-pressed', o.value === value);
       b.onclick = () => onPick(o.value);
@@ -689,6 +691,12 @@ class Game {
     document.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', b.dataset.tab === tab); });
     document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== tab; });
     const save = () => saveSettings(s);
+    // generale: lingua del gioco
+    this.segmented('st-lang', LANGUAGES.map(l => ({ label: l.label, value: l.id, noTranslate: true })), s.lang, v => {
+      s.lang = v; save();
+      setLanguage(v);
+      this.renderSettings();
+    });
     // grafica
     this.segmented('st-quality', QUALITY_LEVELS.map(q => ({ label: q.label, value: q.id })), s.quality, v => { s.quality = v; this.renderer.setQuality(v); save(); this.renderSettings(); });
     const res = $('st-res');
@@ -1186,7 +1194,7 @@ class Game {
     if (m.banner && !this.replay) {
       const k = m.banner.kind || 'info';
       const cls = m.state === 'GOAL' || k === 'goal' ? 'banner goal' : k === 'info' ? 'banner' : 'banner ref ' + k;
-      if (bn.hidden || bn.textContent !== m.banner.text || bn.className !== cls) { bn.textContent = m.banner.text; bn.className = cls; }
+      if (bn.hidden || bn.textContent !== tr(m.banner.text) || bn.className !== cls) { bn.textContent = m.banner.text; bn.className = cls; }
       bn.hidden = false;
     } else if (!bn.hidden) bn.hidden = true;
     if (m.state === 'GOAL' && m.lastGoal && !this.replay && m.stateTime > 0.6) {
@@ -1295,7 +1303,7 @@ class Game {
     }
     if (cm && cm.friend) {
       const r = m.result ? m.result() : null;
-      if (r && (r.et || r.pens)) $('ft-score').textContent += (r.et ? '  d.t.s.' : '') + (r.pens ? '  ·  rigori ' + r.pens.h + '-' + r.pens.a : '');
+      if (r && (r.et || r.pens)) $('ft-score').textContent += (r.et ? '  ' + tr('d.t.s.') : '') + (r.pens ? '  ·  ' + trf('rigori {0}-{1}', r.pens.h, r.pens.a) : '');
       if (!cm.recorded) {
         cm.recorded = true;
         $('ft-comp-note').textContent = 'Mando il risultato al server…';
@@ -1304,7 +1312,7 @@ class Game {
     } else if (cm) {
       // il risultato del motore va nella competizione (una volta sola), poi si simula il resto della giornata
       const r = m.result ? m.result() : null;
-      if (r && (r.et || r.pens)) $('ft-score').textContent += (r.et ? '  d.t.s.' : '') + (r.pens ? '  ·  rigori ' + r.pens.h + '-' + r.pens.a : '');
+      if (r && (r.et || r.pens)) $('ft-score').textContent += (r.et ? '  ' + tr('d.t.s.') : '') + (r.pens ? '  ·  ' + trf('rigori {0}-{1}', r.pens.h, r.pens.a) : '');
       if (r && human && (r.winner === 0 || r.winner === 1)) $('ft-verdict').textContent = r.winner === human.index ? (r.pens ? 'Vittoria ai rigori' : 'Qualificati') : (r.pens ? 'Sconfitta ai rigori' : 'Eliminati');
       if (!cm.recorded) {
         cm.recorded = true;
@@ -1312,7 +1320,7 @@ class Game {
         if (c) {
           const o = this.comps.career.overview(c);
           $('ft-comp-note').textContent = c.status === 'finished' ? '🏆 ' + c.name + ': vince ' + this.teamName(c.champion) + '!' :
-            c.name + ' · risultato registrato' + (o.position ? ' · ' + o.position + 'º posto' : '') + (o.userOut ? ' · la tua squadra è eliminata' : '') + (o.round ? ' · prossimo turno: ' + o.round : '');
+            c.name + ' · ' + tr('risultato registrato') + (o.position ? ' · ' + trf('{0}º posto', o.position) : '') + (o.userOut ? ' · ' + tr('la tua squadra è eliminata') : '') + (o.round ? ' · ' + trf('prossimo turno: {0}', tr(o.round)) : '');
         }
       }
     }
@@ -1829,7 +1837,7 @@ class Game {
       if (r > 150 || (hs && hs.fps && hs.fps < 40)) cls = 'dot warn';
     }
     $('net-dot').className = cls;
-    if ($('net-text').textContent !== text) $('net-text').textContent = text;
+    if ($('net-text').textContent !== tr(text)) $('net-text').textContent = text;
   }
 }
 

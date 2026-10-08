@@ -58,6 +58,11 @@ Le release pubblicano solo Windows e macOS. Su Linux si compila in locale con `n
 
 Ogni tasto si può rimappare in **Impostazioni → Controlli**. Nell'app desktop **F11** attiva lo schermo intero.
 
+## Lingue
+
+Il gioco è in **italiano, inglese, tedesco e francese**: si sceglie in **Impostazioni → Generale → Lingua** e
+cambia subito, senza riavviare. La scelta resta salvata sul computer.
+
 **Arbitro:** il contatto da solo non è fallo. Se prendi prima il pallone il contrasto è regolare; da dietro, attraverso le gambe, è fallo; le scivolate imprudenti o violente portano giallo o rosso. C'è il vantaggio e il doppio giallo espelle. Dettagli su arbitro e fisica in [`docs/ARBITRO_E_FISICA.md`](docs/ARBITRO_E_FISICA.md).
 
 ---
