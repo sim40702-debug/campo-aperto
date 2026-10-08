@@ -3,7 +3,7 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['menu', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
+const SCREENS = ['manager', 'menu', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 
 class Game {
@@ -55,6 +55,9 @@ class Game {
     this.fxw = null;
     this.eco = new Economy(this);
     this.comps = new CompetitionsUI(this);
+    // carriera da allenatore (src/24_manager.js): il suo campionato usa le rose della carriera
+    this.manager = new Manager(this);
+    this.comps.career.rosterTeam = (comp, t) => this.manager.teamFor(comp, t);
     this.social = new SocialUI(this);
     this.compMatch = null;      // partita di una competizione in corso: { compId, fid }
     this.startDemo();
@@ -313,7 +316,8 @@ class Game {
     const cfg = comp.config, C = this.comps.career;
     const side = f.home === cfg.userTeam ? 0 : f.away === cfg.userTeam ? 1 : -1;
     const team = (idx, mine) => {
-      const t = namedTeam(this.db[idx], this.settings.teamNames[idx]);
+      // carriera da allenatore: rosa della carriera (giocatori comprati, cresciuti, ragazzi del vivaio)
+      const t = namedTeam((comp.manager && this.manager.teamFor(comp, idx)) || this.db[idx], this.settings.teamNames[idx]);
       const copy = Object.assign({}, t, { tactics: Object.assign({}, t.tactics) });
       if (mine) copy.tactics.mentality = this.setup.mentality;
       return copy;
@@ -571,7 +575,7 @@ class Game {
       case 'help': this.closeHelp(); break;
       case 'center': this.eco.open('fixtures'); break;
       case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': case 'comps': this.showScreen('menu'); break;
-      case 'comp': case 'comp-new': this.comps.openDashboard(); break;
+      case 'comp': case 'comp-new': case 'manager': this.comps.openDashboard(); break;
     }
   }
   // tasti nei menu (la partita non è in corso o è in pausa)

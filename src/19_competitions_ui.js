@@ -3,7 +3,7 @@
 // statistiche, storico), creazione. I dati vengono da Career (18_competitions.js); le partite si giocano con il
 // motore vero (Game.startCompMatch) o si simulano con la simulazione ufficiale.
 // ============================================================
-const COMP_SCREENS = ['comps', 'comp', 'comp-new'];
+const COMP_SCREENS = ['comps', 'comp', 'comp-new', 'manager'];
 
 class CompetitionsUI {
   constructor(game) {
@@ -65,6 +65,9 @@ class CompetitionsUI {
     const g = this.g;
     $('btn-comps').onclick = () => this.openDashboard();
     $('comps-back').onclick = () => g.showScreen('menu');
+    $('cl-manager-open').onclick = () => g.manager.open();
+    $('mg-back').onclick = () => this.openDashboard();
+    $('mg-quit').onclick = () => g.confirmClick($('mg-quit'), tr('Sicuro? Abbandona'), () => { g.manager.quit(); g.manager.render(); });
     $('cp-back').onclick = () => this.openDashboard();
     $('cn-back').onclick = () => this.openDashboard();
     $('cl-friends-new').onclick = () => this.openNewFriend([]);
@@ -90,6 +93,10 @@ class CompetitionsUI {
     if (this.g.social) this.g.social.refresh();
   }
   renderDashboard() {
+    const mg = this.g.manager && this.g.manager.data, mc = mg && this.g.manager.comp();
+    $('cl-manager').innerHTML = mc ? '<p class="small">' + esc(this.g.teamName(mg.team)) + ' · ' + trf('Stagione {0}', mg.season) + ' · ' + trf('Budget {0}', fmtMoney(mg.budget)) + '</p>'
+      : '<p class="empty">' + tr('Guida una squadra per più stagioni: mercato, giovani che crescono, premi a fine campionato.') + '</p>';
+    $('cl-manager-open').textContent = tr(mc ? 'Apri la carriera' : 'Nuova carriera');
     for (const kind of ['league', 'tournament', 'cup']) {
       const list = this.career.comps.filter(c => c.kind === kind);
       $('cl-' + kind).innerHTML = list.length ? list.map(c => this.card(c)).join('') :
@@ -157,6 +164,7 @@ class CompetitionsUI {
     if (b('cp-sim')) b('cp-sim').onclick = () => this.simUser(c);
     if (b('cp-simround')) b('cp-simround').onclick = () => { const n = this.career.simulateRound(c); this.flash('Giornata simulata (' + n + ' partite)'); this.render(); };
     if (b('cp-simend')) b('cp-simend').onclick = () => this.g.confirmClick(b('cp-simend'), 'Sicuro? Simula tutto', () => { this.career.simulateToEnd(c); this.render(); });
+    if (b('cp-tomanager')) b('cp-tomanager').onclick = () => this.g.manager.open();
     if (b('cp-newseason')) b('cp-newseason').onclick = () => { this.career.newSeason(c.id); this.flash(c.kind === 'league' ? 'Nuova stagione: calendario pronto' : 'Nuova edizione: sorteggio fatto'); this.render(); };
     $('cp-body').querySelectorAll('[data-calr]').forEach(x => x.onclick = () => { this.calRound = Number(x.dataset.calr); this.render(); });
   }
@@ -221,7 +229,8 @@ class CompetitionsUI {
     if (c.kind === 'league' && s.bestAttack) h += '<div><span class="small">Miglior attacco</span><b>' + this.name(s.bestAttack.team) + '</b><span>' + s.bestAttack.gf + ' gol fatti</span></div><div><span class="small">Miglior difesa</span><b>' + this.name(s.bestDefense.team) + '</b><span>' + s.bestDefense.gs + ' gol subiti</span></div>';
     if (s.topScorers && s.topScorers[0]) h += '<div><span class="small">Capocannoniere</span><b>' + esc(s.topScorers[0].name) + '</b><span>' + s.topScorers[0].goals + ' gol, ' + this.name(s.topScorers[0].team) + '</span></div>';
     h += '<div><span class="small">Partite</span><b>' + (s.matches || 0) + '</b><span>' + (s.goals || 0) + ' gol, media ' + (s.avgGoals || 0) + '</span></div></div>';
-    if (!this.friend || this.friend.view.isOwner) h += '<div class="actions" style="margin-top:14px"><button class="primary" id="cp-newseason">' + (c.kind === 'league' ? 'Nuova stagione' : 'Nuova edizione') + '</button></div>';
+    if (c.manager) h += '<div class="actions" style="margin-top:14px"><button class="primary" id="cp-tomanager">' + tr('Vai alla carriera') + '</button></div>';
+    else if (!this.friend || this.friend.view.isOwner) h += '<div class="actions" style="margin-top:14px"><button class="primary" id="cp-newseason">' + (c.kind === 'league' ? 'Nuova stagione' : 'Nuova edizione') + '</button></div>';
     else h += '<p class="small" style="margin-top:12px">La nuova stagione la avvia ' + esc(this.friend.view.owner) + ', che ha creato la competizione.</p>';
     h += '</div>';
     if (c.kind === 'league') h += '<h3 style="margin-top:20px">Classifica finale</h3>' + this.tableHtml(this.career.table(c), c);
