@@ -2,7 +2,7 @@
 // TELECRONACA A SCRITTE — frasi brevi durante la partita
 // Nasce dagli eventi della partita ('ref' con il registro dell'arbitro, più 'save' e 'post'), che arrivano uguali in
 // locale e ai client in rete: ognuno scrive la sua telecronaca, nessun messaggio in più sulla rete.
-// Le frasi sono in italiano e passano da trf() (traduzioni in src/lingue/08_telecronaca.js).
+// Le frasi sono in italiano e passano da trf() (traduzioni in src/i18n/*.json, sezione "telecronaca").
 // Voce: la sintesi vocale del computer (speechSynthesis) legge la frase nella lingua del gioco. Una frase più
 // importante interrompe quella che si sta dicendo; una meno importante, mentre si parla, si salta.
 // ============================================================

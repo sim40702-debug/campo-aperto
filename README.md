@@ -265,6 +265,9 @@ npm start    # apre il gioco in una finestra desktop
 | `npm run dist:mac` | `.dmg` e `.zip` per Intel e Apple Silicon |
 | `npm run dist:linux` | `.AppImage` e `.deb` |
 
+`npm run dist:win` prepara da solo lo strumento di electron-builder per l'icona del file `.exe` (winCodeSign): così
+non serve più aprire PowerShell come amministratore né attivare la Modalità sviluppatore di Windows.
+
 Per compilare Windows, macOS e Linux insieme con GitHub Actions basta pubblicare un tag con la versione di
 `package.json`:
 
@@ -276,7 +279,7 @@ Dopo qualche minuto i file dei tre sistemi compaiono in **Releases**, con le not
 [CHANGELOG](docs/CHANGELOG.md). Se la macchina di un sistema resta in coda a lungo, annulla solo quel lavoro nella
 scheda **Actions**: la release esce con gli altri e rilanciando il flusso più tardi si aggiungono i file mancanti.
 
-Quando cambia il **motore della partita** (i file `src/01..08`) o il codice di `cloud/`, il **server dell'economia si
+Quando cambia il **motore della partita** (i file di `src/engine/`) o il codice di `cloud/`, il **server dell'economia si
 aggiorna da solo** appena le modifiche arrivano nel `main` (flusso **Aggiorna il server** in Actions), perché le
 partite del server si rigiocano nel gioco con lo stesso motore. Serve impostare una volta i segreti di Cloudflare
 (vedi [docs/ECONOMIA.md](docs/ECONOMIA.md#aggiornare)). A mano si fa così:
@@ -289,9 +292,13 @@ npm run deploy
 ### Struttura
 
 ```
-src/       codice del gioco (simulazione, grafica, audio, input, rete, account ed economia, telecronaca,
-           editor delle squadre, carriera)
-src/lingue traduzioni: ogni riga è [italiano, inglese, tedesco, francese]
+src/
+  engine/    motore della partita (01..08 e le squadre in più): lo stesso codice gira nel gioco e nel server
+  client/    grafica 3D, audio, comandi e rete del gioco
+  game/      menu, impostazioni, account ed economia, competizioni, telecronaca, editor squadre, carriera
+  i18n/      lingue: 00_i18n.js (il sistema) e un file per lingua (en.json, de.json, fr.json)
+  shell.html la pagina in cui build.js inserisce tutto il codice
+scripts/   aiuti per build e app (sorgenti.js trova i file in src/, prepara-windows.js per npm run dist:win)
 server/    server lobby/relay per l'online
 cloud/     server dell'economia (Cloudflare Worker + D1 + Durable Object), con migrazioni e test
 desktop/   app Electron
@@ -301,14 +308,23 @@ docs/      roadmap, changelog, guida dell'economia
 
 ### Aggiungere una traduzione
 
-Le frasi nel codice restano in italiano. Per tradurne una nuova aggiungi una riga in uno dei file di `src/lingue/`:
+Le frasi nel codice restano in italiano. C'è un file per lingua in `src/i18n/`: `en.json` (inglese), `de.json`
+(tedesco) e `fr.json` (francese). Ogni file è diviso in sezioni (`generale`, `partita`, `telecronaca`…) e in ogni
+sezione la frase italiana porta alla traduzione. Per tradurre una frase nuova aggiungila nella stessa sezione di
+tutti e tre i file:
 
-```js
-["Gran parata!", "Great save!", "Starke Parade!", "Superbe arrêt !"],
+```json
+"Gran parata!": "Great save!"            (en.json)
+"Gran parata!": "Starke Parade!"         (de.json)
+"Gran parata!": "Superbe arrêt !"        (fr.json)
 ```
 
 Una frase con dei valori usa `{0}`, `{1}`… al posto dei valori, per esempio `"Giallo per {0}"`. Una frase senza
-traduzione resta semplicemente in italiano. `node tests/lingue_test.js` controlla che le righe siano complete.
+traduzione resta semplicemente in italiano. `node tests/lingue_test.js` controlla che i tre file abbiano le stesse
+frasi e gli stessi segnaposto.
+
+Per aggiungere una lingua nuova serve un altro file (per esempio `es.json`), poi la lingua va aggiunta in
+`src/i18n/00_i18n.js` (`LANGUAGES`, `LANG_COLUMN` e le mappe di `I18N`) e nell'elenco delle lingue di `build.js`.
 
 ### Test nel browser e nell'app desktop
 

@@ -2,8 +2,8 @@
 // Verifica: creazione, codice, ingresso, errori, lobby, avvio, comandi, sincronizzazione,
 // disconnessione e rientro di un client, uscita dell'host.
 const fs = require('fs'), path = require('path');
-const files = fs.readdirSync(path.join(__dirname, '../src')).filter(f => /^(0[1-8]|12)_/.test(f)).sort();
-let code = 'var GAME_VERSION = "test";\n' + files.map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
+const files = require('../scripts/sorgenti.js').gameFiles(/^(0[1-8]|12)_/);
+let code = 'var GAME_VERSION = "test";\n' + files.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, NET, NetLink, HostSession, ClientSession, normalizeCode, parseHostAddress, sanitizeInput, cleanTeamName, namedTeam };';
 require('vm').runInThisContext(code);
 const A = globalThis.__api;

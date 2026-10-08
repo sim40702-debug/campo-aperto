@@ -1,4 +1,4 @@
-// Calcolo delle partite del server con il motore del gioco (stesso codice di src/01..08, vedi build.js engine).
+// Calcolo delle partite del server con il motore del gioco (stesso codice di src/engine/, vedi build.js engine).
 // Usato solo dal Durable Object: una partita costa circa un secondo di CPU, troppo per una richiesta Worker gratuita.
 import { Match, buildDatabase, makeRng, GAME_VERSION, ENGINE_ID } from './engine.gen.js';
 import { factsFromMatch } from './markets.js';

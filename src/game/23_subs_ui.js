@@ -1,5 +1,5 @@
 // ============================================================
-// CAMBI NEL MENU DI PAUSA — scegli chi esce e chi entra (src/08_match_subs.js fa il cambio alla prossima palla ferma)
+// CAMBI NEL MENU DI PAUSA — scegli chi esce e chi entra (src/engine/08_match_subs.js fa il cambio alla prossima palla ferma)
 // Solo nelle partite sul tuo computer (partita rapida e competizioni contro l'IA).
 // ============================================================
 Game.prototype.renderPauseSubs = function () {

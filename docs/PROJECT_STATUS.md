@@ -7,7 +7,7 @@ Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a 
 
 ## Tecnologia
 - HTML5 + JavaScript, Three.js r128 (da cdnjs), Web Audio per i suoni procedurali.
-- Una sola pagina autocontenuta, generata da `build.js` concatenando `src/01..17` (destinazioni: web, test, desktop; la variabile BUILD_TARGET dice quale).
+- Una sola pagina autocontenuta, generata da `build.js` concatenando i file numerati di `src/` (cartelle engine, client, game, i18n) in ordine di numero (destinazioni: web, test, desktop; la variabile BUILD_TARGET dice quale).
 - Node.js supportato: 22, 24, 26 (26 grazie a overrides yauzl 3.4.0 per l'installatore di Electron 33).
 - App desktop: Electron 33 + electron-builder (config in package.json, icona in risorse/, finestra in desktop/main.js).
 - Simulazione (moduli 01-08) e rete (12) indipendenti da THREE e DOM: girano anche in Node per i test.
@@ -18,7 +18,7 @@ Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a 
 - Passo fisso 1/60 s. Coordinate: x lunghezza (±52.5), z larghezza (±34), y altezza.
 
 ## Architettura (src/)
-00 lingue (it, en, de, fr: traduzione delle scritte della pagina con un MutationObserver, `tr()` e `trf()`; righe in src/lingue/*.js,
+00 lingue (it, en, de, fr: traduzione delle scritte della pagina con un MutationObserver, `tr()` e `trf()`; un file per lingua: src/i18n/en.json, de.json, fr.json,
 vedi l'intestazione del file; il codice e il server restano in italiano), 01 config e RNG, 02 database, 03 fisica palla (aria, effetto, rimbalzo), 04 giocatore, 05 squadra e tattica, 06 azioni (volo dei calci calcolato), 07 IA,
 08 partita e regole (più umani) + 08_referee arbitro (contrasti, falli, vantaggio, cartellini; vedi docs/ARBITRO_E_FISICA.md),
 09 render 3D (preset qualità, HiDPI, particelle), 10 audio (tre canali), 11 input (tastiera, mouse, controller, rimappabile, navigazione menu), 12 rete (NetLink,
@@ -108,7 +108,7 @@ Sostituzioni, finte, tiro a giro manuale, barriera controllabile, editor giocato
 
 ## Decisioni tecniche
 - Lingue (0.10.0): le frasi restano scritte in italiano nel codice e si traducono sulla pagina (src/00_i18n.js). Una frase
-  nuova va aggiunta in src/lingue/*.js con le tre traduzioni; senza riga resta in italiano (nessun errore). Frasi con valori:
+  nuova va aggiunta nei tre file src/i18n/en.json, de.json e fr.json; senza riga resta in italiano (nessun errore). Frasi con valori:
   `{0}`, `{t0}` (valore tradotto), `{#0}` (solo numeri, per frasi corte che potrebbero toccare nomi). Le frasi lunghe composte
   in più pezzi meglio con `trf('modello {0}', valore)` nel codice. I nomi (squadre, giocatori) non vanno mai nel dizionario.
 - Pagina singola per poterla pubblicare come artifact; i documenti di stato sono incorporati nell'HTML (`<script type="text/markdown" id="doc-...">`) perché il filesystem di lavoro non persiste tra le sessioni.

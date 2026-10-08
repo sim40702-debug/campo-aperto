@@ -2,8 +2,8 @@
 // I casi con una parte casuale (il piede arriva o no sul pallone) si ripetono con molti semi diversi:
 // la regola deve valere sempre, non per fortuna.
 const fs = require('fs'), path = require('path');
-const files = fs.readdirSync(path.join(__dirname, '../src')).filter(f => /^0[1-8]_/.test(f)).sort();
-let code = files.map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
+const files = require('../scripts/sorgenti.js').gameFiles(/^0[1-8]_/);
+let code = files.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, evaluateChallenge, analyzeChallenge, doGroundPass, doLobPass, doShot, simulateFlight, stepBallPhysics, Ball, REF };';
 require('vm').runInThisContext(code);
 const A = globalThis.__api;

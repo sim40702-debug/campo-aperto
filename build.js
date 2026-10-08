@@ -1,5 +1,5 @@
 // ============================================================
-// BUILD — unisce src/00..20 (e le traduzioni in src/lingue/) dentro shell.html
+// BUILD — unisce i file di src/ (engine, client, game, i18n) e le traduzioni (src/i18n/*.json) dentro shell.html
 // uso:
 //   node build.js web      -> dist/index.html   (browser, three.js e font da internet)
 //   node build.js test     -> dist/test.html    (test locali con node_modules/three)
@@ -15,22 +15,24 @@ const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 const version = pkg.version;
 
 const srcDir = path.join(root, 'src');
+// i file del gioco sono nelle sottocartelle di src/: queste funzioni li trovano per nome, in ordine di numero
+const { gameFiles, gameFile } = require('./scripts/sorgenti.js');
 const crypto = require('crypto');
 
 // impronta del motore: SHA-256 dei file della simulazione (01..08). Uguale nel gioco e nel server se e solo se
 // la simulazione è la stessa: una partita del server si può rigiocare nel gioco solo con la stessa impronta
-const simFiles = fs.readdirSync(srcDir).filter(f => /^0[1-8]_.*\.js$/.test(f)).sort();
+const simFiles = gameFiles(/^0[1-8]_.*\.js$/);
 // gli a capo si normalizzano: su Windows git può scrivere i file con CRLF, ma il codice (e la partita) è lo stesso
-const engineId = crypto.createHash('sha256').update(simFiles.map(f => f + '\n' + fs.readFileSync(path.join(srcDir, f), 'utf8').replace(/\r\n?/g, '\n')).join('\n')).digest('hex').slice(0, 12);
+const engineId = crypto.createHash('sha256').update(simFiles.map(f => path.basename(f) + '\n' + fs.readFileSync(f, 'utf8').replace(/\r\n?/g, '\n')).join('\n')).digest('hex').slice(0, 12);
 
 // motore per il server (cloud/): gli stessi file della simulazione del gioco (01..08) in un modulo ES.
 // Il server non ha una seconda simulazione: calcola le partite con questo codice.
 if (target === 'engine') {
   let mod = '// GENERATO da "node build.js engine": motore di Campo Aperto per il server. Non modificare a mano.\n' +
     'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = "engine";\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
-  for (const f of simFiles) mod += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
+  for (const f of simFiles) mod += '// ---- ' + path.basename(f) + ' ----\n' + fs.readFileSync(f, 'utf8') + '\n';
   // le 24 squadre in più delle competizioni (non cambiano la simulazione, quindi non entrano nell'impronta)
-  mod += '// ---- 18_squadre.js ----\n' + fs.readFileSync(path.join(srcDir, '18_squadre.js'), 'utf8') + '\n';
+  mod += '// ---- 18_squadre.js ----\n' + fs.readFileSync(gameFile('18_squadre.js'), 'utf8') + '\n';
   mod += 'export { Match, KnockoutMatch, buildDatabase, buildExtraTeams, setSeed, makeRng, CONFIG, GAME_VERSION, ENGINE_ID };\n';
   const out = path.join(root, 'cloud', 'src', 'engine.gen.js');
   fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -50,7 +52,7 @@ function sharedModule(file, varName) {
 function betLogicModule() { return sharedModule('betlogic.js', 'BetLogic'); }
 
 // 1. codice del gioco: tutti i file src che iniziano con due cifre, in ordine
-const files = fs.readdirSync(srcDir).filter(f => /^\d\d_.*\.js$/.test(f)).sort();
+const files = gameFiles(/^\d\d_.*\.js$/);
 // server dell'economia incluso nella versione: variabile d'ambiente CAMPO_API_URL (es. nella release) oppure
 // "campoApiUrl" in package.json; il giocatore può sempre cambiarlo nelle impostazioni
 const apiUrl = String(process.env.CAMPO_API_URL || pkg.campoApiUrl || '').trim();
@@ -60,12 +62,13 @@ let code = 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGE
 code += '// ---- cloud/src/betlogic.js ----\n' + betLogicModule();
 code += '// ---- cloud/src/complogic.js ----\n' + sharedModule('complogic.js', 'CompLogic');
 for (const f of files) {
-  code += '// ---- ' + f + ' ----\n' + fs.readFileSync(path.join(srcDir, f), 'utf8') + '\n';
-  // subito dopo il sistema delle lingue: le traduzioni (src/lingue/*.js)
-  if (f === '00_i18n.js') {
-    const langDir = path.join(srcDir, 'lingue');
-    for (const l of fs.readdirSync(langDir).filter(x => x.endsWith('.js')).sort())
-      code += '// ---- lingue/' + l + ' ----\n' + fs.readFileSync(path.join(langDir, l), 'utf8') + '\n';
+  const name = path.relative(srcDir, f).split(path.sep).join('/');
+  code += '// ---- ' + name + ' ----\n' + fs.readFileSync(f, 'utf8') + '\n';
+  // subito dopo il sistema delle lingue: le traduzioni, un file per lingua (src/i18n/en.json, de.json, fr.json)
+  if (path.basename(f) === '00_i18n.js') {
+    const langs = {};
+    for (const l of ['en', 'de', 'fr']) langs[l] = JSON.parse(fs.readFileSync(path.join(srcDir, 'i18n', l + '.json'), 'utf8'));
+    code += '// ---- i18n/en.json, de.json, fr.json ----\nloadLanguages(' + JSON.stringify(langs) + ');\n';
   }
 }
 
