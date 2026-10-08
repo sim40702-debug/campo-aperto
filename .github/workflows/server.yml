@@ -1,5 +1,5 @@
 # Pubblica il server dell'economia (cartella cloud/, Cloudflare Worker + D1) da solo.
-# Parte quando nel ramo main cambia il codice del server o il motore della partita (src/01..08): il server rigioca
+# Parte quando nel ramo main cambia il codice del server o il motore della partita (src/engine/): il server rigioca
 # le partite con lo stesso motore del gioco, quindi deve essere aggiornato insieme. Si può lanciare anche a mano
 # dalla scheda Actions.
 # Fa la stessa cosa di "npm run deploy" nella cartella cloud: motore del gioco, migrazioni del database, Worker.
@@ -14,8 +14,8 @@ on:
     branches: [main]
     paths:
       - 'cloud/**'
-      - 'src/0[1-8]_*.js'
-      - 'src/18_squadre.js'
+      - 'src/engine/**'
+      - 'scripts/sorgenti.js'
       - 'build.js'
       - 'package.json'
   workflow_dispatch:

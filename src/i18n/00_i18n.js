@@ -1,7 +1,9 @@
 // ============================================================
 // LINGUE — italiano (lingua del codice), inglese, tedesco, francese
-// Le frasi si scrivono in italiano come sempre. Le traduzioni sono in src/lingue/*.js:
-// ogni riga è [italiano, inglese, tedesco, francese]. Una frase con valori inseriti si scrive
+// Le frasi si scrivono in italiano come sempre. Le traduzioni sono in un file per lingua:
+// src/i18n/en.json, de.json, fr.json. Ogni file è diviso in sezioni (generale, partita, gioco...) e in ogni
+// sezione c'è "frase italiana": "traduzione". I tre file devono avere le stesse frasi (lo controlla
+// tests/lingue_test.js). Una frase con valori inseriti si scrive
 // con {0}, {1}... al posto dei valori (es. 'Cartellino giallo — {0}'); {t0} vuol dire che anche
 // il valore va tradotto (es. il nome di un ruolo), {#0} che il valore è solo un numero (per frasi corte come
 // '{#0} di {#1}', che altrimenti potrebbero cambiare anche il nome di una squadra come "Falchi di Brera").
@@ -58,6 +60,20 @@ function addTranslations(rows) {
   }
   I18N.patterns.sort((a, b) => b.weight - a.weight);
   I18N.cache.clear();
+}
+
+// carica i file delle lingue ({ en: {...}, de: {...}, fr: {...} }, come in src/i18n/*.json):
+// per ogni frase italiana fa una riga [italiano, inglese, tedesco, francese] e la passa ad addTranslations
+function loadLanguages(langs) {
+  const rows = [];
+  for (const section in langs.en) {
+    for (const it in langs.en[section]) {
+      const row = [it];
+      for (const l in LANG_COLUMN) row[LANG_COLUMN[l]] = (langs[l][section] || {})[it] || '';
+      rows.push(row);
+    }
+  }
+  addTranslations(rows);
 }
 
 // traduzione di una frase italiana completa (senza spazi ai lati); null se non c'è

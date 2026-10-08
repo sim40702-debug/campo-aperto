@@ -1,8 +1,8 @@
 // Eliminazione diretta sul motore vero: supplementari, rigori (IA e giocatore umano), andata e ritorno, ripetizione.
 // Uso: node tests/knockout_test.js
 const fs = require('fs'), path = require('path');
-const files = fs.readdirSync(path.join(__dirname, '../src')).filter(f => /^0[1-8]_/.test(f)).sort();
-let code = files.map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
+const files = require('../scripts/sorgenti.js').gameFiles(/^0[1-8]_/);
+let code = files.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 code += '\n;globalThis.__api = { Match, KnockoutMatch, buildDatabase, setSeed, CONFIG };';
 require('vm').runInThisContext(code);
 const A = globalThis.__api;

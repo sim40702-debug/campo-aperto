@@ -9,8 +9,8 @@ const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 class Game {
   constructor() {
     this.settings = loadSettings();
-    setLanguage(this.settings.lang);   // lingua scelta nelle impostazioni (src/00_i18n.js)
-    this.commentary = new Commentary($('commentary'));   // telecronaca a scritte (src/21_commentary.js)
+    setLanguage(this.settings.lang);   // lingua scelta nelle impostazioni (src/i18n/00_i18n.js)
+    this.commentary = new Commentary($('commentary'));   // telecronaca a scritte (src/game/21_commentary.js)
     if (!this.settings.name) { this.settings.name = 'Giocatore ' + (10 + Math.floor(Math.random() * 90)); saveSettings(this.settings); }
     // le 8 squadre del server (stesso seme) più le altre della carriera (sempre uguali, per tornei fino a 32)
     this.db = buildDatabase(2026).concat(buildExtraTeams());
@@ -44,7 +44,7 @@ class Game {
     this.netLog = []; this.netLastError = ''; this.lanStatus = null;
     this.paused = false; this.replay = null; this.replayPending = null;
     this.setup = { home: 0, away: 4, side: 0, difficulty: 1, halfSeconds: 180, formation: null, mentality: 1 };
-    // le tue squadre (src/22_team_editor.js): solo nella partita rapida, dopo quelle del database
+    // le tue squadre (src/game/22_team_editor.js): solo nella partita rapida, dopo quelle del database
     this.teamEditor = new TeamEditor(this);
     this.myTeams = this.teamEditor.teams();
     this.restoreSetup();
@@ -55,7 +55,7 @@ class Game {
     this.fxw = null;
     this.eco = new Economy(this);
     this.comps = new CompetitionsUI(this);
-    // carriera da allenatore (src/24_manager.js): il suo campionato usa le rose della carriera
+    // carriera da allenatore (src/game/24_manager.js): il suo campionato usa le rose della carriera
     this.manager = new Manager(this);
     this.comps.career.rosterTeam = (comp, t) => this.manager.teamFor(comp, t);
     this.social = new SocialUI(this);

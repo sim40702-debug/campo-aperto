@@ -1,7 +1,7 @@
 # Arbitro, eventi e fisica — come funzionano (0.5.0)
 
 ## Principio
-Il contatto da solo non è mai fallo. Ogni contrasto passa per due funzioni in `src/08_referee.js`:
+Il contatto da solo non è mai fallo. Ogni contrasto passa per due funzioni in `src/engine/08_referee.js`:
 
 1. `analyzeChallenge(match, tackler, victim, kind)` ricostruisce la dinamica (`kind`: `stand` in piedi, `slide` scivolata,
    `charge` urto di corsa):
@@ -27,7 +27,7 @@ Il contatto da solo non è mai fallo. Ogni contrasto passa per due funzioni in `
    - attacco promettente interrotto: giallo (fallo tattico);
    - fascia di incertezza ±0.04 attorno alle soglie: l'unica componente casuale della decisione.
 
-## Dopo il fallo (`src/08_match.js`)
+## Dopo il fallo (`src/engine/08_match.js`)
 - **Vantaggio**: solo nella metà campo d'attacco, con un compagno che arriva per primo sul pallone (chi subisce il fallo è a
   terra). Mai per rigori, rossi od occasioni da rete negate. Se entro 2.5 s un avversario tocca il pallone si torna al
   punto del fallo; altrimenti si gioca e il cartellino arriva alla prossima interruzione.

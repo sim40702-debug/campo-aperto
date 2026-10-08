@@ -28,7 +28,7 @@ class Career {
     this.data = { v: 1, comps: [], updatedAt: 0 };
     this.profiles = new Map();
     this.ctx = { profile: t => this.profile(t), nameOf: t => this.nameOf(t) };
-    // carriera da allenatore (src/24_manager.js): le sue competizioni usano le rose che cambiano di stagione in stagione
+    // carriera da allenatore (src/game/24_manager.js): le sue competizioni usano le rose che cambiano di stagione in stagione
     this.rosterTeam = null;   // (comp, t) -> squadra con la rosa della carriera, oppure null
     try {
       const raw = localStorage.getItem(CAREER_KEY);

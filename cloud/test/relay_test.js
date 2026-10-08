@@ -1,5 +1,5 @@
 // Test del relay delle partite online nel Worker (wrangler dev: Worker + Durable Object "Relay" in workerd),
-// con il codice di rete vero del gioco (NetLink, HostSession, ClientSession di src/12_net.js) e WebSocket veri.
+// con il codice di rete vero del gioco (NetLink, HostSession, ClientSession di src/client/12_net.js) e WebSocket veri.
 // Tutti allo stesso indirizzo /relay: 5 giocatori nella stessa partita e un'altra partita in contemporanea.
 // node test/relay_test.js
 import { spawn, execFileSync } from 'node:child_process';
@@ -7,15 +7,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import vm from 'node:vm';
+import { createRequire } from 'node:module';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const SRC = path.join(ROOT, '..', 'src');
+// i file del gioco sono nelle sottocartelle di src/: li trova scripts/sorgenti.js
+const { gameFiles } = createRequire(import.meta.url)('../../scripts/sorgenti.js');
 const PORT = 8796, BASE = 'http://127.0.0.1:' + PORT, URL_RELAY = 'ws://127.0.0.1:' + PORT + '/relay';
 const WRANGLER = path.join(ROOT, 'node_modules', '.bin', 'wrangler');
 
 // codice di rete e simulazione del gioco, come in tests/net_test.js
-const files = fs.readdirSync(SRC).filter(f => /^(0[1-8]|12)_/.test(f)).sort();
-let code = 'var GAME_VERSION = "test";\n' + files.map(f => fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n');
+const files = gameFiles(/^(0[1-8]|12)_/);
+let code = 'var GAME_VERSION = "test";\n' + files.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, NET, NetLink, HostSession, ClientSession };';
 vm.runInThisContext(code);
 const A = globalThis.__api;

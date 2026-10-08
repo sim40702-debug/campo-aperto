@@ -7,7 +7,7 @@ const QUALITY_LEVELS = [
 ];
 function defaultSettings() {
   return {
-    lang: 'it',               // lingua del gioco: it, en, de, fr (vedi src/00_i18n.js)
+    lang: 'it',               // lingua del gioco: it, en, de, fr (vedi src/i18n/00_i18n.js)
     quality: 'alta',          // bassa, media, alta, ultra
     resScale: 1,              // scala di risoluzione (0.5 - 1)
     renderRes: 0,             // risoluzione di disegno: 0 = nativa, altrimenti l'altezza (720, 900, 1080, 1440, 2160)

@@ -2,6 +2,17 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## Prossima versione (cartelle in ordine)
+- **Cartelle del codice in ordine**: `src/engine/` (motore della partita, lo stesso nel gioco e nel server),
+  `src/client/` (grafica, audio, comandi, rete), `src/game/` (menu, economia, competizioni, carriera...) e `src/i18n/`
+  (lingue). I numeri davanti ai nomi dei file restano e decidono sempre l'ordine; `scripts/sorgenti.js` trova i file
+  nelle cartelle per build e test. L'impronta del motore non cambia (70420182d2d0): partite e server restano compatibili.
+- **Un file per lingua**: le traduzioni sono in `src/i18n/en.json`, `de.json` e `fr.json` (prima un file per argomento
+  con le tre lingue insieme). `tests/lingue_test.js` controlla che i tre file abbiano le stesse frasi.
+- **Compilazione su Windows**: `npm run dist:win` non si ferma più con "Cannot create symbolic link : Il privilegio
+  richiesto non appartiene al client". Il nuovo `scripts/prepara-windows.js` prepara da solo lo strumento winCodeSign di
+  electron-builder senza i file del Mac, quindi non servono più i permessi di amministratore.
+
 ## 0.12.1 — 08/10/2026 (telecronaca a voce)
 - La **telecronaca parla**: le frasi si sentono anche a voce, con la sintesi vocale del computer nella lingua del gioco
   (italiano, inglese, tedesco, francese). Una frase importante (gol, rosso) interrompe quella in corso, una meno

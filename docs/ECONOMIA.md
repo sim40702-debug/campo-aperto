@@ -12,7 +12,7 @@ aggiornarlo, fare i backup e tornare indietro. Il codice è in `cloud/`.
   `transactions` (tipo, importo, saldo prima e dopo, riferimento, data) e la coppia (tipo, riferimento) è unica:
   niente accrediti o addebiti doppi, nemmeno ripetendo una richiesta.
 - **Partite del server**: ogni 10 minuti (per difetto) c'è una partita tra due squadre del gioco. Il server la calcola
-  **con il motore del gioco** (gli stessi file `src/01..08`, vedi `node build.js engine`) appena la crea, con un seme
+  **con il motore del gioco** (gli stessi file di `src/engine/`, vedi `node build.js engine`) appena la crea, con un seme
   segreto. Prima del calcio d'inizio si vedono solo squadre e quote; le scommesse chiudono 10 secondi prima; al calcio
   d'inizio il seme diventa pubblico e il gioco rigioca la stessa partita in 3D, allineata all'orologio del server;
   durante la partita il server manda solo gli eventi già avvenuti; alla fine liquida le scommesse.
@@ -145,7 +145,7 @@ Nell'app desktop le richieste HTTPS sono permesse dalla politica di sicurezza de
 ### Da solo, con GitHub Actions (consigliato)
 
 Il flusso `.github/workflows/server.yml` pubblica il server ogni volta che nel ramo `main` cambia il codice del server
-(`cloud/`) o il motore della partita (`src/01..08`). Fa lo stesso di `npm run deploy` (motore, migrazioni, Worker) dopo
+(`cloud/`) o il motore della partita (`src/engine/`). Fa lo stesso di `npm run deploy` (motore, migrazioni, Worker) dopo
 i test delle regole. Si lancia anche a mano: scheda **Actions → Aggiorna il server → Run workflow**.
 
 Va configurato una volta sola:
@@ -165,7 +165,7 @@ quello già impostato: la pubblicazione non lo tocca.
 - **Nuove tabelle o colonne, prezzi, oggetti**: una nuova migrazione `cloud/migrations/0003_….sql` (mai modificare un
   file già applicato), poi `npm run deploy` (applica le migrazioni mancanti, in ordine, una volta sola).
   Esempio per cambiare un prezzo: `UPDATE shop_items SET price = 400 WHERE id = 'scarpe_fuoco';`.
-- **Motore del gioco** (`src/01..08`): cambia l'impronta. Pubblica prima il server (`npm run deploy`, o lo fa da solo il
+- **Motore del gioco** (`src/engine/`): cambia l'impronta. Pubblica prima il server (`npm run deploy`, o lo fa da solo il
   flusso di GitHub appena le modifiche arrivano nel `main`), poi la release del gioco. Le partite già create restano valide (sono già calcolate e salvate): si liquidano normalmente, ma il gioco nuovo
   le mostra come cronaca invece che in 3D. Se il motore cambia molto, rifai la calibrazione delle quote:
   `node scripts/calibra-quote.mjs 40` (circa 4 minuti) e pubblica.

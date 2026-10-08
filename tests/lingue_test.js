@@ -1,4 +1,4 @@
-// Test delle lingue (src/00_i18n.js e src/lingue/*.js): righe complete, segnaposto uguali in tutte le lingue,
+// Test delle lingue (src/i18n/00_i18n.js e src/i18n/en.json, de.json, fr.json): righe complete, segnaposto uguali in tutte le lingue,
 // frasi tradotte, frasi con valori, numeri, nomi delle squadre e dei giocatori mai toccati.
 // uso: node tests/lingue_test.js
 const fs = require('fs');
@@ -13,22 +13,29 @@ function check(name, cond, extra) {
 }
 
 // il sistema delle lingue e le traduzioni, senza pagina (document non c'è)
+const { gameFile } = require('../scripts/sorgenti.js');
 const ctx = { console };
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(path.join(root, 'src', '00_i18n.js'), 'utf8') + '\nthis.I18N = I18N; this.tr = tr; this.trf = trf; this.setLanguage = setLanguage; this.uiLocale = uiLocale;', ctx);
-const rows = [];
-const langDir = path.join(root, 'src', 'lingue');
-const files = fs.readdirSync(langDir).filter(f => f.endsWith('.js')).sort();
-for (const f of files) {
-  const src = fs.readFileSync(path.join(langDir, f), 'utf8');
-  // si raccolgono anche le righe per controllarle una per una
-  vm.runInContext('addTranslations', ctx)([]);
-  const collect = { rows: null };
-  vm.runInNewContext(src, { addTranslations: r => { collect.rows = r; } });
-  rows.push(...collect.rows.map(r => ({ f, r })));
-  vm.runInContext(src, ctx);
+vm.runInContext(fs.readFileSync(gameFile('00_i18n.js'), 'utf8') + '\nthis.I18N = I18N; this.tr = tr; this.trf = trf; this.setLanguage = setLanguage; this.uiLocale = uiLocale; this.loadLanguages = loadLanguages;', ctx);
+// un file per lingua: src/i18n/en.json, de.json, fr.json
+const langs = {};
+for (const l of ['en', 'de', 'fr']) langs[l] = JSON.parse(fs.readFileSync(path.join(root, 'src', 'i18n', l + '.json'), 'utf8'));
+ctx.loadLanguages(langs);
+
+// i tre file devono avere le stesse sezioni e le stesse frasi italiane
+const keysOf = l => Object.keys(langs[l]).flatMap(sec => Object.keys(langs[l][sec]).map(k => sec + ' / ' + k));
+const missing = [];
+for (const a of ['en', 'de', 'fr']) for (const b of ['en', 'de', 'fr']) {
+  const has = new Set(keysOf(b));
+  for (const k of keysOf(a)) if (!has.has(k)) missing.push(b + '.json non ha: ' + k);
 }
-check('file delle traduzioni caricati (' + files.length + ' file, ' + rows.length + ' righe)', files.length >= 5 && rows.length > 1000);
+check('en.json, de.json e fr.json hanno le stesse frasi', missing.length === 0, missing.slice(0, 5));
+
+// le righe [italiano, inglese, tedesco, francese] per controllarle una per una
+const rows = [];
+for (const sec in langs.en) for (const it in langs.en[sec])
+  rows.push({ f: sec, r: [it, langs.en[sec][it], (langs.de[sec] || {})[it], (langs.fr[sec] || {})[it]] });
+check('file delle traduzioni caricati (' + Object.keys(langs.en).length + ' sezioni, ' + rows.length + ' frasi)', Object.keys(langs.en).length >= 5 && rows.length > 1000);
 
 // ---- righe
 const bad = rows.filter(x => x.r.length !== 4 || x.r.some(c => typeof c !== 'string' || !c.trim()));
@@ -59,7 +66,7 @@ check('lingua sconosciuta: si torna all\'italiano', (ctx.setLanguage('xx'), ctx.
 
 // ---- nomi propri: squadre, giocatori, marchi dei cartelloni non si traducono mai
 const names = [];
-const db = fs.readFileSync(path.join(root, 'src', '02_database.js'), 'utf8') + fs.readFileSync(path.join(root, 'src', '18_squadre.js'), 'utf8');
+const db = fs.readFileSync(gameFile('02_database.js'), 'utf8') + fs.readFileSync(gameFile('18_squadre.js'), 'utf8');
 for (const m of db.matchAll(/name: '([^']+)'/g)) names.push(m[1]);
 for (const m of db.matchAll(/'([A-Z][a-zà-ù]+)'/g)) names.push(m[1]);
 const changed = [];
@@ -71,7 +78,7 @@ check('nomi delle squadre e dei giocatori mai tradotti (' + names.length + ' nom
 check('anche in frasi: "Falchi di Brera 2-1 Orsi di Valle"', T('en', 'Falchi di Brera 2-1 Orsi di Valle') === 'Falchi di Brera 2-1 Orsi di Valle');
 
 // ---- telecronaca: ogni frase ha la sua traduzione
-const comm = fs.readFileSync(path.join(root, 'src', '21_commentary.js'), 'utf8');
+const comm = fs.readFileSync(gameFile('21_commentary.js'), 'utf8');
 const phrases = [...comm.slice(comm.indexOf('const COMMENTARY ='), comm.indexOf('const COMMENTARY_RANK')).matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => m[1].replace(/\\'/g, "'"));
 const untranslated = [];
 for (const l of ['en', 'de', 'fr']) for (const p of phrases) { ctx.setLanguage(l); if (ctx.trf(p, 'X') === p.replace('{0}', 'X')) untranslated.push(l + ': ' + p); }

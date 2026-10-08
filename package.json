@@ -18,7 +18,7 @@
     "build:desktop": "node build.js desktop",
     "test": "node tests/lingue_test.js && node tests/motore_test.js && node tests/rules_test.js && node tests/referee_test.js && node tests/sim_test.js && node tests/feel_test.js && node tests/knockout_test.js && node tests/competitions_test.js && node tests/net_test.js",
     "start": "node scripts/controlla-electron.js && node build.js desktop && electron .",
-    "dist:win": "node scripts/controlla-electron.js && node build.js desktop && electron-builder --win",
+    "dist:win": "node scripts/controlla-electron.js && node scripts/prepara-windows.js && node build.js desktop && electron-builder --win",
     "dist:mac": "node scripts/controlla-electron.js && node build.js desktop && electron-builder --mac",
     "dist:linux": "node scripts/controlla-electron.js && node build.js desktop && electron-builder --linux",
     "postinstall": "node scripts/controlla-electron.js",
