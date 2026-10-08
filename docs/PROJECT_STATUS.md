@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 08/10/2026, sessione 11, versione 0.12.0
+Aggiornato: 08/10/2026, sessione 11, versione 0.12.1
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -40,6 +40,8 @@ browser, server locale, multipla della stessa partita, conflitti, transizioni, q
 visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio compreso).
 
 ## Funzionalità completate (verificate)
+- 0.12.1: telecronaca a voce (speechSynthesis, lingua del gioco; Spenta/Solo scritte/Scritte e voce in Nuova partita,
+  pausa e impostazioni); release di nuovo con Linux (AppImage e deb, compilazione verificata e app avviata).
 - 0.12.0: carriera da allenatore (24_manager.js: rose in localStorage, campionato con comp.manager e Career.ctxFor), telecronaca
   (21_commentary.js), editor di squadre (22_team_editor.js, solo partita rapida).
 - 0.11.0: sostituzioni (pausa, 5 cambi, IA dal 58'), finta/dribbling (U / L3), mirino su punizioni e rigori. File del motore
@@ -48,7 +50,7 @@ visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio 
   della simulazione, mercati e messaggi del server, tradotti nel gioco (motore e server invariati).
 - 0.9.0: amici (pannello a destra nella Home, tutti i giocatori, richieste), sfide tra amici sul server (campionato,
   torneo, coppa con inviti, squadre scelte, partite contro l'IA e online tra amici con risultato concordato); avanzamento
-  delle competizioni condiviso gioco/server in complogic.js; release solo Windows e Mac.
+  delle competizioni condiviso gioco/server in complogic.js.
 - 0.8.0: Competizioni (campionato, torneo, coppe configurabili, supplementari e rigori nel motore), Serie del server per
   le scommesse, carriera sull'account, reattività (movimento, buffer dei comandi, predizione online), personaggi.
 - 0.7.1: nomi delle squadre personalizzabili (anche online, scelti dall'host) e nome della squadra di casa di nuovo visibile.

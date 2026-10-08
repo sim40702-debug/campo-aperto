@@ -37,9 +37,11 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.2.x — app desktop Windows/Mac/Linux
 - 0.3.0 — online con host autorevole, controlli rimappabili, grafica adattiva fino al 4K, nuova interfaccia
 - 0.3.1 — controller (gamepad), schermata Comandi, menu navigabili, pressing assistito, correzione autogol
-- 0.3.2 — più gol nelle partite IA, movimento interpolato e fluido, meno carico grafico  ← attuale
-- 0.3.x (prossime) — M1 rifinitura IA + M2 (cartellini, sostituzioni, finte, piazzati controllati)
-- 0.4.x — M3 salvataggi, editor giocatori, creazione squadra
-- 0.5.x — M4 allenamento, torneo, campionato, coppe
-- 0.6.x — M5 carriera
-- 1.0.0 — M6 rifinitura completa, gamepad, prima versione completa
+- 0.3.2 — più gol nelle partite IA, movimento interpolato e fluido, meno carico grafico
+- 0.4.x – 0.9.x — arbitro, economia e scommesse, competizioni (torneo, campionato, coppe), amici e sfide tra amici
+- 0.10.0 — lingue: italiano, inglese, tedesco, francese
+- 0.11.0 — M2: sostituzioni, finte e dribbling, punizioni e rigori con il mirino
+- 0.12.0 — M3 editor di squadre, M5 carriera da allenatore (stagioni, mercato, crescita), M6 telecronaca
+- 0.12.1 — telecronaca a voce; release anche per Linux  ← attuale
+- prossime — carriera: contratti, infortuni, obiettivi della società; editor dell'aspetto dei giocatori; allenamento
+- 1.0.0 — M6 rifinitura completa, prima versione completa
