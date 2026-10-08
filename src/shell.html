@@ -300,6 +300,22 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
   font-family: var(--display); font-weight: 700; font-style: italic; font-size: clamp(17px, 2.2vw, 22px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #commentary.in { animation: comm-in 0.22s ease-out; }
 @keyframes comm-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+/* editor delle squadre */
+.te-card { display: flex; align-items: center; gap: 14px; background: var(--night-2); padding: 10px 14px; margin-bottom: 8px; border-left: 4px solid var(--flood); }
+.te-card .kit { margin: 0; } .te-card b { font-size: 18px; } .te-card button { margin-left: auto; }
+.te-top { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.te-top .opts { flex: 1 1 420px; }
+.te-colors { display: flex; gap: 8px; }
+.te-colors input { width: 46px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.25); background: none; cursor: pointer; }
+#te-players { display: grid; gap: 4px; }
+.te-row { display: grid; grid-template-columns: 64px minmax(140px, 1fr) minmax(150px, 1fr) 150px 110px; gap: 8px; align-items: center; }
+.te-row input, .te-row select { min-width: 0; }
+.te-row input { padding: 6px 10px; }
+.te-row input[type=number] { font: inherit; color: var(--chalk); background: rgba(243,245,238,0.06); border: 1px solid rgba(243,245,238,0.2); }
+.te-row select { font: inherit; font-size: 14px; color: var(--chalk); background: var(--night-2); border: 1px solid rgba(243,245,238,0.2); padding: 6px 8px; }
+.te-row input:focus, .te-row select:focus { border-color: var(--flood); outline: none; }
+.te-bench { margin-top: 10px; color: var(--slate); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; }
+@media (max-width: 720px) { .te-row { grid-template-columns: 56px 1fr; } .te-role { grid-column: 1 / -1; } }
 #note { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(12,26,43,0.9); padding: 6px 14px; font-size: 15px; }
 #fps { position: fixed; top: 8px; right: 10px; font-size: 12px; color: var(--slate); font-variant-numeric: tabular-nums; background: rgba(12,26,43,0.6); padding: 2px 6px; z-index: 40; }
 .ft-score { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 4.5vw, 46px); margin: 0 0 6px; }
@@ -613,8 +629,41 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
     <div class="actions">
       <button class="primary" id="setup-start">Scendi in campo</button>
+      <button class="ghost" id="setup-teams">Le mie squadre</button>
       <button class="ghost" id="setup-back">Indietro</button>
     </div>
+  </div>
+</section>
+
+<section id="teams" class="panel" hidden>
+  <div class="sheet">
+    <h2>Le mie squadre</h2>
+    <p class="sub">Crea la tua squadra: nome, colori, forza, formazione e giocatori. Si salva su questo computer e la trovi nella partita rapida contro l'IA.</p>
+    <div id="te-list"></div>
+    <div id="te-form" hidden>
+      <div class="te-top">
+        <div class="opts">
+          <label for="te-name">Nome</label><input type="text" id="te-name" maxlength="24" spellcheck="false" autocomplete="off">
+          <label for="te-short">Sigla</label><input type="text" id="te-short" maxlength="3" spellcheck="false" autocomplete="off" style="max-width:90px;text-transform:uppercase">
+          <label for="te-coach">Allenatore</label><input type="text" id="te-coach" maxlength="24" spellcheck="false" autocomplete="off">
+          <span class="lbl">Forza</span><div class="range"><input type="range" id="te-rating" min="50" max="92"><output id="te-rating-out"></output></div>
+          <span class="lbl">Formazione</span><div class="segs" id="te-form-opt"></div>
+          <span class="lbl">Maglia di casa</span><div class="te-colors"><input type="color" id="te-home0" aria-label="Maglia"><input type="color" id="te-home1" aria-label="Pantaloncini"><input type="color" id="te-home2" aria-label="Calzettoni"></div>
+          <span class="lbl">Maglia da trasferta</span><div class="te-colors"><input type="color" id="te-away0" aria-label="Maglia"><input type="color" id="te-away1" aria-label="Pantaloncini"><input type="color" id="te-away2" aria-label="Calzettoni"></div>
+        </div>
+        <canvas id="te-preview" width="240" height="124" aria-hidden="true"></canvas>
+      </div>
+      <h3>Giocatori</h3>
+      <p class="small">La forza della squadra decide gli attributi; qui scegli nomi, numeri, caratteristica e piede. I primi 11 sono i titolari.</p>
+      <div id="te-players"></div>
+      <div class="actions" style="margin-top:16px">
+        <button class="primary" id="te-save">Salva</button>
+        <button class="ghost" id="te-random">Nomi casuali</button>
+        <button class="ghost" id="te-cancel">Indietro</button>
+        <button class="ghost danger" id="te-delete">Elimina</button>
+      </div>
+    </div>
+    <span class="status" id="te-status"></span>
   </div>
 </section>
 
