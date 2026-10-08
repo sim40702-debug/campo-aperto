@@ -2,7 +2,10 @@
 // Ogni riga: [italiano, inglese, tedesco, francese]. Le frasi con @ servono solo a trf() nel codice.
 addTranslations([
   ["Telecronaca", "Commentary", "Kommentar", "Commentaire"],
-  ["Frasi brevi durante la partita (gol, parate, falli, cartellini)", "Short lines during the match (goals, saves, fouls, cards)", "Kurze Sätze während des Spiels (Tore, Paraden, Fouls, Karten)", "Phrases courtes pendant le match (buts, arrêts, fautes, cartons)"],
+  ["Frasi brevi durante la partita (gol, parate, falli, cartellini). La voce usa la sintesi vocale del computer, nella lingua del gioco.", "Short lines during the match (goals, saves, fouls, cards). The voice uses your computer's speech synthesis, in the game's language.", "Kurze Sätze während des Spiels (Tore, Paraden, Fouls, Karten). Die Stimme nutzt die Sprachausgabe des Computers, in der Sprache des Spiels.", "Phrases courtes pendant le match (buts, arrêts, fautes, cartons). La voix utilise la synthèse vocale de l'ordinateur, dans la langue du jeu."],
+  ["Spenta", "Off", "Aus", "Désactivé"],
+  ["Solo scritte", "Text only", "Nur Text", "Texte seulement"],
+  ["Scritte e voce", "Text and voice", "Text und Stimme", "Texte et voix"],
   ["@GOOOL di {0}!", "GOOOAL by {0}!", "TOOOR durch {0}!", "BUUUT de {0} !"],
   ["@Rete di {0}!", "{0} scores!", "Treffer von {0}!", "But de {0} !"],
   ["@{0} la mette dentro!", "{0} puts it away!", "{0} macht ihn rein!", "{0} la met au fond !"],

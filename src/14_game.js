@@ -75,6 +75,7 @@ class Game {
   // ---------- SCHERMATE ----------
   showScreen(name) {
     this.screen = name;
+    if (name !== 'match' && this.commentary) this.commentary.stopVoice();   // fuori dalla partita la voce tace
     for (const id of SCREENS) $(id).hidden = true;
     const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
     if (panel) {
@@ -216,6 +217,23 @@ class Game {
     s[which] = v;
   }
 
+  // telecronaca: spenta, solo scritte, scritte e voce (stessa scelta nella nuova partita, in pausa e nelle impostazioni)
+  commentaryMode() { const s = this.settings; return !s.commentary ? 'off' : s.commentaryVoice ? 'voice' : 'text'; }
+  renderCommentaryOpt(container) {
+    if (!$(container)) return;
+    const canVoice = this.commentary && this.commentary.canSpeak();
+    const opts = [{ label: 'Spenta', value: 'off' }, { label: 'Solo scritte', value: 'text' }];
+    if (canVoice) opts.push({ label: 'Scritte e voce', value: 'voice' });
+    const cur = this.commentaryMode() === 'voice' && !canVoice ? 'text' : this.commentaryMode();
+    this.segmented(container, opts, cur, v => {
+      const s = this.settings;
+      s.commentary = v !== 'off'; s.commentaryVoice = v === 'voice';
+      saveSettings(s);
+      if (this.commentary) { if (v === 'off') this.commentary.reset(); else if (v !== 'voice') this.commentary.stopVoice(); }
+      this.renderCommentaryOpt(container);
+    });
+  }
+
   // pulsanti a scelta singola
   segmented(container, options, value, onPick) {
     const el = $(container);
@@ -272,6 +290,7 @@ class Game {
     this.segmented('opt-len', [{ label: '2 min', value: 120 }, { label: '3 min', value: 180 }, { label: '5 min', value: 300 }], s.halfSeconds, v => { s.halfSeconds = v; this.renderSetup(); });
     this.segmented('opt-form', Object.keys(FORMATIONS).map(f => ({ label: f, value: f })), s.formation, v => { s.formation = v; this.renderSetup(); });
     this.segmented('opt-ment', MENTALITIES.map((m, i) => ({ label: m, value: i })), s.mentality, v => { s.mentality = v; this.renderSetup(); });
+    this.renderCommentaryOpt('opt-comm');
     $('row-form').style.opacity = s.side === -1 ? 0.4 : 1;
   }
 
@@ -406,6 +425,8 @@ class Game {
       this.input.gameKeysActive = false;
       this.renderPauseTactics();
       this.subSel = null; this.renderPauseSubs();
+      this.renderCommentaryOpt('pause-comm');
+      if (this.commentary) this.commentary.stopVoice();
       const el = $('pause'); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
       setTimeout(() => $('pause-resume').focus({ preventScroll: true }), 30);
     } else {
@@ -747,8 +768,7 @@ class Game {
       });
     }
     $('st-full').textContent = document.fullscreenElement ? 'Disattiva' : 'Attiva';
-    $('st-commentary').checked = s.commentary;
-    $('st-commentary').onchange = () => { s.commentary = $('st-commentary').checked; if (!s.commentary && this.commentary) this.commentary.reset(); save(); };
+    this.renderCommentaryOpt('st-commentary');
     $('st-showfps').checked = s.showFps;
     $('st-showfps').onchange = () => { s.showFps = $('st-showfps').checked; $('fps').hidden = !s.showFps; save(); };
     this.updateDrawInfo();
@@ -1105,7 +1125,13 @@ class Game {
   }
   handleEvent(e) {
     const R = this.renderer, m = this.match;
-    if (this.commentary) { this.commentary.enabled = this.settings.commentary && !this.replay; this.commentary.onEvent(e, m, this.time); }
+    if (this.commentary) {
+      const c = this.commentary, s = this.settings;
+      c.enabled = s.commentary && !this.replay;
+      c.voice = s.commentary && s.commentaryVoice && !this.paused;
+      c.volume = s.muted ? 0 : s.volMaster;
+      c.onEvent(e, m, this.time);
+    }
     switch (e.type) {
       case 'kick': {
         this.audio.kick(e.power || 10); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });

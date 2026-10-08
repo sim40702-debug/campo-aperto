@@ -652,6 +652,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <label>Durata di un tempo</label><div class="segs" id="opt-len"></div>
       <label>Formazione</label><div class="segs" id="row-form"><div class="segs" id="opt-form"></div></div>
       <label>Mentalità</label><div class="segs" id="opt-ment"></div>
+      <label>Telecronaca</label><div class="segs" id="opt-comm"></div>
     </div>
     <div class="actions">
       <button class="primary" id="setup-start">Scendi in campo</button>
@@ -779,7 +780,8 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
     <div data-pane="generale" class="opts">
       <span class="lbl">Lingua</span><div class="segs" id="st-lang"></div>
-      <span class="lbl">Telecronaca</span><label class="check"><input type="checkbox" id="st-commentary"> Frasi brevi durante la partita (gol, parate, falli, cartellini)</label>
+      <span class="lbl">Telecronaca</span><div class="segs" id="st-commentary"></div>
+      <span></span><p class="small" style="margin:0">Frasi brevi durante la partita (gol, parate, falli, cartellini). La voce usa la sintesi vocale del computer, nella lingua del gioco.</p>
     </div>
     <div data-pane="grafica" class="opts">
       <span class="lbl">Qualità</span><div class="segs" id="st-quality"></div>
@@ -1107,6 +1109,9 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <label>Mentalità</label><div class="segs" id="pt-ment"></div>
       <label>Pressing</label><div class="segs" id="pt-press"></div>
       <label>Formazione</label><div class="segs" id="pt-form"></div>
+    </div>
+    <div class="opts" style="margin-bottom:20px">
+      <label>Telecronaca</label><div class="segs" id="pause-comm"></div>
     </div>
     <div id="pause-subs" hidden>
       <h3>Cambi <small id="ps-left"></small></h3>
