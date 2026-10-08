@@ -5,6 +5,7 @@ const { app, BrowserWindow, Menu, shell, ipcMain, screen } = require('electron')
 const path = require('path');
 const { fileURLToPath } = require('url');
 const lan = require('./lan.js');
+const aggiornamenti = require('./aggiornamenti.js');
 
 const INDEX = path.join(__dirname, 'app', 'index.html');
 const norm = p => { p = path.normalize(p); return process.platform === 'win32' ? p.toLowerCase() : p; };
@@ -38,6 +39,9 @@ ipcMain.handle('lan:check', async (e, ip, port) => {
   if (!lan.isPrivateV4(ip) || !Number.isInteger(port) || port < 1 || port > 65535) return { ok: false, code: 'EINVAL' };
   try { return await lan.checkHost(ip, port, 3000); } catch (err) { return { ok: false, code: 'ERR' }; }
 });
+
+// aggiornamenti automatici da GitHub Releases (desktop/aggiornamenti.js)
+aggiornamenti.init(fidato);
 
 // dimensione della finestra scelta nelle impostazioni (contenuto in pixel), mai più grande dello schermo
 const SIZES = [[1280, 720], [1366, 768], [1600, 900], [1920, 1080], [2560, 1440], [3840, 2160]];

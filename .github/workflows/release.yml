@@ -76,6 +76,8 @@ jobs:
           tag="v$v"
           # note: la sezione della versione nel CHANGELOG
           awk -v h="## $v " 'index($0, h) == 1 { f = 1; next } /^## / { if (f) exit } f' docs/CHANGELOG.md > notes.md
+          # impronta della versione portable per l'aggiornamento automatico (latest.yml c'è solo per l'installer)
+          node scripts/latest-portable.js files
           shopt -s globstar nullglob
           list=(); for f in files/**/*; do [ -f "$f" ] && list+=("$f"); done
           [ ${#list[@]} -gt 0 ] || { echo "nessun file da pubblicare"; exit 1; }

@@ -50,6 +50,30 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .version { color: var(--slate); font-size: 13px; margin: 16px 0 0 17px; letter-spacing: 0.02em; }
 
 
+/* ---------- aggiornamento (app desktop) ---------- */
+/* sotto il riquadro del giocatore in alto a destra, come le altre informazioni dell'account */
+.update-pill { position: absolute; top: calc(104px + env(safe-area-inset-top, 0px)); right: clamp(12px, 3vw, 32px); display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; font-size: 13px; color: var(--chalk);
+  background: var(--night-2); border: 1px solid rgba(255,154,60,0.55); box-shadow: 0 6px 18px rgba(0,0,0,0.3); transition: background 0.12s, border-color 0.12s; }
+.update-pill:hover { background: var(--night-3); border-color: #ff9a3c; }
+.update-pill i { width: 9px; height: 9px; border-radius: 50%; background: #ff9a3c; box-shadow: 0 0 0 3px rgba(255,154,60,0.25); animation: upd-pulse 2.4s ease-in-out infinite; }
+@keyframes upd-pulse { 50% { box-shadow: 0 0 0 6px rgba(255,154,60,0); } }
+.upd-versions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 20px; }
+.upd-versions > div { background: var(--night-2); padding: 12px 18px; border-top: 4px solid rgba(243,245,238,0.25); min-width: 150px; }
+.upd-versions > div.new { border-top-color: #ff9a3c; }
+.upd-versions small { display: block; color: var(--slate); font-size: 13px; }
+.upd-versions b { font-family: var(--display); font-size: 30px; font-weight: 700; }
+.upd-arrow { font-size: 26px; color: var(--slate); }
+.upd-progress { max-width: 520px; margin-bottom: 18px; }
+.upd-progress .bar { height: 8px; } .upd-progress .bar div { background: #ff9a3c; width: 0; transition: width 0.15s linear; }
+.upd-progress .small { margin: 6px 0 0; }
+.upd-msg { max-width: 60ch; background: var(--night-2); border-left: 4px solid var(--signal); padding: 10px 14px; margin: 0 0 18px; line-height: 1.5; }
+.upd-msg.ok { border-left-color: var(--turf-light); }
+.upd-notes { max-width: 70ch; max-height: 38vh; overflow-y: auto; background: rgba(243,245,238,0.04); padding: 6px 18px; line-height: 1.55; font-size: 15px; }
+.upd-notes ul { margin: 8px 0; padding-left: 20px; } .upd-notes li { margin: 4px 0; }
+.upd-notes h4 { font-family: var(--display); font-size: 19px; margin: 12px 0 4px; }
+.upd-notes code { font-size: 13px; background: rgba(243,245,238,0.08); padding: 1px 5px; }
+.upd-row { align-items: center; gap: 12px; }
+
 /* ---------- home ---------- */
 .menu-col { display: flex; flex-direction: column; min-height: 100%; justify-content: center; padding-top: max(3vh, 84px); width: 100%; min-width: 0; }
 .menu .title { font-size: clamp(40px, min(7vw, 10vh), 92px); margin-bottom: clamp(14px, 3vh, 30px); }
@@ -617,6 +641,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
     <button class="ghost" id="eco-user">Accedi</button>
   </div>
+  <button class="update-pill" id="upd-pill" hidden><i aria-hidden="true"></i><span id="upd-pill-text">Nuovo aggiornamento disponibile</span></button>
   <aside class="social" id="social" aria-label="Amici">
     <button class="social-tab" id="social-toggle" aria-expanded="false" aria-controls="social-body" title="Amici e sfide">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M2.5 19c.6-3.6 2.8-5.5 5.5-5.5s4.9 1.9 5.5 5.5M13.6 14.6c.9-.7 1.8-1 2.9-1 2.3 0 4 1.6 4.6 4.9"/></svg>
@@ -782,6 +807,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <span class="lbl">Lingua</span><div class="segs" id="st-lang"></div>
       <span class="lbl">Telecronaca</span><div class="segs" id="st-commentary"></div>
       <span></span><p class="small" style="margin:0">Frasi brevi durante la partita (gol, parate, falli, cartellini). La voce usa la sintesi vocale del computer, nella lingua del gioco.</p>
+      <span class="lbl" id="st-updlbl" hidden>Aggiornamenti</span><div class="segs upd-row" id="st-updrow" hidden><button class="seg" id="st-upd">Controlla ora</button><span class="small" id="st-updinfo"></span></div>
     </div>
     <div data-pane="grafica" class="opts">
       <span class="lbl">Qualità</span><div class="segs" id="st-quality"></div>
@@ -1087,6 +1113,32 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
   </aside>
 </div>
+
+<!-- aggiornamento dell'app desktop (src/game/25_updates.js e desktop/aggiornamenti.js) -->
+<section id="update" class="panel" hidden>
+  <div class="sheet">
+    <h2>Aggiornamento</h2>
+    <p class="sub">Il gioco scarica la versione nuova, si chiude, la installa e si riapre da solo.</p>
+    <div class="upd-versions">
+      <div><small>Versione installata</small><b id="upd-cur" translate="no"></b></div>
+      <span class="upd-arrow" aria-hidden="true">→</span>
+      <div class="new"><small>Nuova versione</small><b id="upd-new" translate="no"></b></div>
+    </div>
+    <div class="upd-progress" id="upd-progress" hidden>
+      <div class="bar"><div id="upd-bar"></div></div>
+      <p class="small" id="upd-progress-text"></p>
+    </div>
+    <p class="upd-msg" id="upd-msg" hidden></p>
+    <h3 id="upd-notes-title">Novità</h3>
+    <div class="upd-notes" id="upd-notes"></div>
+    <div class="actions">
+      <button class="primary" id="upd-go">Aggiorna ora</button>
+      <button class="ghost" id="upd-cancel" hidden>Annulla</button>
+      <button class="ghost" id="upd-page" hidden>Apri la pagina della versione</button>
+      <button class="ghost" id="upd-back">Indietro</button>
+    </div>
+  </div>
+</section>
 
 <section id="help" class="panel" hidden>
   <div class="sheet">

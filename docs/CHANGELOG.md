@@ -2,7 +2,19 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
-## Prossima versione (cartelle in ordine)
+## 0.13.0 — 08/10/2026 (aggiornamenti automatici, cartelle in ordine)
+- **Aggiornamenti automatici dall'app**: all'avvio e ogni 6 ore l'app desktop controlla l'ultima release di GitHub.
+  Se c'è una versione più recente compare **Nuovo aggiornamento disponibile** in alto a destra nella home; la schermata
+  mostra versione installata, versione nuova e novità della release. **Aggiorna ora** scarica il file giusto per il
+  sistema con percentuale e MB, ne controlla l'impronta sha512, chiude il gioco, installa e lo riapre. Riga
+  «Aggiornamenti → Controlla ora» in Impostazioni → Generale; dopo il riavvio un messaggio conferma la versione nuova.
+- Windows (installer) e Linux (.AppImage, .deb) usano **electron-updater**, la soluzione ufficiale di electron-builder.
+  Mac (app non firmata da Apple) e Windows portable: download e controllo dell'impronta fatti dall'app, poi un piccolo
+  script sostituisce l'app dopo che si è chiusa e la riapre; se qualcosa va storto rimette la versione di prima.
+- Mai una versione uguale o più vecchia (confronto 1.9.0 < 1.10.0), niente bozze né pre-release. Senza rete, con
+  GitHub irraggiungibile, con il download interrotto o senza un file per il proprio sistema il gioco resta com'era e
+  mostra una frase chiara (nessun errore tecnico).
+- Il flusso «Rilascio app desktop» crea anche `latest-portable.yml` (`scripts/latest-portable.js`).
 - **Cartelle del codice in ordine**: `src/engine/` (motore della partita, lo stesso nel gioco e nel server),
   `src/client/` (grafica, audio, comandi, rete), `src/game/` (menu, economia, competizioni, carriera...) e `src/i18n/`
   (lingue). I numeri davanti ai nomi dei file restano e decidono sempre l'ordine; `scripts/sorgenti.js` trova i file

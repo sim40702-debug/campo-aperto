@@ -1,7 +1,7 @@
 {
   "name": "campo-aperto",
   "productName": "Campo Aperto",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "campoApiUrl": "https://campo-aperto-api.campo-aperto.workers.dev",
   "description": "Gioco di calcio 3D originale, undici contro undici",
   "author": "Simone",
@@ -16,7 +16,7 @@
     "build:web": "node build.js web",
     "build:test": "node build.js test",
     "build:desktop": "node build.js desktop",
-    "test": "node tests/lingue_test.js && node tests/motore_test.js && node tests/rules_test.js && node tests/referee_test.js && node tests/sim_test.js && node tests/feel_test.js && node tests/knockout_test.js && node tests/competitions_test.js && node tests/net_test.js",
+    "test": "node tests/lingue_test.js && node tests/aggiornamenti_test.js && node tests/motore_test.js && node tests/rules_test.js && node tests/referee_test.js && node tests/sim_test.js && node tests/feel_test.js && node tests/knockout_test.js && node tests/competitions_test.js && node tests/net_test.js",
     "start": "node scripts/controlla-electron.js && node build.js desktop && electron .",
     "dist:win": "node scripts/controlla-electron.js && node scripts/prepara-windows.js && node build.js desktop && electron-builder --win",
     "dist:mac": "node scripts/controlla-electron.js && node build.js desktop && electron-builder --mac",
@@ -27,6 +27,7 @@
     "prova-lan": "node scripts/prova-lan.js"
   },
   "dependencies": {
+    "electron-updater": "6.3.9",
     "ws": "8.22.0"
   },
   "devDependencies": {
@@ -51,11 +52,20 @@
       "desktop/main.js",
       "desktop/preload.js",
       "desktop/lan.js",
+      "desktop/aggiornamenti.js",
       "server/relay.js",
       "desktop/app/**/*",
       "package.json"
     ],
     "artifactName": "CampoAperto-${version}-${os}-${arch}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "sim40702-debug",
+        "repo": "campo-aperto",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "category": "public.app-category.sports-games",
       "extendInfo": {
