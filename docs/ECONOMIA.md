@@ -142,12 +142,31 @@ Nell'app desktop le richieste HTTPS sono permesse dalla politica di sicurezza de
 
 ## Aggiornare
 
+### Da solo, con GitHub Actions (consigliato)
+
+Il flusso `.github/workflows/server.yml` pubblica il server ogni volta che nel ramo `main` cambia il codice del server
+(`cloud/`) o il motore della partita (`src/01..08`). Fa lo stesso di `npm run deploy` (motore, migrazioni, Worker) dopo
+i test delle regole. Si lancia anche a mano: scheda **Actions → Aggiorna il server → Run workflow**.
+
+Va configurato una volta sola:
+
+1. Su Cloudflare: **My Profile → API Tokens → Create Token**, modello **Edit Cloudflare Workers**. Aggiungi anche il
+   permesso **Account → D1 → Edit** (per le migrazioni del database). Crea il token e copialo.
+2. L'id dell'account è nella pagina **Workers & Pages** di Cloudflare, a destra (**Account ID**).
+3. Su GitHub, nel repository: **Settings → Secrets and variables → Actions → New repository secret**, due segreti:
+   `CLOUDFLARE_API_TOKEN` (il token) e `CLOUDFLARE_ACCOUNT_ID` (l'id).
+
+Senza i segreti il flusso non pubblica niente e lo scrive nel riepilogo. Il segreto `SIGNUP_SALT` del Worker resta
+quello già impostato: la pubblicazione non lo tocca.
+
+### A mano
+
 - **Solo codice del server** (`cloud/src/`): `npm run deploy`.
 - **Nuove tabelle o colonne, prezzi, oggetti**: una nuova migrazione `cloud/migrations/0003_….sql` (mai modificare un
   file già applicato), poi `npm run deploy` (applica le migrazioni mancanti, in ordine, una volta sola).
   Esempio per cambiare un prezzo: `UPDATE shop_items SET price = 400 WHERE id = 'scarpe_fuoco';`.
-- **Motore del gioco** (`src/01..08`): cambia l'impronta. Pubblica prima il server (`npm run deploy`), poi la release del
-  gioco. Le partite già create restano valide (sono già calcolate e salvate): si liquidano normalmente, ma il gioco nuovo
+- **Motore del gioco** (`src/01..08`): cambia l'impronta. Pubblica prima il server (`npm run deploy`, o lo fa da solo il
+  flusso di GitHub appena le modifiche arrivano nel `main`), poi la release del gioco. Le partite già create restano valide (sono già calcolate e salvate): si liquidano normalmente, ma il gioco nuovo
   le mostra come cronaca invece che in 3D. Se il motore cambia molto, rifai la calibrazione delle quote:
   `node scripts/calibra-quote.mjs 40` (circa 4 minuti) e pubblica.
 

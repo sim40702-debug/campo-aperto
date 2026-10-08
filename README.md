@@ -276,8 +276,10 @@ Dopo qualche minuto i file dei tre sistemi compaiono in **Releases**, con le not
 [CHANGELOG](docs/CHANGELOG.md). Se la macchina di un sistema resta in coda a lungo, annulla solo quel lavoro nella
 scheda **Actions**: la release esce con gli altri e rilanciando il flusso più tardi si aggiungono i file mancanti.
 
-Quando cambia il **motore della partita** (i file `src/01..08`), va aggiornato anche il server dell'economia, perché
-le partite del server si rigiocano nel gioco con lo stesso motore:
+Quando cambia il **motore della partita** (i file `src/01..08`) o il codice di `cloud/`, il **server dell'economia si
+aggiorna da solo** appena le modifiche arrivano nel `main` (flusso **Aggiorna il server** in Actions), perché le
+partite del server si rigiocano nel gioco con lo stesso motore. Serve impostare una volta i segreti di Cloudflare
+(vedi [docs/ECONOMIA.md](docs/ECONOMIA.md#aggiornare)). A mano si fa così:
 
 ```bash
 cd cloud
