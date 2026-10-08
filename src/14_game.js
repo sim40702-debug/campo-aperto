@@ -319,7 +319,7 @@ class Game {
       return copy;
     };
     const rules = C.matchRules(comp, f);
-    const opts = { humanTeam: side, difficulty: cfg.difficulty, halfSeconds: cfg.halfSeconds };
+    const opts = { humanTeam: side, difficulty: cfg.difficulty, halfSeconds: cfg.halfSeconds, subs: true };
     const m = rules ? new KnockoutMatch(team(f.home, side === 0), team(f.away, side === 1), Object.assign(opts, { knockout: rules }))
       : new Match(team(f.home, side === 0), team(f.away, side === 1), opts);
     if (!friend) C.markInProgress(comp, f.id);
@@ -335,7 +335,7 @@ class Game {
     this.compMatch = null;
     const s = this.setup;
     const home = this.teamForMatch(s.home, s.side === 0), away = this.teamForMatch(s.away, s.side === 1);
-    const m = new Match(home, away, { humanTeam: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds });
+    const m = new Match(home, away, { humanTeam: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, subs: true });
     // la prossima volta il menu propone la stessa partita
     this.settings.lastSetup = { home: s.home, away: s.away, side: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, formation: s.formation, mentality: s.mentality };
     saveSettings(this.settings);
@@ -401,6 +401,7 @@ class Game {
       $('pause-keys').textContent = this.pauseHint();
       this.input.gameKeysActive = false;
       this.renderPauseTactics();
+      this.subSel = null; this.renderPauseSubs();
       const el = $('pause'); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
       setTimeout(() => $('pause-resume').focus({ preventScroll: true }), 30);
     } else {
@@ -652,6 +653,7 @@ class Game {
         ['Passaggio rasoterra: verso la direzione; senza direzione al compagno più libero', k('pass') + (mouse ? ' / Clic sx' : ''), g('pass')],
         ['Lancio lungo o cross', k('long'), g('long')],
         ['Passaggio filtrante (nello spazio davanti al compagno)', k('through'), g('through')],
+        ['Finta: scarto di lato per saltare l\'uomo; per un attimo il contrasto riesce meno', k('dribble'), g('dribble')],
         ['Tiro: tieni premuto per caricare, rilascia per calciare. Carica corta = piatto rasoterra, piena = tiro potente (rischia di andare alto). Su o giù scelgono il palo', k('shoot') + (mouse ? ' / Clic dx' : ''), g('shoot')],
         ['Tiro a giro: tieni premuto anche questo tasto mentre tiri', k('press') + ' + ' + k('shoot'), g('press') + ' + ' + g('shoot')],
         ['Passaggio teso (più veloce) e filtrante alto', k('press') + ' + ' + k('pass') + ' / ' + k('through'), g('press') + ' + ' + g('pass') + ' / ' + g('through')],
@@ -1119,7 +1121,11 @@ class Game {
         const me = this.localPlayer(); if (me && dist2(me.x, me.z, e.x, e.z) < 3) { this.rumble(140, 0.7, 0.3); if ((e.sev || 0) > 0.5) R.shake = Math.max(R.shake, 0.1); }
         break;
       }
-      case 'ref': this.refereeFeedback(e.r); break;
+      case 'ref':
+        this.refereeFeedback(e.r);
+        // cambio: il modello 3D del calciatore che entra (aspetto, numero) si ricostruisce
+        if (e.r && e.r.type === 'SUB' && m && e.r.player) { const p = m.allSlots()[e.r.player.id]; if (p) R.refreshPlayer(p); }
+        break;
       case 'whistle': this.audio.whistle(e.kind === 'END' ? 3 : e.kind === 'HALF' ? 2 : 1); break;
       case 'post': this.audio.post(); this.rumble(160, 0.3, 0.8); if (m && this.mode !== 'client') m.showBanner('Palo!', 1.2); else if (m) m.banner = { text: 'Palo!', t: 1.2 }; break;
       case 'save': this.audio.roar(false); break;
@@ -1179,7 +1185,7 @@ class Game {
     this.chipKey = key;
     const list = this.chipCtx === 'def'
       ? [['pass', 'Contrasto'], ['shoot', 'Scivolata'], ['press', 'Pressing'], ['switch', 'Cambio'], ['sprint', 'Scatto'], ['pause', 'Pausa']]
-      : [['pass', 'Passaggio'], ['long', 'Lancio'], ['through', 'Filtrante'], ['shoot', 'Tiro'], ['switch', 'Cambio'], ['sprint', 'Scatto'], ['pause', 'Pausa']];
+      : [['pass', 'Passaggio'], ['long', 'Lancio'], ['through', 'Filtrante'], ['shoot', 'Tiro'], ['dribble', 'Finta'], ['switch', 'Cambio'], ['sprint', 'Scatto'], ['pause', 'Pausa']];
     const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
     box.innerHTML = list.map(c => '<span class="chip" data-chip="' + c[0] + '" title="' + c[1] + '"><b>' + esc(this.btn(c[0])) + '</b><span class="cl">' + c[1] + '</span></span>').join('');
   }
@@ -1252,8 +1258,8 @@ class Game {
     const sp = m.setPiece;
     if ((m.state === 'SETPIECE' || m.state === 'KICKOFF') && sp) {
       if (sp.taker === c && m.setPieceReady) {
-        if (sp.type === 'PENALTY') return 'Tieni premuto ' + B('shoot') + ' per caricare, rilascia per tirare. Su o giù scelgono il lato';
-        if (sp.type === 'FREE_KICK') return B('pass') + ' passaggio, ' + B('long') + ' lancio, ' + B('shoot') + ' tiro (tieni premuto)';
+        if (sp.type === 'PENALTY') return trf('Mira con la direzione (di lato e in alto), poi tieni premuto {0} e rilascia per tirare', tr(B('shoot')));
+        if (sp.type === 'FREE_KICK') return trf('{0} passaggio, {1} lancio; per tirare mira con la direzione e tieni premuto {2}', tr(B('pass')), tr(B('long')), tr(B('shoot')));
         if (sp.type === 'CORNER') return B('long') + ' cross in area, ' + B('pass') + ' corto. Con una direzione scegli il compagno';
         return B('pass') + ' passaggio corto, ' + B('long') + ' lancio lungo';
       }

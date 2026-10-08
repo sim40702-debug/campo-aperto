@@ -8,21 +8,21 @@ const ACTIONS = [
   { id: 'up', label: 'Su' }, { id: 'down', label: 'Giù' }, { id: 'left', label: 'Sinistra' }, { id: 'right', label: 'Destra' },
   { id: 'sprint', label: 'Scatto' }, { id: 'pass', label: 'Passaggio / contrasto' }, { id: 'long', label: 'Lancio / cross' },
   { id: 'through', label: 'Filtrante' }, { id: 'shoot', label: 'Tiro (tieni premuto) / scivolata' }, { id: 'switch', label: 'Cambio giocatore' },
-  { id: 'press', label: 'Pressing (tieni premuto)' },
+  { id: 'press', label: 'Pressing (tieni premuto)' }, { id: 'dribble', label: 'Finta / dribbling' },
   { id: 'pause', label: 'Pausa' }, { id: 'camera', label: 'Telecamera' }, { id: 'mute', label: 'Audio sì/no' },
   { id: 'help', label: 'Schermata comandi' },
 ];
 const DEFAULT_KEYS = {
   up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   sprint: ['ShiftLeft', 'ShiftRight'], pass: ['KeyJ', null], long: ['KeyL', null], through: ['KeyI', null],
-  shoot: ['KeyK', null], switch: ['KeyQ', 'Tab'], press: ['KeyE', null], pause: ['Escape', 'KeyP'], camera: ['KeyC', null], mute: ['KeyM', null],
+  shoot: ['KeyK', null], switch: ['KeyQ', 'Tab'], press: ['KeyE', null], dribble: ['KeyU', null], pause: ['Escape', 'KeyP'], camera: ['KeyC', null], mute: ['KeyM', null],
   help: ['F1', 'KeyH'],
 };
 // pulsanti del controller (numeri della mappatura standard):
 // 0 A, 1 B, 2 X, 3 Y, 4 LB, 5 RB, 6 LT, 7 RT, 8 View/Select, 9 Menu/Start, 10 L3, 11 R3, 12-15 croce direzionale
 const DEFAULT_PAD = {
   up: 12, down: 13, left: 14, right: 15,
-  sprint: 7, pass: 0, long: 2, through: 3, shoot: 1, switch: 4, press: 5,
+  sprint: 7, pass: 0, long: 2, through: 3, shoot: 1, switch: 4, press: 5, dribble: 10,
   pause: 9, camera: 8, mute: null, help: null,
 };
 const PAD_NAMES = {
@@ -30,7 +30,7 @@ const PAD_NAMES = {
   ps: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Share', 'Options', 'L3', 'R3', 'Croce ↑', 'Croce ↓', 'Croce ←', 'Croce →', 'PS'],
 };
 // azioni di gioco: con queste, nei campi di testo e nei menu la tastiera resta libera
-const GAME_ACTIONS = ['up', 'down', 'left', 'right', 'sprint', 'pass', 'long', 'through', 'shoot', 'switch', 'press'];
+const GAME_ACTIONS = ['up', 'down', 'left', 'right', 'sprint', 'pass', 'long', 'through', 'shoot', 'switch', 'press', 'dribble'];
 
 // nome leggibile di un tasto
 function keyName(code) {
@@ -319,7 +319,7 @@ class Input {
       switchDir: flick,
       pressed: {
         pass: this.pressed('pass') || !!mPass, long: this.pressed('long'), through: this.pressed('through'),
-        switch: this.pressed('switch'), shootDown: this.pressed('shoot') || !!mShootDown,
+        switch: this.pressed('switch'), shootDown: this.pressed('shoot') || !!mShootDown, dribble: this.pressed('dribble'),
       },
     };
   }

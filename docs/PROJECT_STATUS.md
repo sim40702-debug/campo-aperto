@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Campo Aperto
 
-Aggiornato: 08/10/2026, sessione 11, versione 0.10.0
+Aggiornato: 08/10/2026, sessione 11, versione 0.11.0
 
 ## Obiettivo
 Gioco di calcio 3D originale (11 contro 11), giocabile nel browser, costruito a milestone fino a un prodotto con modalità, carriera ed editor.
@@ -40,6 +40,8 @@ browser, server locale, multipla della stessa partita, conflitti, transizioni, q
 visione sincronizzata), electron_economy_smoke.js (8, app desktop vera, riavvio compreso).
 
 ## Funzionalità completate (verificate)
+- 0.11.0: sostituzioni (pausa, 5 cambi, IA dal 58'), finta/dribbling (U / L3), mirino su punizioni e rigori. File del motore
+  aggiuntivi: 08_match_subs.js, 08_match_dribble.js (estendono Match; entrano nell'impronta). Le partite tra IA restano identiche.
 - 0.10.0: lingue italiano, inglese, tedesco, francese (Impostazioni → Generale → Lingua), cambio immediato; anche scritte
   della simulazione, mercati e messaggi del server, tradotti nel gioco (motore e server invariati).
 - 0.9.0: amici (pannello a destra nella Home, tutti i giocatori, richieste), sfide tra amici sul server (campionato,

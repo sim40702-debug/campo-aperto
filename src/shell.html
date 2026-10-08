@@ -316,6 +316,20 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 .te-row input:focus, .te-row select:focus { border-color: var(--flood); outline: none; }
 .te-bench { margin-top: 10px; color: var(--slate); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; }
 @media (max-width: 720px) { .te-row { grid-template-columns: 56px 1fr; } .te-role { grid-column: 1 / -1; } }
+/* cambi nel menu di pausa */
+#pause-subs { margin-bottom: 20px; }
+#pause-subs h3 small { color: var(--slate); font-weight: 400; font-size: 14px; margin-left: 8px; }
+.ps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ps-list { display: grid; gap: 3px; max-height: 300px; overflow: auto; margin-top: 6px; }
+.ps-row { display: grid; grid-template-columns: 30px 1fr auto 60px; gap: 8px; align-items: center; text-align: left; font: inherit; font-size: 14px; color: var(--chalk);
+  background: var(--night-2); border: 1px solid transparent; padding: 5px 8px; cursor: pointer; }
+.ps-row:hover:not(:disabled) { border-color: rgba(243,245,238,0.3); }
+.ps-row.on { border-color: var(--flood); background: rgba(255,216,74,0.12); }
+.ps-row:disabled { opacity: 0.4; cursor: default; }
+.ps-row small { color: var(--slate); }
+.ps-bar { display: block; height: 6px; background: rgba(243,245,238,0.12); } .ps-bar i { display: block; height: 100%; }
+.ps-pend { margin-left: 12px; font-size: 14px; }
+@media (max-width: 640px) { .ps-grid { grid-template-columns: 1fr; } }
 #note { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(12,26,43,0.9); padding: 6px 14px; font-size: 15px; }
 #fps { position: fixed; top: 8px; right: 10px; font-size: 12px; color: var(--slate); font-variant-numeric: tabular-nums; background: rgba(12,26,43,0.6); padding: 2px 6px; z-index: 40; }
 .ft-score { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 4.5vw, 46px); margin: 0 0 6px; }
@@ -1071,6 +1085,15 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <label>Mentalità</label><div class="segs" id="pt-ment"></div>
       <label>Pressing</label><div class="segs" id="pt-press"></div>
       <label>Formazione</label><div class="segs" id="pt-form"></div>
+    </div>
+    <div id="pause-subs" hidden>
+      <h3>Cambi <small id="ps-left"></small></h3>
+      <div class="ps-grid">
+        <div><span class="lbl">Esce dal campo</span><div id="ps-out" class="ps-list"></div></div>
+        <div><span class="lbl">Entra in campo</span><div id="ps-in" class="ps-list"></div></div>
+      </div>
+      <div class="actions" style="margin:10px 0 0"><button class="ghost" id="ps-do" disabled>Fai il cambio</button><span id="ps-pending"></span></div>
+      <p class="small" id="ps-note"></p>
     </div>
     <div class="actions">
       <button class="primary" id="pause-resume">Riprendi</button>

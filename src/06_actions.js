@@ -139,8 +139,15 @@ function doShot(p, aimZ, power, opts) {
     const toward = Math.sign((0 - aimZ) * (gx - p.x)) || 1;
     spin = toward * (32 + a * 22); topspin = 4;
   }
-  let targetH = low ? 0 : 0.3 + power * 1.45 + randRange(-0.35, 0.5) * (0.6 + power);
-  if (power > 0.92) targetH += randRange(0, 1.6);   // troppa potenza: rischio di tirare alto
+  let targetH;
+  if (opts.aimH !== undefined) {
+    // mirino (punizioni e rigori dei giocatori umani): l'altezza la sceglie chi tira, la potenza aggiunge incertezza
+    targetH = clamp(opts.aimH + randRange(-0.2, 0.25) * (0.4 + power), 0, 3.2);
+    if (power > 0.92) targetH += randRange(0, 0.9);
+  } else {
+    targetH = low ? 0 : 0.3 + power * 1.45 + randRange(-0.35, 0.5) * (0.6 + power);
+    if (power > 0.92) targetH += randRange(0, 1.6);   // troppa potenza: rischio di tirare alto
+  }
   let err = 0.015 + (1 - a) * 0.08 + power * power * 0.03;
   if (opts.curl) err *= 0.75;
   if (p.data.ability === 'Bomber' && d < 18) err *= 0.7;

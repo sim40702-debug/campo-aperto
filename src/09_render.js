@@ -641,6 +641,36 @@ class Renderer {
     this.playerMeshes[i] = this.makePlayerMesh(p);
   }
 
+  // mirino di punizioni e rigori: un anello sulla porta, solo per chi sta mirando su questo computer
+  syncAimMarker(match) {
+    const a = match.aimMarker, mine = a && (this.localId === null || this.localId === undefined || a.id === this.localId) && match.state !== 'PLAY';
+    if (!mine) { if (this.aimMesh) this.aimMesh.visible = false; return; }
+    if (!this.aimMesh) {
+      const g = new THREE.Group();
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.58, 32), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthTest: false }));
+      const dot = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), new THREE.MeshBasicMaterial({ color: 0xffd84a, side: THREE.DoubleSide, depthTest: false }));
+      ring.renderOrder = dot.renderOrder = 11;
+      g.add(ring); g.add(dot);
+      this.aimMesh = g; this.scene.add(g);
+    }
+    // l'anello sta sul piano della porta
+    this.aimMesh.visible = true;
+    this.aimMesh.position.set(a.x - Math.sign(a.x) * 0.05, a.y, a.z);
+    // sempre girato verso la telecamera, così si vede bene da ogni inquadratura
+    if (this.camera) this.aimMesh.quaternion.copy(this.camera.quaternion);
+    const s = 1 + 0.08 * Math.sin(performance.now() / 160);
+    this.aimMesh.scale.set(s, s, s);
+  }
+
+  // cambio: stesso posto in campo, calciatore nuovo (senza l'aspetto comprato di chi è uscito)
+  refreshPlayer(p) {
+    this.cosmetics.delete(p);
+    const i = this.playerMeshes.findIndex(pm => pm.player === p);
+    if (i < 0) return;
+    this.disposePlayerMesh(this.playerMeshes[i]);
+    this.playerMeshes[i] = this.makePlayerMesh(p);
+  }
+
   clearMatch() {
     for (const pm of this.playerMeshes) this.disposePlayerMesh(pm);
     this.playerMeshes = [];
@@ -797,6 +827,7 @@ class Renderer {
   // e quello attuale, così il movimento è fluido anche se lo schermo non va esattamente a 60 Hz.
   syncFromMatch(match, dt, alpha) {
     this.frameDt = dt;
+    this.syncAimMarker(match);
     const b = match.ball;
     const useA = alpha !== undefined && b.px !== undefined;
     const a = useA ? clamp(alpha, 0, 1) : 1;

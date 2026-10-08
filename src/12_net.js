@@ -16,14 +16,14 @@ const NET = {
   MAX_SLOTS: 8,           // umani per partita
   MAX_PER_TEAM: 4,
   CODE_RE: /^[A-HJ-NP-Z2-9]{6}$/,
-  ACTIONS: ['pass', 'long', 'through', 'switch', 'shootDown'],
+  ACTIONS: ['pass', 'long', 'through', 'switch', 'shootDown', 'dribble'],
   STATES: ['KICKOFF', 'PLAY', 'DEAD', 'SETPIECE', 'GOAL', 'HALFTIME', 'FULLTIME'],
   SP_TYPES: ['KICKOFF', 'THROW_IN', 'CORNER', 'GOAL_KICK', 'FREE_KICK', 'PENALTY'],
   HEADER: 34,             // valori fissi in testa all'istantanea
   PSTRIDE: 14,            // valori per ogni calciatore (posizione, animazioni, energia, cartellini, caduta)
   BANNER_KINDS: ['goal', 'foul', 'yellow', 'red', 'advantage', 'offside', 'penalty', 'info'],
   REF_TYPES: ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'SECOND_YELLOW', 'PENALTY', 'FREE_KICK', 'CORNER', 'OFFSIDE',
-    'THROW_IN', 'GOAL_KICK', 'ADVANTAGE', 'KICK_OFF', 'HALF_TIME', 'FULL_TIME', 'SHOT', 'SHOT_ON_TARGET'],
+    'THROW_IN', 'GOAL_KICK', 'ADVANTAGE', 'KICK_OFF', 'HALF_TIME', 'FULL_TIME', 'SHOT', 'SHOT_ON_TARGET', 'SUB'],
   EV_TYPES: ['kick', 'whistle', 'post', 'save', 'goal', 'tackle', 'switch', 'ref'],
 };
 const netNow = () => performance.now() / 1000;

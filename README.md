@@ -50,11 +50,15 @@ Le release pubblicano solo Windows e macOS. Su Linux si compila in locale con `n
 | Filtrante | I | Y |
 | Cambio giocatore | Q / Tab | LB |
 | Pressing | E (tieni premuto) | RB |
+| Finta / dribbling | U | L3 (premi la levetta) |
 | Tiro a giro / passaggio teso / filtrante alto | E + K / J / I | RB + B / A / Y |
 | Pausa | Esc / P | Menu |
 | Telecamera | C | View |
 | Audio on/off | M | — |
 | Guida comandi | F1 / H | — |
+
+Nelle **punizioni e nei rigori** si mira con la direzione: un anello sulla porta mostra dove va il tiro (di lato e in alto), poi si carica e si rilascia il tiro.
+Nel **menu di pausa** si fanno i cambi (fino a 5): scegli chi esce e chi entra, il cambio avviene alla prossima palla ferma.
 
 Ogni tasto si può rimappare in **Impostazioni → Controlli**. Nell'app desktop **F11** attiva lo schermo intero.
 

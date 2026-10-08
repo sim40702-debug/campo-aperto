@@ -33,6 +33,7 @@ class Match {
     this.teams.push(new Team(homeData, 0, 'home', this));
     this.teams.push(new Team(awayData, 1, 'away', this));
     this.difficulty = opts.difficulty === undefined ? 1 : opts.difficulty;  // 0 facile, 1 normale, 2 difficile
+    this.subsOn = !!opts.subs;     // sostituzioni (src/08_match_subs.js): partita rapida e competizioni, mai nelle partite del server
     // giocatori umani: ognuno controlla un calciatore della sua squadra.
     // opts.humans = [{ id, team }]; per compatibilità opts.humanTeam crea un solo umano 'local' (-1 = solo IA)
     this.humans = [];
@@ -776,7 +777,8 @@ class Match {
     } else p.moveDir(dirX, dirZ, input.sprint, dt);
     if (b.owner === p) {
       const shotBuf = buf.shot && now - buf.shot.t <= INPUT_BUFFER_S ? buf.shot : null;
-      if (pressed.pass || buffered('pass')) this.humanPass(p, input, 'pass');
+      if (pressed.dribble && this.humanDribble) this.humanDribble(p, input);   // finta (src/08_match_dribble.js)
+      else if (pressed.pass || buffered('pass')) this.humanPass(p, input, 'pass');
       else if (pressed.long || buffered('long')) this.humanPass(p, input, 'lob');
       else if (pressed.through || buffered('through')) this.humanPass(p, input, 'through');
       else if (shotBuf && !shootHeld) doShot(p, this.humanShotAim(p, input), Math.max(0.25, shotBuf.charge), { curl: !!input.press });
@@ -894,10 +896,16 @@ class Match {
     const shootHeld = !!input.shoot || !!pressed.shootDown;
     const fire = pressed.pass || pressed.long || pressed.through;
     if (sp.type === 'PENALTY' || sp.type === 'FREE_KICK') {
+      // mirino sulla porta: su/giù sposta di lato, verso la porta alza e indietro abbassa. Si vede in 3D (aimMarker)
+      const team = p.team, W = CONFIG.GOAL_HALF_W - 0.3;
+      if (!h.aim || h.aim.sp !== sp) h.aim = { sp: sp, z: 0, y: sp.type === 'PENALTY' ? 0.5 : 1.4 };
+      h.aim.z = clamp(h.aim.z + (input.mz || 0) * 4.5 * dt, -W, W);
+      h.aim.y = clamp(h.aim.y + (input.mx || 0) * team.dir * 1.8 * dt, 0.1, CONFIG.GOAL_H - 0.15);
+      this.aimMarker = { x: team.oppGoalX(), y: h.aim.y, z: h.aim.z, id: h.id };
       if (shootHeld) h.shootCharge = Math.min(1, h.shootCharge + dt / 0.9);
       if (!shootHeld && h.prevShoot && h.shootCharge > 0) {
-        doShot(p, this.humanShotAim(p, input), Math.max(0.3, h.shootCharge), { curl: sp.type === 'FREE_KICK' || !!input.press });
-        h.shootCharge = 0;
+        doShot(p, h.aim.z, Math.max(0.3, h.shootCharge), { curl: sp.type === 'FREE_KICK' || !!input.press, aimH: h.aim.y });
+        h.shootCharge = 0; h.aim = null; this.aimMarker = null;
         h.prevShoot = shootHeld;
         this.afterSetPieceKick();
         return true;
@@ -937,6 +945,7 @@ class Match {
     return best;
   }
   afterSetPieceKick() {
+    this.aimMarker = null;
     this.setState('PLAY');
     this.setPieceReady = false;
   }
