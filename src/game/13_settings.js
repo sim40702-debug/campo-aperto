@@ -12,6 +12,7 @@ function defaultSettings() {
     resScale: 1,              // scala di risoluzione (0.5 - 1)
     renderRes: 0,             // risoluzione di disegno: 0 = nativa, altrimenti l'altezza (720, 900, 1080, 1440, 2160)
     windowSize: '',           // app desktop: dimensione della finestra "1920x1080" ('' = libera)
+    startFullscreen: true,    // app desktop: all'avvio si apre a schermo intero (desktop/main.js)
     dynamicRes: true,         // abbassa la risoluzione da sola se gli fps scendono
     fpsLimit: 0,              // 0 = sincronizzato con lo schermo
     showFps: false,

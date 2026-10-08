@@ -7,7 +7,7 @@ function groundTravelTime(v0, dist) {
   let v = v0, x = 0, t = 0;
   const dt = 0.02;
   while (x < dist) {
-    v = Math.max(0, v - (CONFIG.ROLL_DECEL + v * CONFIG.ROLL_DRAG) * dt);
+    v = Math.max(0, v - (CONFIG.ROLL_DECEL * BALL_ENV.roll + v * CONFIG.ROLL_DRAG * BALL_ENV.drag) * dt);
     x += v * dt; t += dt;
     if (v <= 0.05 || t > 8) return Infinity;
   }
@@ -21,7 +21,7 @@ function groundSpeedFor(dist, vEnd) {
     // velocità residua dopo dist
     let v = mid, x = 0;
     const dt = 0.02;
-    while (x < dist && v > 0.05) { v = Math.max(0, v - (CONFIG.ROLL_DECEL + v * CONFIG.ROLL_DRAG) * dt); x += v * dt; }
+    while (x < dist && v > 0.05) { v = Math.max(0, v - (CONFIG.ROLL_DECEL * BALL_ENV.roll + v * CONFIG.ROLL_DRAG * BALL_ENV.drag) * dt); x += v * dt; }
     if (x < dist || v < vEnd) lo = mid; else hi = mid;
   }
   return hi;

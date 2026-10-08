@@ -3,6 +3,7 @@
 // ============================================================
 const { app, BrowserWindow, Menu, shell, ipcMain, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { fileURLToPath } = require('url');
 const lan = require('./lan.js');
 const aggiornamenti = require('./aggiornamenti.js');
@@ -78,6 +79,17 @@ app.commandLine.appendSwitch('enable-unsafe-swiftshader');
 const profilo = process.argv.map(a => /^--profilo=([A-Za-z0-9_-]{1,20})$/.exec(a)).find(Boolean);
 if (profilo) app.setPath('userData', app.getPath('userData') + '-' + profilo[1]);
 
+// avvio a schermo intero (scelta nelle impostazioni del gioco, Grafica → Avvio): un file piccolo nella cartella dei dati,
+// perché la finestra si apre prima che il gioco legga le sue impostazioni
+const AVVIO = () => path.join(app.getPath('userData'), 'finestra.json');
+function avvioSchermoIntero() {
+  try { return JSON.parse(fs.readFileSync(AVVIO(), 'utf8')).fullscreen !== false; } catch (e) { return true; }
+}
+ipcMain.handle('win:start-fullscreen', async (e, v) => {
+  if (!fidato(e)) return { error: 'Richiesta non consentita' };
+  try { fs.writeFileSync(AVVIO(), JSON.stringify({ fullscreen: v !== false })); return { ok: true }; } catch (err) { return { error: 'Non riesco a salvare' }; }
+});
+
 function creaFinestra() {
   const win = new BrowserWindow({
     width: 1280,
@@ -88,6 +100,8 @@ function creaFinestra() {
     title: 'Campo Aperto',
     autoHideMenuBar: true,
     show: false,
+    // all'avvio a schermo intero (si cambia in Impostazioni → Grafica → Avvio; F11 entra ed esce)
+    fullscreen: avvioSchermoIntero() && !profilo,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

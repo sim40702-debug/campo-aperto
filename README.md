@@ -8,8 +8,15 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.13)
+### Le novità (0.10 – 0.14)
 
+- **Allenamento** (0.14): tiri, punizioni con la barriera, rigori, dribbling e passaggi, con sfide a punti e record.
+- **Meteo e ora del giorno** (0.14): sereno, pioggia o neve, di giorno, al tramonto o di sera. Con la pioggia la palla
+  scivola, con la neve frena e rimbalza poco.
+- **Fine partita più ricca** (0.14): possesso per tempo, parate, precisione dei passaggi, **migliore in campo** con i
+  voti e le **azioni migliori** da rivedere (gol, pali, parate, occasioni).
+- **Aspetto dei giocatori** delle tue squadre (0.14): pelle, capelli, scarpe e stile di maglia comprati nello Shop.
+- **Avvio a schermo intero** e **controllo dei server** all'avvio: se non rispondono si può giocare offline (0.14).
 - **Aggiornamenti automatici** (0.13): l'app desktop avvisa quando c'è una versione nuova e si aggiorna da sola.
 - **Lingue**: italiano, English, Deutsch, Français, da Impostazioni → Generale.
 - **Telecronaca** scritta e **a voce**, nella lingua del gioco (si sceglie prima della partita, in pausa o nelle impostazioni).
@@ -119,10 +126,32 @@ Ogni tasto si può rimappare in **Impostazioni → Controlli**. Nell'app desktop
 
 ## Modalità
 
-- **Partita rapida** contro l'IA (o IA contro IA da guardare), con le 8 squadre del gioco o con le tue.
+- **Partita rapida** contro l'IA (o IA contro IA da guardare), con le 8 squadre del gioco o con le tue. Prima del fischio
+  scegli anche **meteo** (sereno, pioggia, neve, a caso) e **ora** (giorno, tramonto, sera).
+- **Allenamento** (nella home, accanto a Gioca): cinque esercizi con un obiettivo da superare e il tuo record:
+  - **Tiri in porta**: 10 tiri da fuori area contro il portiere (obiettivo 5 gol);
+  - **Punizioni**: 10 punizioni con la barriera, con il mirino (obiettivo 3);
+  - **Rigori**: 10 rigori (obiettivo 7);
+  - **Dribbling**: 8 attacchi contro due difensori e il portiere (obiettivo 4);
+  - **Passaggi**: tieni palla con tre compagni contro due difensori, passaggi riusciti in 60 secondi (obiettivo 15).
 - **Competizioni**: campionato, torneo, coppe e la **carriera da allenatore**.
 - **Multiplayer** online o in rete locale, fino a 8 persone.
 - **Partite del server** da guardare in 3D, con scommesse in monete (serve un account).
+
+## Fine partita
+
+Oltre al risultato: possesso (anche per tempo), tiri e tiri in porta, parate, passaggi riusciti e precisione,
+contrasti e dribbling, falli, cartellini, corner e fuorigioco. A destra il **migliore in campo** con il voto (da 4 a 10)
+e i tre migliori di ogni squadra. **Rivedi le azioni migliori** fa rivedere al rallentatore fino a sei momenti della
+partita (tutti i gol, poi pali, parate e grandi occasioni): **Prossima** passa alla successiva, Esc torna al resoconto.
+
+## Avvio e gioco offline
+
+L'app desktop si apre a **schermo intero** (si cambia in Impostazioni → Grafica → Avvio; F11 entra ed esce). Durante il
+caricamento il gioco controlla se i **server** rispondono. Se non rispondono compare **Server non raggiungibile** con
+**Gioca offline** e **Riprova**: offline funzionano partita rapida, allenamento, competizioni, carriera e le tue squadre;
+account, monete, scommesse, shop e partite online tornano quando i server rispondono (pulsante **Offline · Riprova**
+nella home).
 
 ## Lingue
 
@@ -135,7 +164,10 @@ In **Nuova partita → Le mie squadre** crei fino a 8 squadre tue:
 
 - nome, sigla del tabellone, allenatore, colori della maglia di casa e da trasferta (con l'anteprima);
 - forza della squadra (da 50 a 92) e formazione;
-- i 18 giocatori: nome, numero, caratteristica (Bomber, Regista, Muro…) e piede. **Nomi casuali** li rigenera.
+- i 18 giocatori: nome, numero, caratteristica (Bomber, Regista, Muro…) e piede. **Nomi casuali** li rigenera;
+- l'**aspetto**: la pelle la scegli tu (clic sul colore); **capelli**, **scarpe** e **stile di maglia** sono oggetti dello
+  **Shop** e si possono usare solo se li hai comprati con il tuo account (**Vai allo Shop** salva la squadra e apre il
+  negozio). Gli oggetti si ricordano sul computer per il tuo account: in partita si vedono anche senza internet.
 
 Le squadre si salvano su questo computer e compaiono nella partita rapida, dopo quelle del gioco. Online e nelle
 competizioni si usano solo le squadre del gioco, perché tutti devono avere le stesse.

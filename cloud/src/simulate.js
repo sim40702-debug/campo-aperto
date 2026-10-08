@@ -15,10 +15,21 @@ export function teamInfo(i) {
   return { name: t.name, short: t.short, kit: t.kits.home[0], kit2: t.kits.home[1] };
 }
 
+// meteo della partita, scelto dal seme: quasi sempre sereno, a volte pioggia, raramente neve
+export function weatherFor(seed) {
+  const r = Math.abs(seed) % 100;
+  return r < 70 ? 'clear' : r < 90 ? 'rain' : 'snow';
+}
+// ora del giorno dall'orario della partita (ora svizzera circa): giorno, tramonto o sera
+export function timeOfDayFor(kickoffAt) {
+  const h = (new Date(kickoffAt).getUTCHours() + 1) % 24;
+  return h >= 8 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'sunset' : 'night';
+}
+
 // la partita intera con il seme dato: fatti per la liquidazione, eventi con il loro istante, durata reale
-export function simulateFixture(home, away, seed, halfSeconds) {
+export function simulateFixture(home, away, seed, halfSeconds, weather, timeOfDay) {
   const d = teamDb();
-  const m = new Match(d[home], d[away], { halfSeconds: halfSeconds, humanTeam: -1, rng: makeRng(seed) });
+  const m = new Match(d[home], d[away], { halfSeconds: halfSeconds, humanTeam: -1, rng: makeRng(seed), weather: weather, timeOfDay: timeOfDay });
   // tutti gli eventi dell'arbitro (la timeline della partita tiene solo gli ultimi 300)
   const all = [];
   let steps = 0;

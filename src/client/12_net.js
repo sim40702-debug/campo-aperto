@@ -313,7 +313,7 @@ class HostSession {
     this.link = link; this.db = db;
     this.members = new Map();     // id -> { id, name, side, connected, ping, gv }
     this.members.set(link.id, { id: link.id, name: myName, side: 0, connected: true, ping: 0, isHost: true });
-    this.settings = { home: 0, away: 4, halfSeconds: 180, difficulty: 1, names: ['', ''] };
+    this.settings = { home: 0, away: 4, halfSeconds: 180, difficulty: 1, names: ['', ''], weather: 'clear', timeOfDay: 'night' };
     this.match = null; this.phase = 'lobby';
     this.stats = null;            // () => { fps }: fps di questo computer (dal gioco)
     this.lockSides = null;        // sfida tra amici: nome -> lato (ognuno con la sua squadra, gli altri guardano)
@@ -428,7 +428,7 @@ class HostSession {
     const humans = this.slots.map(id => ({ id: id, team: this.members.get(id).side }));
     this.mid = Math.random().toString(36).slice(2, 10);
     const nm = cleanTeamNames(s.names);
-    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: humans, difficulty: s.difficulty, halfSeconds: s.halfSeconds });
+    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: humans, difficulty: s.difficulty, halfSeconds: s.halfSeconds, weather: s.weather, timeOfDay: s.timeOfDay });
     this.phase = 'playing';
     this.acc = 0; this.steps = 0; this.simTime = 0; this.seq = 0; this.inputs.clear();
     this.link.toAll(this.startPayload());
@@ -506,6 +506,8 @@ class HostSession {
       lastGoal: lg ? { minute: lg.minute, scorer: lg.scorer, own: !!lg.own, team: lg.team.index } : null,
       log: m.log.map(g => ({ minute: g.minute, scorer: g.scorer, own: !!g.own, team: g.team.index })),
       stats: m.teams.map(t => t.stats),
+      // numeri dei giocatori per il resoconto di fine partita: [nome, numero, gol, tiri, passaggi riusciti, passaggi, contrasti, parate, dribbling]
+      ps: m.state === 'FULLTIME' || m.state === 'HALFTIME' ? m.allSlots().map(p => [p.data.name, p.data.number, p.stats.goals, p.stats.shots, p.stats.passesOk, p.stats.passes, p.stats.tackles, p.stats.saves || 0, p.stats.dribbles || 0, p.data.role === 'GK' ? 1 : 0, p.cards.yellow, p.cards.red ? 1 : 0]) : null,
       online: this.slots.map(id => { const x = this.members.get(id); return x ? { id: id, connected: x.connected, ping: x.ping } : { id: id, connected: false, ping: 0 }; }),
       host: Object.assign({ srv: this.link.rtt }, this.stats ? this.stats() : {}),
     });
@@ -589,7 +591,8 @@ class ClientSession {
     }));
     return {
       t: 'lobby', code: typeof d.code === 'string' && NET.CODE_RE.test(d.code) ? d.code : '', hostId: str(d.hostId), phase: str(d.phase),
-      settings: { home: d.settings.home, away: d.settings.away, halfSeconds: d.settings.halfSeconds, difficulty: d.settings.difficulty, names: cleanTeamNames(d.settings.names) },
+      settings: { home: d.settings.home, away: d.settings.away, halfSeconds: d.settings.halfSeconds, difficulty: d.settings.difficulty, names: cleanTeamNames(d.settings.names),
+        weather: WEATHERS.includes(d.settings.weather) ? d.settings.weather : 'clear', timeOfDay: TIMES_OF_DAY.includes(d.settings.timeOfDay) ? d.settings.timeOfDay : 'night' },
       members: members,
     };
   }
@@ -603,7 +606,7 @@ class ClientSession {
     this.names = {}; hs.forEach(h => { this.names[h.id] = h.name; });
     // la partita del client è un "manichino": non viene simulata, riceve solo le posizioni
     const nm = cleanTeamNames(s.names);
-    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: hs.map(h => ({ id: h.id, team: h.team })), difficulty: s.difficulty, halfSeconds: s.halfSeconds });
+    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: hs.map(h => ({ id: h.id, team: h.team })), difficulty: s.difficulty, halfSeconds: s.halfSeconds, weather: s.weather, timeOfDay: s.timeOfDay });
     this.match.events.length = 0;
     this.match.timeline.length = 0;   // il registro degli eventi arriva solo dall'host
     this.mid = d.mid; this.snaps = []; this.delay = undefined; this.events = []; this.replayAcc = 0;
@@ -638,6 +641,16 @@ class ClientSession {
       if (!st || typeof st !== 'object') return;
       for (const k in m.teams[i].stats) if (Number.isFinite(st[k])) m.teams[i].stats[k] = st[k];
     });
+    // numeri dei giocatori (arrivano a fine tempo): solo numeri piccoli e nomi corti
+    if (Array.isArray(d.ps)) {
+      const n = v => (Number.isFinite(v) ? Math.max(0, Math.min(999, Math.round(v))) : 0);
+      const slots = m.allSlots();
+      m.netPlayers = d.ps.slice(0, slots.length).filter(x => Array.isArray(x)).map((x, i) => ({
+        name: typeof x[0] === 'string' ? x[0].slice(0, 40) : '', number: n(x[1]), team: slots[i] ? slots[i].team.index : 0,
+        stats: { goals: n(x[2]), shots: n(x[3]), passesOk: n(x[4]), passes: n(x[5]), tackles: n(x[6]), saves: n(x[7]), dribbles: n(x[8]) },
+        isGK: x[9] === 1, cards: { yellow: n(x[10]), red: x[11] === 1 },
+      }));
+    }
   }
 
   // ricostruisce lo stato da mostrare all'istante (tempo locale - ritardo - interpolazione)

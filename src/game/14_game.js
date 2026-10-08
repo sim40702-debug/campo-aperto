@@ -3,8 +3,25 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['manager', 'menu', 'update', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
+const SCREENS = ['manager', 'menu', 'update', 'training', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
+
+// meteo e ora del giorno da scegliere prima della partita (il motore conosce 'clear', 'rain', 'snow' e 'day', 'sunset', 'night')
+const WEATHER_CHOICES = [['clear', 'Sereno'], ['rain', 'Pioggia'], ['snow', 'Neve'], ['random', 'A caso']];
+const TIME_CHOICES = [['day', 'Giorno'], ['sunset', 'Tramonto'], ['night', 'Sera'], ['random', 'A caso']];
+// "A caso": quasi sempre sereno, a volte pioggia, raramente neve
+function pickWeather(v) {
+  if (WEATHERS.includes(v)) return v;
+  const r = Math.random();
+  return r < 0.65 ? 'clear' : r < 0.88 ? 'rain' : 'snow';
+}
+// "Pioggia, tramonto" (per la lobby e le partite del server)
+function weatherLine(weather, time) {
+  const w = (WEATHER_CHOICES.find(x => x[0] === weather) || WEATHER_CHOICES[0])[1];
+  const t = (TIME_CHOICES.find(x => x[0] === time) || TIME_CHOICES[2])[1];
+  return trf('Meteo: {0}, ora: {1}.', tr(w), tr(t));
+}
+function pickTimeOfDay(v) { return TIMES_OF_DAY.includes(v) ? v : TIMES_OF_DAY[Math.floor(Math.random() * TIMES_OF_DAY.length)]; }
 
 class Game {
   constructor() {
@@ -19,7 +36,8 @@ class Game {
     this.renderer.setResolutionScale(this.settings.resScale);
     this.renderer.setRenderResolution(this.settings.renderRes);
     // app desktop: la finestra riprende la dimensione scelta
-    if (window.campoWindow && this.settings.windowSize) { const [w, h] = this.settings.windowSize.split('x').map(Number); window.campoWindow.setSize(w, h).catch(() => {}); }
+    // la dimensione scelta vale solo se l'app non parte a schermo intero
+    if (window.campoWindow && this.settings.windowSize && !this.settings.startFullscreen) { const [w, h] = this.settings.windowSize.split('x').map(Number); window.campoWindow.setSize(w, h).catch(() => {}); }
     this.renderer.camMode = this.settings.camera || 0;
     this.audio = new GameAudio();
     this.audio.setVolumes({ master: this.settings.volMaster, sfx: this.settings.volSfx, crowd: this.settings.volCrowd, muted: this.settings.muted });
@@ -43,7 +61,7 @@ class Game {
     this.match = null; this.demo = null; this.net = null;
     this.netLog = []; this.netLastError = ''; this.lanStatus = null;
     this.paused = false; this.replay = null; this.replayPending = null;
-    this.setup = { home: 0, away: 4, side: 0, difficulty: 1, halfSeconds: 180, formation: null, mentality: 1 };
+    this.setup = { home: 0, away: 4, side: 0, difficulty: 1, halfSeconds: 180, formation: null, mentality: 1, weather: 'clear', timeOfDay: 'night' };
     // le tue squadre (src/game/22_team_editor.js): solo nella partita rapida, dopo quelle del database
     this.teamEditor = new TeamEditor(this);
     this.myTeams = this.teamEditor.teams();
@@ -74,10 +92,11 @@ class Game {
 
   // ---------- SCHERMATE ----------
   showScreen(name) {
+    if (name !== 'fulltime' && this.hlPlay) this.stopHighlights();
     this.screen = name;
     if (name !== 'match' && this.commentary) this.commentary.stopVoice();   // fuori dalla partita la voce tace
     for (const id of SCREENS) $(id).hidden = true;
-    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
+    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', training: 'training', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
     if (panel) {
       const el = $(panel);
       el.hidden = false;
@@ -89,6 +108,7 @@ class Game {
     if (name === 'settings') this.renderSettings();
     if (name === 'help') this.renderHelp();
     if (name === 'update') this.renderUpdate();
+    if (name === 'training') this.renderTraining();
     // in partita i tasti di gioco non devono far scorrere la pagina o spostare il focus
     this.input.gameKeysActive = name === 'match';
     if (name === 'match') { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
@@ -122,6 +142,8 @@ class Game {
     $('btn-quick').onclick = () => { this.setup.side = this.setup.side === -1 ? 0 : this.setup.side; this.showScreen('setup'); };
     $('btn-watch').onclick = () => this.eco.open('fixtures');
     $('btn-online').onclick = () => this.showScreen('online');
+    $('btn-training').onclick = () => this.openTraining();
+    $('tr-back').onclick = () => this.showScreen('menu');
     $('btn-settings').onclick = () => this.openSettings('generale', 'menu');
     $('btn-graphics').onclick = () => this.openSettings('grafica', 'menu');
     $('btn-audio').onclick = () => this.openSettings('audio', 'menu');
@@ -293,6 +315,9 @@ class Game {
     this.segmented('opt-form', Object.keys(FORMATIONS).map(f => ({ label: f, value: f })), s.formation, v => { s.formation = v; this.renderSetup(); });
     this.segmented('opt-ment', MENTALITIES.map((m, i) => ({ label: m, value: i })), s.mentality, v => { s.mentality = v; this.renderSetup(); });
     this.renderCommentaryOpt('opt-comm');
+    // meteo e ora del giorno ("A caso" si decide al fischio d'inizio)
+    this.segmented('opt-weather', WEATHER_CHOICES.map(w => ({ label: w[1], value: w[0] })), s.weather, v => { s.weather = v; this.renderSetup(); });
+    this.segmented('opt-time', TIME_CHOICES.map(w => ({ label: w[1], value: w[0] })), s.timeOfDay, v => { s.timeOfDay = v; this.renderSetup(); });
     $('row-form').style.opacity = s.side === -1 ? 0.4 : 1;
   }
 
@@ -344,7 +369,8 @@ class Game {
       return copy;
     };
     const rules = C.matchRules(comp, f);
-    const opts = { humanTeam: side, difficulty: cfg.difficulty, halfSeconds: cfg.halfSeconds, subs: true };
+    // nelle competizioni il meteo e l'ora cambiano da partita a partita
+    const opts = { humanTeam: side, difficulty: cfg.difficulty, halfSeconds: cfg.halfSeconds, subs: true, weather: pickWeather('random'), timeOfDay: pickTimeOfDay('random') };
     const m = rules ? new KnockoutMatch(team(f.home, side === 0), team(f.away, side === 1), Object.assign(opts, { knockout: rules }))
       : new Match(team(f.home, side === 0), team(f.away, side === 1), opts);
     if (!friend) C.markInProgress(comp, f.id);
@@ -360,9 +386,11 @@ class Game {
     this.compMatch = null;
     const s = this.setup;
     const home = this.teamForMatch(s.home, s.side === 0), away = this.teamForMatch(s.away, s.side === 1);
-    const m = new Match(home, away, { humanTeam: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, subs: true });
+    const m = new Match(home, away, { humanTeam: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, subs: true,
+      weather: pickWeather(s.weather), timeOfDay: pickTimeOfDay(s.timeOfDay) });
     // la prossima volta il menu propone la stessa partita
-    this.settings.lastSetup = { home: s.home, away: s.away, side: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, formation: s.formation, mentality: s.mentality };
+    this.settings.lastSetup = { home: s.home, away: s.away, side: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, formation: s.formation, mentality: s.mentality,
+      weather: s.weather, timeOfDay: s.timeOfDay };
     saveSettings(this.settings);
     this.mode = 'offline';
     this.prepareMatchView(m, 'local', null);
@@ -394,6 +422,7 @@ class Game {
 
   quitToMenu() {
     if (this.mode === 'fixture') { this.stopFixtureWatch(true); return; }
+    if (this.match && this.match.training) { this.endTraining(); return; }   // dall'allenamento si torna agli esercizi
     // partita di competizione lasciata a metà: il tempo che manca si simula dal punteggio attuale
     if (this.compMatch && this.compMatch.friend && this.match && this.match.state !== 'FULLTIME') this.comps.friendMatchAbandoned(this.compMatch, this.match);
     else if (this.compMatch && this.match && this.match.state !== 'FULLTIME') {
@@ -504,6 +533,8 @@ class Game {
     if ([120, 180, 300].includes(l.halfSeconds)) s.halfSeconds = l.halfSeconds;
     if (typeof l.formation === 'string' && FORMATIONS[l.formation]) s.formation = l.formation;
     if (Number.isInteger(l.mentality) && l.mentality >= 0 && l.mentality < MENTALITIES.length) s.mentality = l.mentality;
+    if (WEATHER_CHOICES.some(w => w[0] === l.weather)) s.weather = l.weather;
+    if (TIME_CHOICES.some(w => w[0] === l.timeOfDay)) s.timeOfDay = l.timeOfDay;
   }
 
   // ---------- CONTROLLER E NAVIGAZIONE ----------
@@ -539,7 +570,7 @@ class Game {
   navRoot() {
     if (!$('busy').hidden) return $('busy');
     if (this.screen === 'match') return this.paused && !$('pause').hidden ? $('pause') : null;
-    const id = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update' }[this.screen] || (ECO_SCREENS.includes(this.screen) || COMP_SCREENS.includes(this.screen) ? this.screen : null);
+    const id = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', training: 'training' }[this.screen] || (ECO_SCREENS.includes(this.screen) || COMP_SCREENS.includes(this.screen) ? this.screen : null);
     return id ? $(id) : null;
   }
   navItems(root) {
@@ -596,7 +627,8 @@ class Game {
       case 'online': $('on-back').click(); break;
       case 'settings': this.closeSettings(); break;
       case 'help': this.closeHelp(); break;
-      case 'update': this.showScreen('menu'); break;
+      case 'update': case 'training': this.showScreen('menu'); break;
+      case 'fulltime': if (this.hlPlay) this.stopHighlights(); break;
       case 'center': this.eco.open('fixtures'); break;
       case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': case 'comps': this.showScreen('menu'); break;
       case 'comp': case 'comp-new': case 'manager': this.comps.openDashboard(); break;
@@ -761,6 +793,15 @@ class Game {
       { label: '2560×1440', value: 1440 }, { label: '3840×2160', value: 2160 }], s.renderRes, v => { s.renderRes = v; this.renderer.setRenderResolution(v); save(); this.renderSettings(); });
     // app desktop: dimensione della finestra
     $('st-winrow').hidden = !window.campoWindow; $('st-winlbl').hidden = !window.campoWindow;
+    // app desktop: all'avvio a schermo intero oppure in finestra
+    $('st-startrow').hidden = !window.campoWindow; $('st-startlbl').hidden = !window.campoWindow;
+    if (window.campoWindow) {
+      this.segmented('st-start', [{ label: 'Schermo intero', value: true }, { label: 'Finestra', value: false }], s.startFullscreen, v => {
+        s.startFullscreen = v; save();
+        if (window.campoWindow.setStartFullscreen) window.campoWindow.setStartFullscreen(v).catch(() => {});
+        this.renderSettings();
+      });
+    }
     if (window.campoWindow) {
       this.segmented('st-winsize', ['1280x720', '1366x768', '1600x900', '1920x1080', '2560x1440'].map(v => ({ label: v.replace('x', '×'), value: v })), s.windowSize, async v => {
         s.windowSize = v; save();
@@ -959,6 +1000,7 @@ class Game {
       if (this.mode === 'host') this.tickHost(dt, false);
       else if (this.mode === 'client' && this.net) { const ev = this.net.client.update(dt); for (const e of ev) this.handleEvent(e); R.syncFromMatch(this.match, dt); }
       else R.syncFromMatch(this.match, dt);
+      if (this.hlPlay) this.stepHighlights(dt);   // azioni migliori: sopra la scena della partita
     } else if (this.mode === 'host' && this.net && this.net.host && this.net.host.match) {
       // l'host è nelle impostazioni o nei comandi: la partita online non si deve fermare
       this.tickHost(dt, true);
@@ -971,7 +1013,8 @@ class Game {
       this.audio.crowd(0.1);
     }
     R.render();
-    if (!this.loaded) { this.loaded = true; $('loading').classList.add('out'); setTimeout(() => { $('loading').hidden = true; }, 650); }
+    // primo fotogramma: il gioco è pronto. La schermata di caricamento resta finché non finisce il controllo dei server
+    if (!this.loaded) { this.loaded = true; this.startupCheck(); }
     this.input.endFrame();
   }
 
@@ -1086,6 +1129,8 @@ class Game {
 
   afterSim(m, dt, replaySpeed, online, alpha) {
     const R = this.renderer;
+    this.hlTick(m);
+    if (m.training) this.renderTrainingHud();   // allenamento (28_training.js)
     if (this.replayPending && m.state === 'GOAL' && m.stateTime > 1.6) {
       this.replayPending = false;
       let frames = m.replay.slice();
@@ -1129,6 +1174,7 @@ class Game {
   }
   handleEvent(e) {
     const R = this.renderer, m = this.match;
+    this.hlEvent(e);   // azioni migliori da rivedere a fine partita (27_highlights.js)
     if (this.commentary) {
       const c = this.commentary, s = this.settings;
       c.enabled = s.commentary && !this.replay;
@@ -1345,11 +1391,21 @@ class Game {
     const cards = (m.cardLog || cardList(m.timeline)).map(c => c.minute + "' " + c.name + ' (' + (c.type === 'red' ? 'rosso' : 'giallo') + ')');
     $('ft-goals').textContent = goals + (cards.length ? '. Cartellini: ' + cards.join(', ') : '');
     const tot = a.stats.possession + b.stats.possession || 1;
+    // possesso di un tempo in percentuale (le partite vecchie non lo hanno: "—")
+    const half = (k, t) => { const s = a.stats[k] + b.stats[k]; return s > 0 ? Math.round(t.stats[k] / s * 100) + '%' : '—'; };
+    const acc = t => t.stats.passes ? Math.round(t.stats.passesOk / t.stats.passes * 100) + '%' : '—';
+    const team = teamTotals(m);   // parate, contrasti e dribbling dai numeri dei giocatori (26_match_report.js)
     const rows = [
       ['Possesso', Math.round(a.stats.possession / tot * 100) + '%', Math.round(b.stats.possession / tot * 100) + '%'],
+      ['Possesso 1º tempo', half('possH1', a), half('possH1', b)],
+      ['Possesso 2º tempo', half('possH2', a), half('possH2', b)],
       ['Tiri', a.stats.shots, b.stats.shots],
       ['Tiri in porta', a.stats.onTarget, b.stats.onTarget],
+      ['Parate', team[0].saves, team[1].saves],
       ['Passaggi riusciti', a.stats.passesOk + ' su ' + a.stats.passes, b.stats.passesOk + ' su ' + b.stats.passes],
+      ['Precisione passaggi', acc(a), acc(b)],
+      ['Contrasti vinti', team[0].tackles, team[1].tackles, true],
+      ['Dribbling riusciti', team[0].dribbles, team[1].dribbles, true],
       ['Falli', a.stats.fouls, b.stats.fouls],
       ['Ammonizioni', a.stats.yellow || 0, b.stats.yellow || 0],
       ['Espulsioni', a.stats.red || 0, b.stats.red || 0],
@@ -1357,7 +1413,8 @@ class Game {
       ['Fuorigioco', a.stats.offsides, b.stats.offsides],
     ];
     $('ft-stats').innerHTML = '<tr><th>' + a.data.short + '</th><th></th><th>' + b.data.short + '</th></tr>' +
-      rows.map(r => '<tr><td>' + r[1] + '</td><th>' + r[0] + '</th><td>' + r[2] + '</td></tr>').join('');
+      rows.filter(r => !r[3] || r[1] || r[2]).map(r => '<tr><td>' + r[1] + '</td><th>' + r[0] + '</th><td>' + r[2] + '</td></tr>').join('');   // righe a zero per tutti e due: nascoste
+    this.renderMatchReport(m);   // migliore in campo, i migliori e le azioni da rivedere
     const cm = this.compMatch;
     const fo = this.net && this.net.friend;   // partita online di una sfida tra amici
     $('ft-rematch').hidden = this.mode === 'client' || this.mode === 'fixture' || !!cm || !!fo;
@@ -1820,12 +1877,15 @@ class Game {
       const h = this.net.host;
       this.segmented('lb-len', [{ label: '2 min', value: 120 }, { label: '3 min', value: 180 }, { label: '5 min', value: 300 }], s.halfSeconds, v => h.setSettings({ halfSeconds: v }));
       this.segmented('lb-diff', [{ label: 'Facile', value: 0 }, { label: 'Normale', value: 1 }, { label: 'Difficile', value: 2 }], s.difficulty, v => h.setSettings({ difficulty: v }));
+      // online il meteo si sceglie qui e vale per tutti (niente "A caso": lo decide chi ospita)
+      this.segmented('lb-weather', WEATHER_CHOICES.filter(w => w[0] !== 'random').map(w => ({ label: w[1], value: w[0] })), s.weather || 'clear', v => h.setSettings({ weather: v }));
+      this.segmented('lb-time', TIME_CHOICES.filter(w => w[0] !== 'random').map(w => ({ label: w[1], value: w[0] })), s.timeOfDay || 'night', v => h.setSettings({ timeOfDay: v }));
       $('lb-start').disabled = !h.canStart();
       $('lb-settings-ro').textContent = '';
     } else if (isHost) {
       $('lb-start').disabled = !this.net.host.canStart();
     } else if (!fr) {
-      $('lb-settings-ro').textContent = 'Durata di un tempo ' + (s.halfSeconds / 60) + ' minuti, IA ' + ['facile', 'normale', 'difficile'][s.difficulty] + '.';
+      $('lb-settings-ro').textContent = trf('Durata di un tempo {0} minuti, IA {1}.', s.halfSeconds / 60, tr(['facile', 'normale', 'difficile'][s.difficulty])) + ' ' + weatherLine(s.weather, s.timeOfDay);
     }
     $('lb-start').hidden = !isHost;
     $('lb-wait').hidden = isHost;

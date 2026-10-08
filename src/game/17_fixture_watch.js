@@ -12,7 +12,7 @@ class FixtureWatch {
   constructor(game, fx) {
     this.g = game; this.fx = fx;
     const db = buildDatabase(TEAM_DB_SEED_SERVER);   // database delle squadre identico a quello del server
-    this.m = new Match(db[fx.home.id], db[fx.away.id], { halfSeconds: fx.halfSeconds, humanTeam: -1, rng: makeRng(fx.seed) });
+    this.m = new Match(db[fx.home.id], db[fx.away.id], { halfSeconds: fx.halfSeconds, humanTeam: -1, rng: makeRng(fx.seed), weather: fx.weather, timeOfDay: fx.timeOfDay });
     // partita già finita: si guarda dall'inizio; in corso: si salta al minuto attuale
     this.fromStart = fx.phase === 'FINISHED';
     this.startWall = Date.now();

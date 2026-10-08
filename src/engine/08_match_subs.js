@@ -44,11 +44,14 @@ Match.prototype.doSub = function (t, out, benchData) {
   t.bench.splice(bi, 1);
   t.subbedOff = t.subbedOff || [];
   t.subbedOff.push(outData);
+  // i numeri di chi esce restano (statistiche di fine partita e migliore in campo)
+  t.subbedStats = t.subbedStats || [];
+  t.subbedStats.push({ data: outData, stats: out.stats, cards: out.cards });
   out.data = benchData;
   out.isGK = benchData.role === 'GK';
   out.energy = 100; out.energyCap = 100;
   out.cards = { yellow: 0, red: false };
-  out.stats = { passes: 0, passesOk: 0, shots: 0, goals: 0, tackles: 0 };
+  out.stats = { passes: 0, passesOk: 0, shots: 0, goals: 0, tackles: 0, saves: 0 };
   out.stunned = 0;
   t.subsMade = (t.subsMade || 0) + 1;
   this.queueBanner('Cambio — ' + benchData.name + ' ↔ ' + outData.name, 2, 'info');

@@ -43,6 +43,7 @@ class Renderer {
     this.buildStadium();
     this.buildBall();
     this.buildFx();
+    this.buildWeather();    // pioggia e neve (src/client/09_render_weather.js)
     this.playerMeshes = [];
     this.cosmetics = new Map();   // aspetto comprato nel negozio (dal server) per i calciatori degli umani
     this.humanMarks = [];
@@ -92,7 +93,7 @@ class Renderer {
 
   buildLights() {
     const s = this.scene;
-    s.add(new THREE.HemisphereLight('#c9dcff', '#1f3a24', 0.5));
+    s.add(this.hemi = new THREE.HemisphereLight('#c9dcff', '#1f3a24', 0.5));
     const sun = this.sun = new THREE.DirectionalLight('#fff3df', 1.05);
     sun.position.set(-35, 90, 45);
     sun.castShadow = true;
@@ -101,7 +102,7 @@ class Renderer {
     c.left = -70; c.right = 70; c.top = 50; c.bottom = -50; c.near = 10; c.far = 220;
     sun.shadow.bias = -0.0005;
     s.add(sun);
-    const fill = new THREE.DirectionalLight('#9fb8ff', 0.25);
+    const fill = this.fill = new THREE.DirectionalLight('#9fb8ff', 0.25);
     fill.position.set(40, 50, -40);
     s.add(fill);
   }
@@ -204,7 +205,7 @@ class Renderer {
     for (let i = 0; i < 2; i++) { g2.fillStyle = i ? '#2a6d38' : '#2e7640'; g2.fillRect(i * 32, 0, 32, 64); }
     const t2 = new THREE.CanvasTexture(cv2); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.repeat.set(9, 1);
     t2.encoding = THREE.sRGBEncoding;
-    const around = new THREE.Mesh(new THREE.PlaneGeometry(135, 96), new THREE.MeshLambertMaterial({ map: t2 }));
+    const around = this.around = new THREE.Mesh(new THREE.PlaneGeometry(135, 96), new THREE.MeshLambertMaterial({ map: t2 }));
     around.rotation.x = -Math.PI / 2; around.position.y = -0.02; around.receiveShadow = true;
     this.scene.add(around);
     // bandierine
@@ -362,7 +363,8 @@ class Renderer {
     board(30, -57, -21, Math.PI / 2); board(30, -57, 21, Math.PI / 2);
     board(30, 57, -21, -Math.PI / 2); board(30, 57, 21, -Math.PI / 2);
     // torri faro
-    const lampMat = new THREE.MeshBasicMaterial({ color: '#fffbe6' });
+    const lampMat = this.lampMat = new THREE.MeshBasicMaterial({ color: '#fffbe6' });
+    this.floodGlows = [];
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 42, 8), concrete);
       pole.position.set(sx * 66, 21, sz * 52); this.scene.add(pole);
@@ -370,6 +372,7 @@ class Renderer {
       head.position.set(sx * 64, 43, sz * 50); head.lookAt(0, 0, 0); this.scene.add(head);
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTexture(), color: '#fff3c4', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       glow.scale.set(26, 26, 1); glow.position.copy(head.position); this.scene.add(glow);
+      this.floodGlows.push(glow);
     }
   }
   glowTexture() {
@@ -494,7 +497,8 @@ class Renderer {
   // perno in vita (si piega e ruota contro il bacino nella corsa), spalle, gomiti; collo con la testa, che resta
   // dritta mentre il corpo si inclina. Ogni pezzo è una geometria unica colorata nei vertici, un solo materiale.
   makePlayerMesh(p) {
-    const cos = this.cosmetics.get(p) || null, it = (cos && cos.items) || {};
+    // aspetto: comprato dal giocatore umano (dal server) oppure scelto per una tua squadra (look.items, 22_team_editor.js)
+    const cos = this.cosmetics.get(p) || (p.data.look && p.data.look.items ? { items: p.data.look.items, number: p.data.number } : null), it = (cos && cos.items) || {};
     const look0 = p.data.look;
     // capelli e scarpe dell'aspetto comprato; il resto della maglia resta quello della squadra
     const look = !cos ? look0 : Object.assign({}, look0, {
@@ -629,6 +633,7 @@ class Renderer {
     for (const pm of this.playerMeshes) this.disposePlayerMesh(pm);
     this.playerMeshes = (match.allSlots ? match.allSlots() : match.allPlayers()).map(p => this.makePlayerMesh(p));
     this.match = match;
+    this.applyEnvironment(match.weather, match.timeOfDay);   // meteo e ora del giorno della partita
   }
 
   // aspetto comprato (letto dal server) per un calciatore: si ricostruisce solo il suo modello
@@ -876,6 +881,7 @@ class Renderer {
     this.updateFx(dt);
     this.updateNets(dt);
     this.updateCamera(dt, bx, by, bz, mine && mine.player, match);
+    this.updateWeather(dt);
   }
 
   animateCrowd(dt) {
@@ -912,6 +918,7 @@ class Renderer {
     this.camera.position.lerp(want, Math.min(1, dt * 2.5));
     this.camTarget.lerp(new THREE.Vector3(frame[0], frame[1] * 0.5 + 0.5, frame[2]), Math.min(1, dt * 5));
     this.camera.lookAt(this.camTarget);
+    this.updateWeather(dt);
   }
 
   updateCamera(dt, bx, by, bz, controlled, match) {

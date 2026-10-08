@@ -29,16 +29,28 @@ class Ball {
   }
 }
 
+// METEO — quanto cambia il pallone (1 = come sempre). Con la pioggia l'erba bagnata fa scivolare la palla più veloce
+// e la fa rimbalzare meno; con la neve la palla frena molto di più e rimbalza poco.
+// La partita mette i valori del suo meteo mentre si calcola (Match.withRng), così più partite insieme non si mescolano.
+const WEATHER_BALL = {
+  clear: { roll: 1, drag: 1, bounce: 1 },
+  rain: { roll: 0.8, drag: 0.85, bounce: 0.85 },
+  snow: { roll: 1.45, drag: 1.3, bounce: 0.7 },
+};
+const WEATHERS = ['clear', 'rain', 'snow'];
+const TIMES_OF_DAY = ['day', 'sunset', 'night'];
+let BALL_ENV = WEATHER_BALL.clear;
+
 // Un passo di fisica (usato anche per prevedere la traiettoria e per calcolare passaggi e tiri)
 function stepBallPhysics(b, dt) {
-  const C = CONFIG, R = C.BALL_R;
+  const C = CONFIG, R = C.BALL_R, E = BALL_ENV;
   const onGround = b.y <= R + 0.002 && Math.abs(b.vy) < 0.6;
   if (onGround) {
     b.y = R; b.vy = 0;
     const sp = len(b.vx, b.vz);
     if (sp > 0) {
       // rotolamento sull'erba: attrito costante più una parte proporzionale alla velocità
-      const ns = Math.max(0, sp - (C.ROLL_DECEL + sp * C.ROLL_DRAG) * dt);
+      const ns = Math.max(0, sp - (C.ROLL_DECEL * E.roll + sp * C.ROLL_DRAG * E.drag) * dt);
       b.vx *= ns / sp; b.vz *= ns / sp;
       // a terra l'effetto laterale fa ancora girare un poco il pallone
       if (b.spin && ns > 0.5) { const a = C.MAGNUS * 0.3 * b.spin * dt, vx = b.vx; b.vx -= b.vz * a; b.vz += vx * a; }
@@ -66,7 +78,7 @@ function stepBallPhysics(b, dt) {
     if (b.vy < -0.6) {
       // rimbalzo: più forte l'impatto, meno energia torna indietro; l'erba frena e l'effetto cambia la corsa
       const vin = -b.vy;
-      b.vy = vin * clamp(C.BOUNCE - 0.012 * vin, 0.38, C.BOUNCE);
+      b.vy = vin * clamp(C.BOUNCE * E.bounce - 0.012 * vin, 0.38 * E.bounce, C.BOUNCE * E.bounce);
       const sh = len(b.vx, b.vz);
       if (sh > 0.01) {
         const ns = Math.max(0, sh * (1 - 0.16 * Math.min(1, vin / 8)) + clamp(b.topspin * R * 0.25, -sh * 0.3, sh * 0.3));
