@@ -13,15 +13,24 @@ const INPUT_BUFFER_S = 0.2;
 class Match {
   // opts.rng: generatore casuale proprio della partita (makeRng(seme)). Con lo stesso seme la partita si ripete
   // identica, anche se intanto altro codice usa rand(): così il server la calcola e i client la rivedono uguale.
+  // opts.weather: 'clear' (sereno), 'rain' (pioggia), 'snow' (neve); opts.timeOfDay: 'day', 'sunset', 'night' (solo grafica)
   constructor(homeData, awayData, opts) {
     this.rng = (opts && opts.rng) || null;
+    this.weather = WEATHERS.includes(opts && opts.weather) ? opts.weather : 'clear';
+    this.timeOfDay = TIMES_OF_DAY.includes(opts && opts.timeOfDay) ? opts.timeOfDay : 'night';
+    this.ballEnv = WEATHER_BALL[this.weather];
     this.withRng(() => this.setup(homeData, awayData, opts));
   }
+  // mentre la partita si calcola usa il suo generatore casuale e il pallone del suo meteo
   withRng(fn) {
-    if (!this.rng) return fn();
-    const prev = rand;
-    rand = this.rng;
-    try { return fn(); } finally { rand = prev; }
+    const prevEnv = BALL_ENV;
+    BALL_ENV = this.ballEnv || WEATHER_BALL.clear;
+    try {
+      if (!this.rng) return fn();
+      const prev = rand;
+      rand = this.rng;
+      try { return fn(); } finally { rand = prev; }
+    } finally { BALL_ENV = prevEnv; }
   }
 
   setup(homeData, awayData, opts) {
@@ -620,6 +629,7 @@ class Match {
     if (rand() < chance) {
       if (lastShot) {
         gk.team.opponent().stats.onTarget++;
+        gk.stats.saves = (gk.stats.saves || 0) + 1;
         this.matchEvent('SHOT_ON_TARGET', { player: this.lastKick.player, reason: 'Parata', consequence: 'SAVE' });
         this.emit('save', {}); this.showBanner('Parata!', 1.2);
       }
@@ -1084,11 +1094,12 @@ class Match {
       }
       b.vx = o.vx; b.vz = o.vz; b.vy = 0;
       this.possessionTeam.stats.possession += dt;
+      this.possessionTeam.stats[this.half > 1 ? 'possH2' : 'possH1'] += dt;
     } else {
       this.stepBallFree(dt);
       this.checkBallContact();
       if (this.state === 'PLAY' && !b.owner) this.ballBodyBlock();
-      if (this.possessionTeam) this.possessionTeam.stats.possession += dt;
+      if (this.possessionTeam) { this.possessionTeam.stats.possession += dt; this.possessionTeam.stats[this.half > 1 ? 'possH2' : 'possH1'] += dt; }
     }
     if (this.state === 'PLAY') this.checkBoundaries();
     if (this.state === 'PLAY') this.updateAdvantage();
@@ -1231,6 +1242,7 @@ class Match {
       f[k++] = p.speed(); f[k++] = p.anim.kick; f[k++] = p.anim.dive > 0 ? p.anim.diveDir : 0;
     }
     this.replay.push(f);
+    this.replayCount = (this.replayCount || 0) + 1;   // fotogrammi registrati in tutto (per le azioni migliori)
     while (this.replay.length > this.replayMax) this.replay.shift();
   }
 }

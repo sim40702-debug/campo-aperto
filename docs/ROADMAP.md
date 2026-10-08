@@ -42,6 +42,8 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.10.0 — lingue: italiano, inglese, tedesco, francese
 - 0.11.0 — M2: sostituzioni, finte e dribbling, punizioni e rigori con il mirino
 - 0.12.0 — M3 editor di squadre, M5 carriera da allenatore (stagioni, mercato, crescita), M6 telecronaca
-- 0.12.1 — telecronaca a voce; release anche per Linux  ← attuale
-- prossime — carriera: contratti, infortuni, obiettivi della società; editor dell'aspetto dei giocatori; allenamento
+- 0.12.1 — telecronaca a voce; release anche per Linux
+- 0.13.0 — aggiornamenti automatici dall'app, cartelle in ordine, un file per lingua
+- 0.14.0 — allenamento, meteo e ora del giorno, statistiche e azioni migliori, aspetto dei giocatori, avvio offline  ← attuale
+- prossime — carriera: contratti, infortuni, obiettivi della società
 - 1.0.0 — M6 rifinitura completa, prima versione completa

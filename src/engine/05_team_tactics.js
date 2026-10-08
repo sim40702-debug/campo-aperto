@@ -14,7 +14,7 @@ class Team {
     this.bench = [];
     this.score = 0;
     this.chaser = null; this.presser = null; this.cover = null;
-    this.stats = { possession: 0, shots: 0, onTarget: 0, passes: 0, passesOk: 0, fouls: 0, corners: 0, offsides: 0, yellow: 0, red: 0 };
+    this.stats = { possession: 0, possH1: 0, possH2: 0, shots: 0, onTarget: 0, passes: 0, passesOk: 0, fouls: 0, corners: 0, offsides: 0, yellow: 0, red: 0 };
     const slots = FORMATIONS[this.formation];
     data.players.forEach((pd, i) => {
       if (i < 11) {

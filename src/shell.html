@@ -38,6 +38,15 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .sweep div { width: 35%; height: 100%; background: var(--flood); animation: sweep 1.1s ease-in-out infinite; }
 @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 #loading p { color: var(--slate); margin: 14px 0 0; }
+.ld-offline { max-width: 620px; margin-top: 26px; background: var(--night-2); border-left: 4px solid var(--signal); padding: 16px 20px; animation: ld-in 0.25s ease-out both; }
+@keyframes ld-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ld-offline h3 { font-family: var(--display); font-size: 26px; font-weight: 800; font-style: italic; margin: 0; }
+.ld-offline p { line-height: 1.5; }
+.ld-offline .actions { margin-top: 18px; }
+.home-notices { position: absolute; top: calc(104px + env(safe-area-inset-top, 0px)); right: clamp(12px, 3vw, 32px); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.offline-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; font-size: 13px; color: var(--chalk); background: var(--night-2); border: 1px solid rgba(243,245,238,0.3); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+.offline-pill:hover { background: var(--night-3); border-color: var(--chalk); }
+.offline-pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--slate); }
 
 /* ---------- menu ---------- */
 .menu { position: fixed; inset: 0; display: flex; align-items: center;
@@ -52,7 +61,7 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 
 /* ---------- aggiornamento (app desktop) ---------- */
 /* sotto il riquadro del giocatore in alto a destra, come le altre informazioni dell'account */
-.update-pill { position: absolute; top: calc(104px + env(safe-area-inset-top, 0px)); right: clamp(12px, 3vw, 32px); display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; font-size: 13px; color: var(--chalk);
+.update-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; font-size: 13px; color: var(--chalk);
   background: var(--night-2); border: 1px solid rgba(255,154,60,0.55); box-shadow: 0 6px 18px rgba(0,0,0,0.3); transition: background 0.12s, border-color 0.12s; }
 .update-pill:hover { background: var(--night-3); border-color: #ff9a3c; }
 .update-pill i { width: 9px; height: 9px; border-radius: 50%; background: #ff9a3c; box-shadow: 0 0 0 3px rgba(255,154,60,0.25); animation: upd-pulse 2.4s ease-in-out infinite; }
@@ -73,6 +82,24 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .upd-notes h4 { font-family: var(--display); font-size: 19px; margin: 12px 0 4px; }
 .upd-notes code { font-size: 13px; background: rgba(243,245,238,0.08); padding: 1px 5px; }
 .upd-row { align-items: center; gap: 12px; }
+
+/* ---------- allenamento ---------- */
+.home-playrow { display: flex; gap: 8px; width: min(460px, 100%); margin-bottom: 16px; align-items: stretch; }
+.home-playrow .home-play { flex: 1 1 auto; width: auto; margin-bottom: 0; min-width: 0; }
+.home-train { flex: 0 0 138px; align-content: center; }
+.home-train small { font-size: 12.5px; }
+.tr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; max-width: 900px; }
+.tr-card { display: grid; gap: 5px; text-align: left; background: var(--night-2); border: 1px solid rgba(243,245,238,0.1); border-top: 4px solid rgba(243,245,238,0.25); padding: 14px 16px; transition: border-color 0.12s, background 0.12s; }
+.tr-card:hover { background: var(--night-3); border-top-color: var(--flood); }
+.tr-card.done { border-top-color: var(--turf-light); }
+.tr-card b { font-family: var(--display); font-size: 24px; font-weight: 800; font-style: italic; }
+.tr-card small { color: var(--slate); font-size: 14px; line-height: 1.4; }
+.tr-goal { font-size: 14px; } .tr-best { font-size: 13px; color: var(--flood); }
+.tr-result { max-width: 70ch; background: var(--night-2); border-left: 4px solid var(--signal); padding: 10px 14px; margin: -6px 0 18px; }
+.tr-result.ok { border-left-color: var(--turf-light); } .tr-result .rec { color: var(--flood); font-weight: 600; }
+#tr-hud { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 18px; background: rgba(12,26,43,0.85); border-left: 4px solid var(--flood); padding: 6px 14px;
+  font-family: var(--display); font-weight: 700; font-size: 20px; }
+#hud.training .scoreboard, #hud.training #minimap { display: none; }
 
 /* ---------- home ---------- */
 .menu-col { display: flex; flex-direction: column; min-height: 100%; justify-content: center; padding-top: max(3vh, 84px); width: 100%; min-width: 0; }
@@ -296,6 +323,10 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 @keyframes pop { from { transform: scale(0.82); opacity: 0; } to { transform: none; opacity: 1; } }
 #scorer { position: fixed; top: 44%; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 600; text-shadow: 0 2px 0 rgba(0,0,0,0.5); }
 #replay-tag { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 18px; font-family: var(--display); font-weight: 800; font-style: italic; font-size: 26px; color: var(--night); background: var(--flood); padding: 2px 14px; }
+#hl-bar { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 10px;
+  background: rgba(12,26,43,0.88); border-left: 4px solid var(--flood); padding: 8px 10px 8px 16px; white-space: nowrap; }
+#hl-label { font-family: var(--display); font-weight: 700; font-size: 20px; margin-right: 6px; }
+#hl-bar .ghost { padding: 6px 14px; font-size: 14px; }
 #replay-tag small { font-family: var(--text); font-style: normal; font-weight: 400; font-size: 13px; margin-left: 8px; }
 .netind { position: fixed; top: calc(60px + env(safe-area-inset-top, 0px)); left: 16px; display: flex; align-items: center; gap: 8px; background: rgba(12,26,43,0.85); padding: 4px 10px; font-size: 14px; }
 .pc { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 280px; background: rgba(12,26,43,0.85); padding: 10px 12px; }
@@ -338,6 +369,13 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 .te-row input[type=number] { font: inherit; color: var(--chalk); background: rgba(243,245,238,0.06); border: 1px solid rgba(243,245,238,0.2); }
 .te-row select { font: inherit; font-size: 14px; color: var(--chalk); background: var(--night-2); border: 1px solid rgba(243,245,238,0.2); padding: 6px 8px; }
 .te-row input:focus, .te-row select:focus { border-color: var(--flood); outline: none; }
+.te-look { grid-column: 2 / -1; display: flex; gap: 8px; align-items: center; margin: -2px 0 8px; }
+.te-look select { flex: 0 1 190px; }
+.te-skin { width: 30px; height: 30px; flex: 0 0 30px; border: 2px solid rgba(243,245,238,0.35); padding: 0; cursor: pointer; }
+.te-skin:hover { border-color: var(--flood); }
+.te-shirtrow { display: flex; gap: 8px; align-items: center; }
+.te-shirtrow select { font: inherit; font-size: 14px; color: var(--chalk); background: var(--night-2); border: 1px solid rgba(243,245,238,0.2); padding: 6px 8px; min-width: 200px; }
+.te-shirtrow .ghost { padding: 6px 14px; font-size: 14px; }
 .te-bench { margin-top: 10px; color: var(--slate); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; }
 @media (max-width: 720px) { .te-row { grid-template-columns: 56px 1fr; } .te-role { grid-column: 1 / -1; } }
 /* cambi nel menu di pausa */
@@ -374,6 +412,19 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 #ft-stats td, #ft-stats th { padding: 7px 8px; border-bottom: 1px solid rgba(243,245,238,0.1); }
 #ft-stats td { font-family: var(--display); font-weight: 700; font-size: 21px; width: 30%; }
 #ft-stats td:first-child { text-align: right; } #ft-stats th { font-weight: 400; color: var(--slate); }
+.ft-grid { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+.ft-grid #ft-stats { flex: 1 1 420px; }
+.ft-side { flex: 0 1 300px; min-width: 240px; display: flex; flex-direction: column; gap: 12px; }
+.ft-mvp { background: var(--night-2); border-top: 4px solid var(--flood); padding: 12px 16px; }
+.ft-mvp small { color: var(--slate); display: block; font-size: 13px; }
+.ft-mvp b { font-family: var(--display); font-size: 26px; font-weight: 800; font-style: italic; display: block; margin: 2px 0; }
+.ft-mvp .rt { float: right; font-family: var(--display); font-size: 30px; font-weight: 800; color: var(--flood); line-height: 1; }
+.ft-mvp p { margin: 4px 0 0; color: var(--slate); font-size: 14px; }
+.ft-top h4 { margin: 4px 0 6px; font-family: var(--display); font-size: 18px; }
+.ft-top div { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid rgba(243,245,238,0.08); font-size: 14px; }
+.ft-top div span:first-child { flex: 1; } .ft-top .rt { font-family: var(--display); font-weight: 700; font-size: 17px; min-width: 2.2em; text-align: right; }
+.ft-top small { color: var(--slate); }
+.ft-hl { align-self: flex-start; }
 
 /* ---------- avvisi ---------- */
 #toast { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); z-index: 60; background: var(--night-3); border-left: 4px solid var(--flood); padding: 12px 18px; max-width: min(560px, 90vw); box-shadow: 0 6px 24px rgba(0,0,0,0.4); animation: toast-in 0.18s ease-out; }
@@ -607,14 +658,26 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 
 <div id="loading" role="status">
   <h1 class="title"><span>Campo</span><span>Aperto</span></h1>
-  <div class="sweep"><div></div></div>
-  <p>Accensione dei fari…</p>
+  <div class="sweep" id="ld-sweep"><div></div></div>
+  <p id="ld-text">Accensione dei fari…</p>
+  <!-- server non raggiungibile all'avvio: si può giocare offline (src/game/29_startup.js) -->
+  <div class="ld-offline" id="ld-offline" hidden>
+    <h3>Server non raggiungibile</h3>
+    <p>Non riesco a collegarmi ai server di Campo Aperto. Puoi giocare offline: partita rapida, allenamento, competizioni, carriera e le tue squadre funzionano anche senza internet. Account, monete, scommesse, shop e partite online tornano quando i server rispondono.</p>
+    <div class="actions">
+      <button class="primary" id="ld-play-offline">Gioca offline</button>
+      <button class="ghost" id="ld-retry">Riprova</button>
+    </div>
+  </div>
 </div>
 
 <main id="menu" class="menu" hidden>
   <div class="menu-col">
     <h1 class="title"><span>Campo</span><span>Aperto</span></h1>
-    <button class="primary home-play" id="btn-quick"><b>Gioca</b><small>Partita 11 contro 11 contro l'IA</small></button>
+    <div class="home-playrow">
+      <button class="primary home-play" id="btn-quick"><b>Gioca</b><small>Partita 11 contro 11 contro l'IA</small></button>
+      <button class="home-tile home-train" id="btn-training"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9.5L12 4l8 5.5V20"/><path d="M8 20v-6h8v6"/><circle cx="12" cy="9.5" r="1.6" class="f"/></svg><b>Allenamento</b><small>Tiri, punizioni, rigori</small></button>
+    </div>
     <div class="home-tiles" role="list">
       <button class="home-tile wide comp-tile" id="btn-comps" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 3.6M17 6h2.5a2.5 2.5 0 0 1-2.6 3.6"/><path d="M12 13v3.5M8.5 20h7l-.8-3.5H9.3z"/></svg><b>Competizioni</b><small>Campionato, torneo e coppe: calendario, classifica, tabellone</small></button>
       <button class="home-tile wide" id="btn-watch" data-eco="fixtures" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12.5" rx="1.5"/><path d="M8 21h8M12 17.5V21"/><path d="M10 9l5 2.3-5 2.3z" class="f"/></svg><b>Guarda partita</b><small>Partite del server, cronaca e scommesse dei giocatori</small></button>
@@ -641,7 +704,10 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
     <button class="ghost" id="eco-user">Accedi</button>
   </div>
-  <button class="update-pill" id="upd-pill" hidden><i aria-hidden="true"></i><span id="upd-pill-text">Nuovo aggiornamento disponibile</span></button>
+  <div class="home-notices">
+    <button class="update-pill" id="upd-pill" hidden><i aria-hidden="true"></i><span id="upd-pill-text">Nuovo aggiornamento disponibile</span></button>
+    <button class="offline-pill" id="offline-pill" hidden title="Riprova a collegarti ai server"><i aria-hidden="true"></i><span>Offline · Riprova</span></button>
+  </div>
   <aside class="social" id="social" aria-label="Amici">
     <button class="social-tab" id="social-toggle" aria-expanded="false" aria-controls="social-body" title="Amici e sfide">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M2.5 19c.6-3.6 2.8-5.5 5.5-5.5s4.9 1.9 5.5 5.5M13.6 14.6c.9-.7 1.8-1 2.9-1 2.3 0 4 1.6 4.6 4.9"/></svg>
@@ -678,6 +744,8 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <label>Formazione</label><div class="segs" id="row-form"><div class="segs" id="opt-form"></div></div>
       <label>Mentalità</label><div class="segs" id="opt-ment"></div>
       <label>Telecronaca</label><div class="segs" id="opt-comm"></div>
+      <label>Meteo</label><div class="segs" id="opt-weather"></div>
+      <label>Ora</label><div class="segs" id="opt-time"></div>
     </div>
     <div class="actions">
       <button class="primary" id="setup-start">Scendi in campo</button>
@@ -702,11 +770,13 @@ select.sel:focus { outline: none; border-color: var(--flood); }
           <span class="lbl">Formazione</span><div class="segs" id="te-form-opt"></div>
           <span class="lbl">Maglia di casa</span><div class="te-colors"><input type="color" id="te-home0" aria-label="Maglia"><input type="color" id="te-home1" aria-label="Pantaloncini"><input type="color" id="te-home2" aria-label="Calzettoni"></div>
           <span class="lbl">Maglia da trasferta</span><div class="te-colors"><input type="color" id="te-away0" aria-label="Maglia"><input type="color" id="te-away1" aria-label="Pantaloncini"><input type="color" id="te-away2" aria-label="Calzettoni"></div>
+          <label for="te-shirt">Stile di maglia</label><div class="te-shirtrow"><select id="te-shirt"></select><button class="ghost" id="te-shop">Vai allo Shop</button></div>
+          <span></span><p class="small" id="te-shop-note" style="margin:0"></p>
         </div>
         <canvas id="te-preview" width="240" height="124" aria-hidden="true"></canvas>
       </div>
       <h3>Giocatori</h3>
-      <p class="small">La forza della squadra decide gli attributi; qui scegli nomi, numeri, caratteristica e piede. I primi 11 sono i titolari.</p>
+      <p class="small">La forza della squadra decide gli attributi; qui scegli nomi, numeri, caratteristica, piede e aspetto. I primi 11 sono i titolari.</p>
       <div id="te-players"></div>
       <div class="actions" style="margin-top:16px">
         <button class="primary" id="te-save">Salva</button>
@@ -782,6 +852,8 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <span class="lbl">Squadra ospite</span><div class="segs"><button class="arrow" data-lcycle="away:-1" aria-label="Squadra ospite precedente">‹</button><input class="seg tn-seg" id="lb-away-name" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Nome della squadra ospite (scrivi per cambiarlo)" title="Scrivi per cambiare il nome; vuoto = nome originale"><button class="arrow" data-lcycle="away:1" aria-label="Squadra ospite successiva">›</button></div>
       <span class="lbl">Durata di un tempo</span><div class="segs" id="lb-len"></div>
       <span class="lbl">Difficoltà IA</span><div class="segs" id="lb-diff"></div>
+      <span class="lbl">Meteo</span><div class="segs" id="lb-weather"></div>
+      <span class="lbl">Ora</span><div class="segs" id="lb-time"></div>
     </div>
     <p class="hintline" id="lb-settings-ro"></p>
     <p class="status err" id="lb-lag" aria-live="polite"></p>
@@ -812,6 +884,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <div data-pane="grafica" class="opts">
       <span class="lbl">Qualità</span><div class="segs" id="st-quality"></div>
       <span class="lbl">Risoluzione</span><div class="segs" id="st-renderres"></div>
+      <span class="lbl" id="st-startlbl">Avvio</span><div class="segs" id="st-startrow"><div class="segs" id="st-start"></div></div>
       <span class="lbl" id="st-winlbl">Finestra</span><div class="segs" id="st-winrow"><div class="segs" id="st-winsize"></div></div>
       <span class="lbl">Scala di risoluzione</span><div class="range"><input type="range" id="st-res" min="50" max="100" step="5"><output id="st-res-out"></output></div>
       <span class="lbl">Risoluzione dinamica</span><label class="check"><input type="checkbox" id="st-dyn"> Abbassa la risoluzione da sola se gli fps calano</label>
@@ -962,6 +1035,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <div class="mc-top">
       <div class="mc-teams" id="mc-teams"></div>
       <div class="mc-state" id="mc-state"></div>
+      <div class="small" id="mc-weather"></div>
       <button class="primary" id="mc-watch">Guarda partita</button>
     </div>
     <div class="ecomsg" id="mc-msg" hidden></div>
@@ -1094,6 +1168,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
   <div id="scorer" hidden></div>
   <div id="commentary" hidden role="status" aria-live="polite"></div>
   <div id="replay-tag" hidden>Replay<small></small></div>
+  <div id="tr-hud" hidden></div>
   <div class="pc" id="pc" hidden>
     <div class="pc-top"><span id="pc-num"></span><span id="pc-name"></span><span id="pc-role"></span></div>
     <div class="bar"><div id="pc-energy"></div></div>
@@ -1136,6 +1211,19 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <button class="ghost" id="upd-cancel" hidden>Annulla</button>
       <button class="ghost" id="upd-page" hidden>Apri la pagina della versione</button>
       <button class="ghost" id="upd-back">Indietro</button>
+    </div>
+  </div>
+</section>
+
+<!-- allenamento: esercizi con sfide a punti (src/game/28_training.js) -->
+<section id="training" class="panel" hidden>
+  <div class="sheet">
+    <h2>Allenamento</h2>
+    <p class="sub">Esercizi con la tua squadra della partita rapida. Supera l'obiettivo e batti il tuo record.</p>
+    <p class="tr-result" id="tr-result" hidden></p>
+    <div class="tr-list" id="tr-list"></div>
+    <div class="actions">
+      <button class="ghost" id="tr-back">Indietro</button>
     </div>
   </div>
 </section>
@@ -1192,7 +1280,14 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <p class="ft-score" id="ft-score"></p>
     <p class="ft-comp-note" id="ft-comp-note" hidden></p>
     <div id="ft-goals"></div>
-    <table id="ft-stats"></table>
+    <div class="ft-grid">
+      <table id="ft-stats"></table>
+      <div class="ft-side">
+        <div class="ft-mvp" id="ft-mvp" hidden></div>
+        <button class="ghost ft-hl" id="ft-highlights" hidden>Rivedi le azioni migliori</button>
+        <div class="ft-top" id="ft-top"></div>
+      </div>
+    </div>
     <div class="actions">
       <button class="primary" id="ft-comp" hidden>Torna alla competizione</button>
       <button class="primary" id="ft-rematch">Rivincita</button>
@@ -1204,6 +1299,8 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 </section>
 
 <div id="busy" hidden><div class="box" role="status" aria-live="polite"><h3 id="busy-text">Collegamento…</h3><div class="sweep"><div></div></div><button class="ghost" id="busy-cancel">Annulla</button></div></div>
+<!-- azioni migliori a fine partita (src/game/27_highlights.js) -->
+<div id="hl-bar" hidden><span id="hl-label"></span><button class="ghost" id="hl-next">Prossima</button><button class="ghost" id="hl-exit">Fine</button></div>
 <div id="toast" hidden role="alert"></div>
 <div id="fps" hidden></div>
 <aside id="netdiag" hidden aria-label="Diagnostica di rete"><h4>Diagnostica di rete <small>Ctrl+Maiusc+D</small></h4><dl id="nd-info"></dl><ol id="nd-log"></ol></aside>

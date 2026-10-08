@@ -383,6 +383,20 @@ function startLoops(host, clients, hostInput) {
   cm.buildMatch({ mid: 'm1', setup: { home: 0, away: 1, halfSeconds: 120, difficulty: 1, names: ['I Leoni', ''] }, humans: [] });
   check('partita online: il client usa i nomi scelti dall\'host', cm.match && cm.match.teams[0].data.name === 'I Leoni' && cm.match.teams[0].data.short === 'ILE' && cm.match.teams[1].data.name === db[1].name);
 
+  // --- meteo scelto da chi ospita: uguale per tutti, valori sconosciuti -> sereno e sera
+  cs.onMsg(Object.assign({}, okLobby, { settings: Object.assign({}, okLobby.settings, { weather: 'snow', timeOfDay: 'sunset' }) }));
+  check('lobby: meteo e ora dell\'host arrivano ai client', cs.lobby && cs.lobby.settings.weather === 'snow' && cs.lobby.settings.timeOfDay === 'sunset');
+  cs.onMsg(Object.assign({}, okLobby, { settings: Object.assign({}, okLobby.settings, { weather: '<b>', timeOfDay: 7 }) }));
+  check('lobby: meteo non valido -> sereno, sera', cs.lobby && cs.lobby.settings.weather === 'clear' && cs.lobby.settings.timeOfDay === 'night');
+  const cw = new A.ClientSession(stub, db, 'x'); clearInterval(cw.pingTimer);
+  cw.buildMatch({ mid: 'm2', setup: { home: 0, away: 1, halfSeconds: 120, difficulty: 1, weather: 'rain', timeOfDay: 'day' }, humans: [] });
+  check('partita online: il client vede il meteo dell\'host', cw.match && cw.match.weather === 'rain' && cw.match.timeOfDay === 'day');
+  // numeri dei giocatori a fine partita: solo numeri piccoli e nomi corti
+  cw.meta = { stats: [], ps: [['<script>' + 'x'.repeat(60), 9, 2, 5, 'a', -3, 1e9, 4, 1, 1, 0, 0]] };
+  cw.applyMeta();
+  const np = cw.match.netPlayers && cw.match.netPlayers[0];
+  check('meta: numeri dei giocatori ripuliti', np && np.name.length === 40 && np.stats.goals === 2 && np.stats.passesOk === 0 && np.stats.passes === 0 && np.stats.tackles === 999 && np.isGK === true, JSON.stringify(np));
+
   // --- il relay locale rifiuta le pagine web (Origin http/https), accetta chi non ha Origin
   const { WebSocket: WsC } = require('ws');
   const relOrig = await createRelay({ port: 0, quiet: true, createLocalOnly: true });

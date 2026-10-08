@@ -391,6 +391,7 @@ class Economy {
     $('mc-comp').textContent = f.comp || '';
     $('mc-teams').innerHTML = '<span class="kitdot" style="background:' + esc(f.home.kit) + '"></span>' + esc(f.home.name) + ' ' + sc + ' ' + esc(f.away.name) + '<span class="kitdot" style="background:' + esc(f.away.kit) + '"></span>';
     this.renderCenterState();
+    $('mc-weather').textContent = weatherLine(f.weather, f.timeOfDay);   // meteo e ora del giorno della partita
     // schede dei mercati
     $('mc-tabs').innerHTML = MARKET_TABS.map(([id, label]) => '<button class="tab' + (this.mcTab === id ? ' on' : '') + '" data-mt="' + id + '" role="tab">' + label + '</button>').join('');
     $('mc-tabs').querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { this.mcTab = b.dataset.mt; this.renderCenter(); });
@@ -899,6 +900,7 @@ class Economy {
     try {
       const [inv, lo] = await Promise.all([this.api.get('/api/inventory'), this.api.get('/api/players/' + encodeURIComponent(this.api.username) + '/loadout')]);
       this.inv = inv.items; this.myLoadout = lo;
+      rememberOwned(this.api.username, inv.items);   // per l'aspetto delle tue squadre (22_team_editor.js)
       this.loadouts.set(lo.username.toLowerCase(), { at: Date.now(), lo: lo });
       $('ch-number').value = lo.number; $('ch-name').value = lo.name;
       this.msg('ch-msg', '');

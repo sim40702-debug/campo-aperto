@@ -2,6 +2,25 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.14.0 — 08/10/2026 (allenamento, meteo, fine partita, aspetto dei giocatori)
+- **Allenamento** (home, accanto a Gioca): tiri in porta, punizioni con la barriera, rigori, dribbling e passaggi, con il
+  motore vero e pochi giocatori in campo. Ogni esercizio ha un obiettivo (es. 3 punizioni su 10) e un record salvato
+  sul computer. Riquadro con tentativo, gol e obiettivo al posto del tabellone; a fine sfida si torna agli esercizi.
+- **Meteo e ora del giorno**: sereno, pioggia, neve (o a caso) e giorno, tramonto, sera, da scegliere prima della
+  partita rapida e nella lobby online (vale per tutti). Pioggia e neve cadono davvero, il campo è bagnato o innevato, le
+  luci cambiano con l'ora. Il pallone cambia: con la pioggia scivola più lontano e rimbalza meno, con la neve frena.
+  Competizioni e allenamento hanno meteo a caso; senza scelta resta tutto come prima (sereno, sera).
+- **Server**: le partite del server hanno meteo (dal seme) e ora del giorno (dall'orario); nuova migrazione
+  `0008_meteo.sql` e campi `weather` / `timeOfDay` nell'API, il gioco le rigioca con lo stesso pallone. Il motore
+  cambia impronta: va pubblicato anche il server (lo fa il flusso «Aggiorna il server»).
+- **Fine partita**: possesso per tempo, parate, precisione dei passaggi, contrasti e dribbling; **migliore in campo**
+  con il voto e i tre migliori di ogni squadra (online i numeri arrivano dall'host). **Azioni migliori**: fino a sei
+  momenti (tutti i gol, poi pali, parate e occasioni) da rivedere al rallentatore.
+- **Aspetto dei giocatori** delle tue squadre: pelle a scelta; capelli, scarpe e stile di maglia solo se comprati nello
+  Shop con il tuo account (inventario dal server, ricordato sul computer per giocare anche senza internet).
+- **Avvio**: l'app si apre a schermo intero (Impostazioni → Grafica → Avvio). Caricamento con controllo dei server:
+  se non rispondono, «Server non raggiungibile» con **Gioca offline** e **Riprova**, poi «Offline · Riprova» nella home.
+
 ## 0.13.0 — 08/10/2026 (aggiornamenti automatici, cartelle in ordine)
 - **Aggiornamenti automatici dall'app**: all'avvio e ogni 6 ore l'app desktop controlla l'ultima release di GitHub.
   Se c'è una versione più recente compare **Nuovo aggiornamento disponibile** in alto a destra nella home; la schermata

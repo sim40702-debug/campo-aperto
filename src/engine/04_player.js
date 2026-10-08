@@ -21,7 +21,7 @@ class Player {
     this.anim = { phase: rand() * 6, kick: 0, tackle: 0, dive: 0, diveDir: 0, header: 0, celebrate: 0, fall: 0 };
     this.cards = { yellow: 0, red: false };
     this.sentOff = false;        // espulso: esce dal campo e non gioca più
-    this.stats = { passes: 0, passesOk: 0, shots: 0, goals: 0, tackles: 0 };
+    this.stats = { passes: 0, passesOk: 0, shots: 0, goals: 0, tackles: 0, saves: 0 };
   }
   get attr() { return this.data.attr; }
   // massa in kg (fisico e altezza): decide chi sposta chi negli scontri

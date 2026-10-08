@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('campoLan', {
 contextBridge.exposeInMainWorld('campoWindow', {
   setSize: (w, h) => ipcRenderer.invoke('win:set-size', Number(w), Number(h)),
   info: () => ipcRenderer.invoke('win:info'),
+  setStartFullscreen: v => ipcRenderer.invoke('win:start-fullscreen', v === true),
 });
 
 // aggiornamenti dell'app (desktop/aggiornamenti.js): la pagina legge lo stato e chiede di controllare o aggiornare

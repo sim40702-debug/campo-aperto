@@ -15,7 +15,7 @@ export function phaseOf(f, t) {
   return 'FINISHED';
 }
 
-const FIX_COLS = 'id, code, home, away, home_name, away_name, kickoff_at, half_seconds, seed, engine, status, duration_ms, facts, markets, settled_at, comp_label';
+const FIX_COLS = 'id, code, home, away, home_name, away_name, kickoff_at, half_seconds, seed, engine, status, duration_ms, facts, markets, settled_at, comp_label, weather, time_of_day';
 
 export async function fixtureByCode(env, code) {
   if (typeof code !== 'string' || !/^PA-[A-Z0-9]{5}$/.test(code)) fail(404, 'NO_FIXTURE', 'Partita non trovata');
@@ -54,6 +54,8 @@ export function publicFixture(f, t, opts) {
     halfSeconds: f.half_seconds, engine: f.engine, phase: phase,
     settled: f.status === 'SETTLED', serverTime: t,
     comp: f.comp_label || null,              // competizione e giornata (campionato del server)
+    weather: f.weather || 'clear',           // meteo e ora del giorno: il gioco rigioca la partita con lo stesso pallone
+    timeOfDay: f.time_of_day || 'night',
   };
   if (started) {
     out.seed = f.seed;                       // da qui le scommesse sono chiuse: il gioco può rigiocarla uguale
