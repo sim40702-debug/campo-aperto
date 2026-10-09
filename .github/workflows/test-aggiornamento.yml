@@ -45,10 +45,15 @@ jobs:
             process.exit(0);
           })().catch(e => { console.log('errore', e.message); process.exit(0); });
           JS
-          node go.js
-          sleep 60
+          node go.js > go.log 2>&1
+          sleep 90
           echo "--- versione installata dopo:"
           reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall" //s //f "Campo Aperto" 2>/dev/null | grep -i "DisplayVersion\|DisplayName" || true
           ls "$LOCALAPPDATA/campo-aperto-updater" 2>/dev/null || true
           tasklist | grep -i "campo" || true
           tail -20 app.log || true
+          # risultati come avvisi (si leggono dalle annotazioni del lavoro)
+          ver=$(reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall" //s //f "Campo Aperto" 2>/dev/null | grep -i "DisplayVersion" | tr -s ' ' | tr '\n' ' ')
+          echo "::warning title=versione::$ver"
+          while IFS= read -r l; do echo "::warning title=go::${l:0:900}"; done < go.log
+          ls "$LOCALAPPDATA/campo-aperto-updater" 2>/dev/null | tr '\n' ' ' | sed 's/^/::warning title=updater::/'; echo
