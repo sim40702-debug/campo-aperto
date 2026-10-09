@@ -22,6 +22,7 @@ jobs:
           find "$LOCALAPPDATA/Programs" -maxdepth 2 -iname "*.exe" | head
       - name: Avvia e aggiorna
         run: |
+          set +e
           npm init -y > /dev/null && npm i playwright-core@1.48.2 > /dev/null
           exe=$(find "$LOCALAPPDATA/Programs" -maxdepth 2 -iname "Campo Aperto.exe" | head -1)
           echo "exe: $exe"
