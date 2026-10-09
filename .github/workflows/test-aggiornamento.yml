@@ -1,0 +1,54 @@
+# Prova temporanea: su Windows si installa la 0.13.0 e si prova l'aggiornamento automatico alla release più nuova
+name: Prova aggiornamento Windows
+on:
+  push:
+    branches: [test-aggiornamento-win]
+jobs:
+  prova:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installa la 0.13.0
+        run: |
+          curl -sL -o setup.exe https://github.com/sim40702-debug/campo-aperto/releases/download/v0.13.0/CampoAperto-0.13.0-win-x64.exe
+          ./setup.exe //S
+          sleep 20
+          ls "$LOCALAPPDATA/Programs" || true
+          find "$LOCALAPPDATA/Programs" -maxdepth 2 -iname "*.exe" | head
+      - name: Avvia e aggiorna
+        run: |
+          npm init -y > /dev/null && npm i playwright-core@1.48.2 > /dev/null
+          exe=$(find "$LOCALAPPDATA/Programs" -maxdepth 2 -iname "Campo Aperto.exe" | head -1)
+          echo "exe: $exe"
+          "$exe" --remote-debugging-port=9222 > app.log 2>&1 &
+          sleep 25
+          cat > go.js <<'JS'
+          const { chromium } = require('playwright-core');
+          (async () => {
+            const b = await chromium.connectOverCDP('http://127.0.0.1:9222');
+            const pg = b.contexts().flatMap(c => c.pages()).find(p => p.url().includes('index.html'));
+            console.log('stato', JSON.stringify(await pg.evaluate(() => window.campoUpdate.stato())).slice(0, 300));
+            console.log('controlla', JSON.stringify(await pg.evaluate(() => window.campoUpdate.controlla())).slice(0, 300));
+            pg.evaluate(() => window.campoUpdate.aggiorna()).catch(() => {});
+            let st;
+            for (let i = 0; i < 300; i++) {
+              try { st = await pg.evaluate(() => window.campoUpdate.stato()); } catch (e) { console.log('pagina chiusa (installazione in corso)'); break; }
+              if (st.fase === 'errore') break;
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            console.log('ultimo stato', JSON.stringify(st));
+            process.exit(0);
+          })().catch(e => { console.log('errore', e.message); process.exit(0); });
+          JS
+          node go.js
+          sleep 60
+          echo "--- versione installata dopo:"
+          reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall" //s //f "Campo Aperto" 2>/dev/null | grep -i "DisplayVersion\|DisplayName" || true
+          ls "$LOCALAPPDATA/campo-aperto-updater" 2>/dev/null || true
+          tasklist | grep -i "campo" || true
+          tail -20 app.log || true
