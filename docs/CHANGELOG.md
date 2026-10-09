@@ -2,6 +2,10 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.14.2 — 09/10/2026 (repository dei download definitivo)
+- Le versioni escono nel repository pubblico **campo_aperto_dowloads**: l'app controlla e scarica gli aggiornamenti da
+  lì. Questa versione esce anche in campo-aperto, così le app vecchie la trovano e da lei passano al nuovo repository.
+
 ## 0.14.1 — 09/10/2026 (download in un repository pubblico)
 - Le versioni escono nel repository pubblico **stai_nel_gass_campo_aperto**: il codice del gioco può restare privato.
   L'app controlla e scarica gli aggiornamenti da lì (`releasesRepo` in `package.json`).
