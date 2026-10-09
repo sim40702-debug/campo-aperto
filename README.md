@@ -29,8 +29,7 @@ In italiano, inglese, tedesco e francese.
 
 ## Installazione
 
-Scarica l'ultima versione dalla pagina **[Download](https://github.com/sim40702-debug/campo_aperto_dowloads/releases/latest)**
-(repository pubblico `campo_aperto_dowloads`: lì escono tutte le versioni).
+Scarica l'ultima versione dalla pagina **[Releases](../../releases)**.
 
 ### Windows
 
@@ -325,22 +324,7 @@ Per compilare Windows, macOS e Linux insieme con GitHub Actions basta pubblicare
 git tag v0.14.1 && git push --tags
 ```
 
-Le versioni escono nel repository **pubblico** dei download
-[`campo_aperto_dowloads`](https://github.com/sim40702-debug/campo_aperto_dowloads) (campo `releasesRepo` in
-`package.json`), così il codice può restare privato e l'app si aggiorna lo stesso. Serve una volta il segreto
-**`RELEASES_TOKEN`** in questo repository (Settings → Secrets and variables → Actions): un *fine-grained token* di GitHub
-con accesso solo a `campo_aperto_dowloads` e il permesso **Contents: Read and write**. Se il repository dei download
-è vuoto, il flusso ci mette da solo la pagina dei download (`scripts/README-download.md`).
-
-**Due canali.** Dalla scheda **Actions → Rilascio app desktop → Run workflow** si sceglie:
-
-- **prova**: la versione esce come *pre-release* nelle Releases di questo repository privato (tag `v<versione>-prova`).
-  La vedete solo voi, si scarica a mano e serve per provarla prima di darla a tutti. L'app non la propone come
-  aggiornamento.
-- **pubblica**: la versione esce nel repository dei download e le app installate la vedono e si aggiornano da sole.
-  Anche un tag `v<versione>` (vedi sopra) pubblica in questo canale.
-
-Dopo qualche minuto i file dei tre sistemi compaiono nelle **Releases** del repository dei download, con le note prese dal
+Dopo qualche minuto i file dei tre sistemi compaiono in **Releases**, con le note prese dal
 [CHANGELOG](docs/CHANGELOG.md). Se la macchina di un sistema resta in coda a lungo, annulla solo quel lavoro nella
 scheda **Actions**: la release esce con gli altri e rilanciando il flusso più tardi si aggiungono i file mancanti.
 

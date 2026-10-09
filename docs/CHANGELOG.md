@@ -2,9 +2,8 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
-## 0.14.1 — 09/10/2026 (download nel repository campo_aperto_dowloads)
-- Le versioni escono nel repository pubblico **campo_aperto_dowloads**: l'app controlla e scarica gli aggiornamenti da
-  lì. Questa versione esce anche in campo-aperto, così le app vecchie la trovano e da lei passano al nuovo repository.
+## 0.14.1 — 09/10/2026
+- Download e aggiornamenti dell'app sempre da questo repository (campo-aperto), come prima.
 
 ## 0.14.0 — 08/10/2026 (allenamento, meteo, fine partita, aspetto dei giocatori)
 - **Allenamento** (home, accanto a Gioca): tiri in porta, punizioni con la barriera, rigori, dribbling e passaggi, con il
