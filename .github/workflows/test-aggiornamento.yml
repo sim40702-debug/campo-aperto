@@ -54,6 +54,11 @@ jobs:
           tasklist | grep -i "campo" || true
           tail -20 app.log || true
           # risultati come avvisi (si leggono dalle annotazioni del lavoro)
+          echo "::warning title=exe-dopo::$(powershell -NoProfile -Command "(Get-Item '$exe').VersionInfo.ProductVersion")"
+          echo "::warning title=processi::$(tasklist | grep -i -E 'campo|installer|setup' | tr -s ' ' | tr '\n' ';')"
+          echo "::warning title=chiavi::$(powershell -NoProfile -Command "Get-ChildItem HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall | ForEach-Object { (Get-ItemProperty \$_.PsPath).DisplayName + ' ' + (Get-ItemProperty \$_.PsPath).DisplayVersion }" | tr '\n' ';')"
+          echo "::warning title=pending::$(ls -la "$LOCALAPPDATA/campo-aperto-updater/pending" 2>&1 | tr '\n' ';')"
+
           ver=$(reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall" //s //f "Campo Aperto" 2>/dev/null | grep -i "DisplayVersion" | tr -s ' ' | tr '\n' ' ')
           echo "::warning title=versione::$ver"
           while IFS= read -r l; do echo "::warning title=go::${l:0:900}"; done < go.log
