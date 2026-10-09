@@ -332,6 +332,14 @@ Le versioni escono nel repository **pubblico** dei download
 con accesso solo a `stai_nel_gass_campo_aperto` e il permesso **Contents: Read and write**. Se il repository dei download
 è vuoto, il flusso ci mette da solo la pagina dei download (`scripts/README-download.md`).
 
+**Due canali.** Dalla scheda **Actions → Rilascio app desktop → Run workflow** si sceglie:
+
+- **prova**: la versione esce come *pre-release* nelle Releases di questo repository privato (tag `v<versione>-prova`).
+  La vedete solo voi, si scarica a mano e serve per provarla prima di darla a tutti. L'app non la propone come
+  aggiornamento.
+- **pubblica**: la versione esce nel repository dei download e le app installate la vedono e si aggiornano da sole.
+  Anche un tag `v<versione>` (vedi sopra) pubblica in questo canale.
+
 Dopo qualche minuto i file dei tre sistemi compaiono nelle **Releases** del repository dei download, con le note prese dal
 [CHANGELOG](docs/CHANGELOG.md). Se la macchina di un sistema resta in coda a lungo, annulla solo quel lavoro nella
 scheda **Actions**: la release esce con gli altri e rilanciando il flusso più tardi si aggiungono i file mancanti.
