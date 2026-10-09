@@ -354,6 +354,7 @@ src/
 desktop/   app Electron (main.js; aggiornamenti.js controlla GitHub Releases e installa le versioni nuove)
 scripts/   aiuti per build e app (sorgenti.js trova i file in src/, prepara-windows.js per npm run dist:win,
            latest-portable.js crea l'impronta della versione portable per gli aggiornamenti)
+strumenti/ fusion/omino_campo_aperto.py: script per Autodesk Fusion che ricrea il calciatore del gioco
 server/    server lobby/relay per l'online
 cloud/     server dell'economia (Cloudflare Worker + D1 + Durable Object), con migrazioni e test
 tests/     test automatici
