@@ -1,8 +1,9 @@
 {
   "name": "campo-aperto",
   "productName": "Campo Aperto",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "campoApiUrl": "https://campo-aperto-api.campo-aperto.workers.dev",
+  "releasesRepo": "sim40702-debug/stai_nel_gass_campo_aperto",
   "description": "Gioco di calcio 3D originale, undici contro undici",
   "author": "Simone",
   "license": "UNLICENSED",
@@ -62,7 +63,7 @@
       {
         "provider": "github",
         "owner": "sim40702-debug",
-        "repo": "campo-aperto",
+        "repo": "stai_nel_gass_campo_aperto",
         "releaseType": "release"
       }
     ],
