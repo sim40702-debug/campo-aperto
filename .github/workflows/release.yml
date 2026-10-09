@@ -1,4 +1,5 @@
-# Compila l'app per Windows, Mac e Linux e la pubblica in una release (tag v<versione di package.json>).
+# Compila l'app per Windows, Mac e Linux e la pubblica in una release (tag v<versione di package.json>) nel repository
+# pubblico dei download (package.json "releasesRepo"), da dove l'app si aggiorna da sola.
 # Parte con un tag di versione (es. v0.5.0) o a mano dalla scheda Actions.
 # I tre sistemi compilano senza pubblicare; quando hanno finito, l'ultimo passo crea (o completa) la release con i
 # file pronti e la pubblica. Se un sistema non parte (GitHub senza macchine libere per quel sistema) lo si può annullare
@@ -69,9 +70,17 @@ jobs:
           path: files
           merge-multiple: true
       - name: Pubblica la release con i file di tutti i sistemi
+        # le versioni escono nel repository pubblico dei download (package.json "releasesRepo"), non in questo
+        # (privato): serve il segreto RELEASES_TOKEN, un token con il permesso Contents (lettura e scrittura) su quel repository
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "### Release non pubblicata" >> "$GITHUB_STEP_SUMMARY"
+            echo "Manca il segreto RELEASES_TOKEN (token con accesso al repository dei download, vedi README)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          repo=$(node -p "require('./package.json').releasesRepo")
           v=$(node -p "require('./package.json').version")
           tag="v$v"
           # note: la sezione della versione nel CHANGELOG
@@ -82,9 +91,15 @@ jobs:
           list=(); for f in files/**/*; do [ -f "$f" ] && list+=("$f"); done
           [ ${#list[@]} -gt 0 ] || { echo "nessun file da pubblicare"; exit 1; }
           printf '%s\n' "${list[@]}"
-          if gh release view "$tag" > /dev/null 2>&1; then
-            gh release upload "$tag" "${list[@]}" --clobber
-            gh release edit "$tag" --draft=false --title "Campo Aperto $v" --notes-file notes.md
-          else
-            gh release create "$tag" "${list[@]}" --target "$GITHUB_SHA" --title "Campo Aperto $v" --notes-file notes.md
+          # repository dei download ancora vuoto: GitHub vuole almeno un file prima di una release (la pagina dei download)
+          if ! gh api "repos/$repo/commits?per_page=1" > /dev/null 2>&1; then
+            content=$(node -e "process.stdout.write(require('fs').readFileSync('scripts/README-download.md').toString('base64'))")
+            gh api -X PUT "repos/$repo/contents/README.md" -f message="Pagina dei download di Campo Aperto" -f content="$content"
           fi
+          if gh release view "$tag" --repo "$repo" > /dev/null 2>&1; then
+            gh release upload "$tag" "${list[@]}" --clobber --repo "$repo"
+            gh release edit "$tag" --draft=false --title "Campo Aperto $v" --notes-file notes.md --repo "$repo"
+          else
+            gh release create "$tag" "${list[@]}" --title "Campo Aperto $v" --notes-file notes.md --repo "$repo"
+          fi
+          echo "### Campo Aperto $v pubblicata in $repo" >> "$GITHUB_STEP_SUMMARY"

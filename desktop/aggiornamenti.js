@@ -19,7 +19,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 
-const REPO = 'sim40702-debug/campo-aperto';
+// repository pubblico dove escono le versioni (il codice del gioco sta in un altro repository, privato): package.json
+const REPO = require('../package.json').releasesRepo || 'sim40702-debug/stai_nel_gass_campo_aperto';
 const PRIMO_CONTROLLO = 8 * 1000;            // poco dopo l'avvio, per non rallentare l'apertura
 const OGNI = 6 * 60 * 60 * 1000;             // poi ogni 6 ore
 const IN_ATTESA = () => path.join(app.getPath('userData'), 'aggiornamento-in-corso.json');
