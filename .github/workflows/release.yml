@@ -1,6 +1,9 @@
-# Compila l'app per Windows, Mac e Linux e la pubblica in una release (tag v<versione di package.json>) nel repository
-# pubblico dei download (package.json "releasesRepo"), da dove l'app si aggiorna da sola.
-# Parte con un tag di versione (es. v0.5.0) o a mano dalla scheda Actions.
+# Compila l'app per Windows, Mac e Linux e la pubblica in una release (tag v<versione di package.json>).
+# Due canali:
+#   pubblica  repository pubblico dei download (package.json "releasesRepo"): la scaricano tutti e l'app si aggiorna da lì
+#   prova     questo repository (privato), come pre-release: per provare una versione tra di noi prima di pubblicarla.
+#             L'app non la vede come aggiornamento; si scarica a mano da GitHub (serve l'accesso al repository)
+# Parte con un tag di versione (es. v0.5.0, canale pubblica) o a mano dalla scheda Actions scegliendo il canale.
 # I tre sistemi compilano senza pubblicare; quando hanno finito, l'ultimo passo crea (o completa) la release con i
 # file pronti e la pubblica. Se un sistema non parte (GitHub senza macchine libere per quel sistema) lo si può annullare
 # dalla scheda Actions e la release esce con gli altri; rilanciando il flusso più tardi i file mancanti si aggiungono
@@ -12,6 +15,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      canale:
+        description: 'Dove esce la versione: prova (privata, tra di noi) o pubblica (download per tutti, aggiornamento dall''app)'
+        type: choice
+        options: [prova, pubblica]
+        default: prova
 
 permissions:
   contents: write
@@ -69,9 +78,28 @@ jobs:
         with:
           path: files
           merge-multiple: true
+      - name: Versione di prova (pre-release in questo repository privato)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.canale != 'pubblica' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          tag="v$v-prova"
+          awk -v h="## $v " 'index($0, h) == 1 { f = 1; next } /^## / { if (f) exit } f' docs/CHANGELOG.md > notes.md
+          node scripts/latest-portable.js files
+          shopt -s globstar nullglob
+          list=(); for f in files/**/*; do [ -f "$f" ] && list+=("$f"); done
+          [ ${#list[@]} -gt 0 ] || { echo "nessun file da pubblicare"; exit 1; }
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" "${list[@]}" --clobber
+          else
+            gh release create "$tag" "${list[@]}" --target "$GITHUB_SHA" --prerelease --title "Campo Aperto $v (prova)" --notes-file notes.md
+          fi
+          echo "### Campo Aperto $v di prova: Releases di questo repository ($tag)" >> "$GITHUB_STEP_SUMMARY"
       - name: Pubblica la release con i file di tutti i sistemi
-        # le versioni escono nel repository pubblico dei download (package.json "releasesRepo"), non in questo
-        # (privato): serve il segreto RELEASES_TOKEN, un token con il permesso Contents (lettura e scrittura) su quel repository
+        # canale pubblica: le versioni escono nel repository pubblico dei download (package.json "releasesRepo"), non
+        # in questo (privato): serve il segreto RELEASES_TOKEN, un token con il permesso Contents (lettura e scrittura) su quel repository
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.canale == 'pubblica' }}
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: |
