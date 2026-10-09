@@ -29,8 +29,8 @@ In italiano, inglese, tedesco e francese.
 
 ## Installazione
 
-Scarica l'ultima versione dalla pagina **[Download](https://github.com/sim40702-debug/stai_nel_gass_campo_aperto/releases/latest)**
-(repository pubblico `stai_nel_gass_campo_aperto`: lì escono tutte le versioni).
+Scarica l'ultima versione dalla pagina **[Download](https://github.com/sim40702-debug/campo_aperto_dowloads/releases/latest)**
+(repository pubblico `campo_aperto_dowloads`: lì escono tutte le versioni).
 
 ### Windows
 
@@ -322,14 +322,14 @@ Per compilare Windows, macOS e Linux insieme con GitHub Actions basta pubblicare
 `package.json`:
 
 ```bash
-git tag v0.14.1 && git push --tags
+git tag v0.14.2 && git push --tags
 ```
 
 Le versioni escono nel repository **pubblico** dei download
-[`stai_nel_gass_campo_aperto`](https://github.com/sim40702-debug/stai_nel_gass_campo_aperto) (campo `releasesRepo` in
+[`campo_aperto_dowloads`](https://github.com/sim40702-debug/campo_aperto_dowloads) (campo `releasesRepo` in
 `package.json`), così il codice può restare privato e l'app si aggiorna lo stesso. Serve una volta il segreto
 **`RELEASES_TOKEN`** in questo repository (Settings → Secrets and variables → Actions): un *fine-grained token* di GitHub
-con accesso solo a `stai_nel_gass_campo_aperto` e il permesso **Contents: Read and write**. Se il repository dei download
+con accesso solo a `campo_aperto_dowloads` e il permesso **Contents: Read and write**. Se il repository dei download
 è vuoto, il flusso ci mette da solo la pagina dei download (`scripts/README-download.md`).
 
 **Due canali.** Dalla scheda **Actions → Rilascio app desktop → Run workflow** si sceglie:
