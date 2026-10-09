@@ -1,7 +1,7 @@
 {
   "name": "campo-aperto",
   "productName": "Campo Aperto",
-  "version": "0.14.2",
+  "version": "0.14.1",
   "campoApiUrl": "https://campo-aperto-api.campo-aperto.workers.dev",
   "releasesRepo": "sim40702-debug/campo_aperto_dowloads",
   "description": "Gioco di calcio 3D originale, undici contro undici",

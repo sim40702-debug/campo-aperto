@@ -23,6 +23,10 @@ on:
         type: choice
         options: [prova, pubblica, questo-repository]
         default: prova
+      rimuovi:
+        description: 'Release da togliere prima di pubblicare (tag separati da virgola, es. v0.14.2,v0.14.1-prova). Vuoto = niente'
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -80,6 +84,18 @@ jobs:
         with:
           path: files
           merge-multiple: true
+      - name: Togli le release indicate (e i loro tag) da questo repository
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.rimuovi != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RIMUOVI: ${{ inputs.rimuovi }}
+        run: |
+          IFS=',' read -ra tags <<< "$RIMUOVI"
+          for t in "${tags[@]}"; do
+            t=$(echo "$t" | tr -d ' ')
+            [ -n "$t" ] || continue
+            gh release delete "$t" --yes --cleanup-tag && echo "tolta $t" || echo "$t non c'era"
+          done
       - name: Versione di prova (pre-release in questo repository privato)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.canale == 'prova' }}
         env:

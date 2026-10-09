@@ -322,7 +322,7 @@ Per compilare Windows, macOS e Linux insieme con GitHub Actions basta pubblicare
 `package.json`:
 
 ```bash
-git tag v0.14.2 && git push --tags
+git tag v0.14.1 && git push --tags
 ```
 
 Le versioni escono nel repository **pubblico** dei download

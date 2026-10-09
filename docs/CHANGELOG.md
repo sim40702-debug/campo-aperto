@@ -2,17 +2,9 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
-## 0.14.2 — 09/10/2026 (repository dei download definitivo)
+## 0.14.1 — 09/10/2026 (download nel repository campo_aperto_dowloads)
 - Le versioni escono nel repository pubblico **campo_aperto_dowloads**: l'app controlla e scarica gli aggiornamenti da
   lì. Questa versione esce anche in campo-aperto, così le app vecchie la trovano e da lei passano al nuovo repository.
-
-## 0.14.1 — 09/10/2026 (download in un repository pubblico)
-- Le versioni escono nel repository pubblico **stai_nel_gass_campo_aperto**: il codice del gioco può restare privato.
-  L'app controlla e scarica gli aggiornamenti da lì (`releasesRepo` in `package.json`).
-- Il flusso «Rilascio app desktop» pubblica nel repository dei download con il segreto `RELEASES_TOKEN` e, se è vuoto,
-  ci mette la pagina dei download.
-- Chi ha la 0.14.0 o prima deve scaricare la 0.14.1 a mano una volta (quelle versioni cercano gli aggiornamenti nel
-  repository del codice, ora privato); dalla 0.14.1 in poi l'aggiornamento torna automatico.
 
 ## 0.14.0 — 08/10/2026 (allenamento, meteo, fine partita, aspetto dei giocatori)
 - **Allenamento** (home, accanto a Gioca): tiri in porta, punizioni con la barriera, rigori, dribbling e passaggi, con il
