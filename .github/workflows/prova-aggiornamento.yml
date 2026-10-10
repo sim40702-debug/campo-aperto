@@ -1,0 +1,65 @@
+# Prova temporanea: questo codice costruito come versione 0.10.0 si aggiorna da solo all'ultima release vera
+name: Prova aggiornamento
+on:
+  push:
+    branches: [prova-aggiornamento]
+jobs:
+  prova:
+    strategy:
+      fail-fast: false
+      matrix:
+        tipo: [installer, portable, linux, mac]
+    runs-on: ${{ matrix.tipo == 'linux' && 'ubuntu-latest' || matrix.tipo == 'mac' && 'macos-latest' || 'windows-latest' }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - run: npm ci
+      - name: Costruisce la 0.10.0 e prova l'aggiornamento
+        run: |
+          set +e
+          (mkdir -p /tmp/cdp && cd /tmp/cdp && npm init -y > /dev/null && npm i playwright-core@1.48.2 > /dev/null)
+          export NODE_PATH=/tmp/cdp/node_modules
+          node build.js desktop > /dev/null
+          V=-c.extraMetadata.version=0.10.0
+          case "${{ matrix.tipo }}" in
+            installer|portable)
+              node scripts/prepara-windows.js > /dev/null
+              npx electron-builder --win --x64 --publish never $V > build.log 2>&1 || tail -20 build.log
+              if [ ${{ matrix.tipo }} = installer ]; then
+                ./release/0.10.0/CampoAperto-0.10.0-win-x64.exe //S; sleep 25
+                exe=$(find "$LOCALAPPDATA/Programs" -maxdepth 2 -iname "Campo Aperto.exe" 2>/dev/null | head -1)
+              else
+                mkdir -p "$USERPROFILE/Desktop/Gioco"; cp release/0.10.0/CampoAperto-0.10.0-portable.exe "$USERPROFILE/Desktop/Gioco/CampoAperto.exe"
+                exe="$USERPROFILE/Desktop/Gioco/CampoAperto.exe"
+              fi
+              ver() { powershell -NoProfile -Command "(Get-Item '$exe').VersionInfo.ProductVersion"; }
+              "$exe" --remote-debugging-port=9222 > app.log 2>&1 & ;;
+            linux)
+              sudo apt-get update > /dev/null && sudo apt-get install -y xvfb libfuse2 > /dev/null 2>&1 || sudo apt-get install -y xvfb libfuse2t64 > /dev/null 2>&1
+              npx electron-builder --linux AppImage --publish never $V > build.log 2>&1 || tail -20 build.log
+              mkdir -p ~/gioco; cp release/0.10.0/*.AppImage ~/gioco/CampoAperto.AppImage; chmod +x ~/gioco/CampoAperto.AppImage
+              exe=~/gioco/CampoAperto.AppImage
+              ver() { sha512sum "$exe" | cut -c1-16; }
+              xvfb-run -a "$exe" --no-sandbox --remote-debugging-port=9222 > app.log 2>&1 & ;;
+            mac)
+              npx electron-builder --mac zip --arm64 --publish never $V > build.log 2>&1 || tail -20 build.log
+              ditto -x -k release/0.10.0/CampoAperto-0.10.0-mac-arm64.zip /Applications/
+              exe="/Applications/Campo Aperto.app"
+              ver() { plutil -extract CFBundleShortVersionString raw -o - "$exe/Contents/Info.plist"; }
+              "$exe/Contents/MacOS/Campo Aperto" --remote-debugging-port=9222 > app.log 2>&1 & ;;
+          esac
+          echo "::warning title=prima ${{ matrix.tipo }}::$exe $(ver)"
+          node scripts/prova-aggiornamento.js > go.log 2>&1
+          sleep 150
+          while IFS= read -r l; do echo "::warning title=go ${{ matrix.tipo }}::${l:0:900}"; done < go.log
+          echo "::warning title=dopo ${{ matrix.tipo }}::$(ver)"
+          if [ ${{ matrix.tipo }} = linux ]; then echo "::warning title=atteso linux::$(curl -sL https://github.com/sim40702-debug/campo-aperto/releases/latest/download/latest-linux.yml | grep -m1 sha512 | cut -c1-40)"; fi
+          tail -5 app.log | while IFS= read -r l; do echo "::warning title=app ${{ matrix.tipo }}::${l:0:500}"; done
+          ls "$USERPROFILE/Desktop/Gioco" 2>/dev/null | tr '\n' ' ' | sed 's/^/::warning title=cartella::/'; echo
