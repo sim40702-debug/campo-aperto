@@ -94,6 +94,16 @@ Il file scaricato si installa solo se è identico a quello della release (impron
 vecchia; se il download non riesce il gioco resta com'era. La versione 0.12 non ha ancora questa funzione: la 0.13 va
 scaricata a mano un'ultima volta.
 
+**Anche se non aggiorni da tanto** (per esempio dalla 0.15 alla 0.20) si va direttamente all'ultima versione, in un
+colpo solo: la schermata dice quante versioni arrivano e mostra le novità di tutte. Se l'ultima release è incompleta
+per il tuo sistema (per esempio la versione per il Mac non è ancora pronta) l'app prende la più nuova che ha il tuo
+file. I dati salvati (impostazioni, carriere, squadre, allenamento) restano: il gioco ricorda con che versione li ha
+salvati e, se una versione cambia il loro formato, li sistema da solo al primo avvio. Se il gioco non riuscisse a
+partire, compare **Ripristina i dati e riavvia**: prima salva una copia di tutto, poi riparte pulito (l'account resta).
+
+All'avvio la **schermata di caricamento** mostra i passi: stadio pronto, collegamento ai server, ricerca degli
+aggiornamenti (nell'app); se c'è una versione nuova lo dice già lì.
+
 ---
 
 ## Comandi di gioco
@@ -365,6 +375,10 @@ Dopo qualche minuto i file dei tre sistemi compaiono in **Releases**, con le not
 scheda **Actions**: la release esce con gli altri e rilanciando il flusso più tardi si aggiungono i file mancanti.
 
 Appena la release è pubblicata, le app già installate (dalla 0.13) la vedono da sole e propongono l'aggiornamento.
+
+Per non rompere gli aggiornamenti delle versioni vecchie: il repository resta `campo-aperto` e resta pubblico, i nomi
+dei file (`CampoAperto-<versione>-…`) e i file `latest*.yml` non cambiano, le versioni sono sempre `MAGGIORE.MINORE.CORREZIONE`
+più alte di quella prima. Se cambia la forma di un dato salvato, si aggiunge una migrazione in `src/game/13_dati.js`.
 Il flusso pubblica anche i file `latest.yml`, `latest-mac.yml`, `latest-linux.yml` e `latest-portable.yml`: servono
 all'app per scegliere il file giusto e controllarne l'impronta, quindi non vanno tolti dalla release.
 
@@ -443,6 +457,7 @@ python3 tests/feel_browser_test.py       # reattività: tasti al fotogramma dopo
 python3 tests/social_browser_test.py     # amici, inviti e sfide tra amici (serve cloud/: npm install)
 python3 tests/novita015_browser_test.py  # rigori, arbitro e cartellini, infortuni, suoni, carriera da giocatore
 python3 tests/classifica_browser_test.py # classifica online, amici online, invito con Entra (serve cloud/: npm install)
+python3 tests/avvio_browser_test.py      # caricamento a passi, aggiornamento che salta versioni, dati vecchi, ripristino
 ```
 
 Per provare la vera app desktop:
