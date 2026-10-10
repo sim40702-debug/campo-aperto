@@ -38,6 +38,10 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .sweep div { width: 35%; height: 100%; background: var(--flood); animation: sweep 1.1s ease-in-out infinite; }
 @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 #loading p { color: var(--slate); margin: 14px 0 0; }
+/* barra del caricamento: si riempie a passi (src/game/29_startup.js), con una luce che scorre */
+.ld-bar { position: relative; margin-top: 26px; width: min(420px, 70vw); height: 4px; background: rgba(243,245,238,0.12); overflow: hidden; }
+#ld-bar { position: relative; width: 18%; height: 100%; background: var(--flood); transition: width 0.45s ease-out; overflow: hidden; }
+#ld-bar::after { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent); animation: sweep 1.2s ease-in-out infinite; }
 .ld-offline { max-width: 620px; margin-top: 26px; background: var(--night-2); border-left: 4px solid var(--signal); padding: 16px 20px; animation: ld-in 0.25s ease-out both; }
 @keyframes ld-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .ld-offline h3 { font-family: var(--display); font-size: 26px; font-weight: 800; font-style: italic; margin: 0; }
@@ -472,6 +476,7 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 #busy { position: fixed; inset: 0; z-index: 45; background: rgba(12,26,43,0.75); display: flex; align-items: center; justify-content: center; }
 #busy .box { background: var(--night-2); padding: 26px 30px; min-width: 300px; }
 #busy .sweep { margin: 16px 0; }
+#data-rescue { position: fixed; inset: 0; z-index: 71; display: flex; align-items: center; justify-content: center; padding: 30px; background: var(--night); }
 #fatal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 30px; font-size: 20px; text-align: center; background: var(--night); z-index: 70; }
 
 
@@ -692,7 +697,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 
 <div id="loading" role="status">
   <h1 class="title"><span>Campo</span><span>Aperto</span></h1>
-  <div class="sweep" id="ld-sweep"><div></div></div>
+  <div class="ld-bar" id="ld-sweep"><div id="ld-bar"></div></div>
   <p id="ld-text">Accensione dei fari…</p>
   <!-- server non raggiungibile all'avvio: si può giocare offline (src/game/29_startup.js) -->
   <div class="ld-offline" id="ld-offline" hidden>
@@ -1258,6 +1263,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <p class="small" id="upd-progress-text"></p>
     </div>
     <p class="upd-msg" id="upd-msg" hidden></p>
+    <p class="small" id="upd-skip" hidden></p>
     <h3 id="upd-notes-title">Novità</h3>
     <div class="upd-notes" id="upd-notes"></div>
     <div class="actions">
@@ -1361,6 +1367,14 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 <div id="fps" hidden></div>
 <aside id="netdiag" hidden aria-label="Diagnostica di rete"><h4>Diagnostica di rete <small>Ctrl+Maiusc+D</small></h4><dl id="nd-info"></dl><ol id="nd-log"></ol></aside>
 <div id="fatal" hidden></div>
+<div id="data-rescue" hidden role="alertdialog">
+  <div class="ld-offline">
+    <h3>Il gioco non è partito</h3>
+    <p>Forse i dati salvati su questo computer (impostazioni, carriere, squadre) non vanno d'accordo con questa versione. Puoi ripristinarli: prima ne faccio una copia, poi il gioco riparte pulito. L'account resta collegato.</p>
+    <p class="small" id="dr-error" translate="no"></p>
+    <div class="actions"><button class="primary" id="dr-reset">Ripristina i dati e riavvia</button><button class="ghost" id="dr-retry">Riprova</button></div>
+  </div>
+</div>
 
 <!--THREE-->
 <script>

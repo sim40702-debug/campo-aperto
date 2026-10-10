@@ -2037,13 +2037,12 @@ function lagAdvice(members) {
 }
 
 window.addEventListener('load', () => {
+  // dati salvati da una versione precedente: si sistemano prima di partire (13_dati.js)
+  try { migrateSavedData(); } catch (err) { console.warn(err); }
   try {
     window.game = new Game();
   } catch (err) {
-    const e = document.getElementById('fatal');
-    e.hidden = false;
-    e.textContent = 'Il gioco non è partito: ' + err.message + '. Serve un browser con WebGL attivo.';
-    document.getElementById('loading').hidden = true;
     console.error(err);
+    showStartupProblem(err);   // niente schermo nero: si può ripristinare (13_dati.js)
   }
 });

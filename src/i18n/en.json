@@ -1649,6 +1649,15 @@
     "Livello nella classifica online": "Level in the online ranking",
     "Vittoria 30 punti, pareggio 12, sconfitta 5. Valgono le partite online contro altre persone con l'account: il risultato conta quando lo manda uguale anche chi era nell'altra squadra. Al massimo 15 partite con punti al giorno, 3 contro lo stesso avversario.": "Win 30 points, draw 12, loss 5. Online matches against other people with an account count: the result is valid when someone from the other team sends the same one. At most 15 matches with points per day, 3 against the same opponent.",
     "Livello": "Level",
-    "Punti": "Points"
+    "Punti": "Points",
+    "Stadio pronto": "Stadium ready",
+    "Cerco aggiornamenti…": "Looking for updates…",
+    "C'è la versione {0}: la trovi in alto nella home": "Version {0} is out: you'll find it at the top of the home screen",
+    "Pronto": "Ready",
+    "Non aggiornavi da un po': in un colpo solo arrivano {0} versioni ({1}). Sotto ci sono le novità di tutte.": "You haven't updated in a while: {0} versions arrive in one go ({1}). The news of all of them is below.",
+    "Il gioco non è partito": "The game didn't start",
+    "Forse i dati salvati su questo computer (impostazioni, carriere, squadre) non vanno d'accordo con questa versione. Puoi ripristinarli: prima ne faccio una copia, poi il gioco riparte pulito. L'account resta collegato.": "The data saved on this computer (settings, careers, teams) may not get along with this version. You can reset it: I make a copy first, then the game starts clean. Your account stays logged in.",
+    "Ripristina i dati e riavvia": "Reset the data and restart",
+    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "The game didn't start: it needs a browser or computer with 3D graphics (WebGL) enabled."
   }
 }

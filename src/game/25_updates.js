@@ -104,6 +104,10 @@ Game.prototype.renderUpdate = function () {
   $('upd-back').disabled = s.fase === 'installo';
   // novità della versione nuova
   $('upd-notes-title').hidden = $('upd-notes').hidden = !s.note;
+  // più versioni in un colpo solo (non si aggiornava da un po'): si dice quali sono comprese
+  const many = Array.isArray(s.saltate) && s.saltate.length > 1 && s.fase !== 'nessuno';
+  $('upd-skip').hidden = !many;
+  if (many) $('upd-skip').textContent = trf('Non aggiornavi da un po\': in un colpo solo arrivano {0} versioni ({1}). Sotto ci sono le novità di tutte.', s.saltate.length, s.saltate.slice().reverse().join(', '));
   if (s.note && this.updNotesFor !== s.nuova) { this.updNotesFor = s.nuova; $('upd-notes').innerHTML = updateNotesHtml(s.note); }
 };
 

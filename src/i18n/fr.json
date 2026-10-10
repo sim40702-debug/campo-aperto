@@ -1649,6 +1649,15 @@
     "Livello nella classifica online": "Niveau dans le classement en ligne",
     "Vittoria 30 punti, pareggio 12, sconfitta 5. Valgono le partite online contro altre persone con l'account: il risultato conta quando lo manda uguale anche chi era nell'altra squadra. Al massimo 15 partite con punti al giorno, 3 contro lo stesso avversario.": "Victoire 30 points, nul 12, défaite 5. Comptent les matchs en ligne contre d'autres personnes avec un compte : le résultat est valable quand quelqu'un de l'autre équipe envoie le même. Au maximum 15 matchs avec points par jour, 3 contre le même adversaire.",
     "Livello": "Niveau",
-    "Punti": "Points"
+    "Punti": "Points",
+    "Stadio pronto": "Stade prêt",
+    "Cerco aggiornamenti…": "Recherche de mises à jour…",
+    "C'è la versione {0}: la trovi in alto nella home": "La version {0} est disponible : tu la trouves en haut de l'accueil",
+    "Pronto": "Prêt",
+    "Non aggiornavi da un po': in un colpo solo arrivano {0} versioni ({1}). Sotto ci sono le novità di tutte.": "Tu n'as pas mis à jour depuis un moment : {0} versions arrivent d'un coup ({1}). Les nouveautés de toutes sont ci-dessous.",
+    "Il gioco non è partito": "Le jeu n'a pas démarré",
+    "Forse i dati salvati su questo computer (impostazioni, carriere, squadre) non vanno d'accordo con questa versione. Puoi ripristinarli: prima ne faccio una copia, poi il gioco riparte pulito. L'account resta collegato.": "Les données enregistrées sur cet ordinateur (paramètres, carrières, équipes) ne s'accordent peut-être pas avec cette version. Tu peux les réinitialiser : j'en fais d'abord une copie, puis le jeu redémarre proprement. Ton compte reste connecté.",
+    "Ripristina i dati e riavvia": "Réinitialiser les données et redémarrer",
+    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "Le jeu n'a pas démarré : il faut un navigateur ou un ordinateur avec les graphismes 3D (WebGL) activés."
   }
 }
