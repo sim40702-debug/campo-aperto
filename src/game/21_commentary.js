@@ -24,9 +24,13 @@ const COMMENTARY = {
   KICK_OFF: ['Si parte!', 'Calcio d\'inizio'],
   HALF_TIME: ['Fine del primo tempo'],
   FULL_TIME: ['Finisce qui!', 'Triplice fischio: fine partita'],
+  SHOOTOUT: ['Si va ai calci di rigore!', 'Tutto si decide dal dischetto'],
+  PEN_SCORED: ['{0} non sbaglia!', 'Rigore trasformato da {0}!'],
+  PEN_MISSED: ['{0} sbaglia!', 'Niente da fare per {0}!'],
+  SHOOTOUT_END: ['Finisce ai rigori!', 'La serie dei rigori è finita!'],
 };
 // importanza: una frase più importante sostituisce subito quella in corso, una meno importante aspetta
-const COMMENTARY_RANK = { GOAL: 9, OWN_GOAL: 9, RED_CARD: 8, PENALTY: 8, FULL_TIME: 8, HALF_TIME: 7, YELLOW_CARD: 6, SAVE: 6, POST: 6,
+const COMMENTARY_RANK = { SHOOTOUT: 8, PEN_SCORED: 9, PEN_MISSED: 9, SHOOTOUT_END: 9, GOAL: 9, OWN_GOAL: 9, RED_CARD: 8, PENALTY: 8, FULL_TIME: 8, HALF_TIME: 7, YELLOW_CARD: 6, SAVE: 6, POST: 6,
   MISS: 5, KICK_OFF: 4, SHOT: 4, OFFSIDE: 3, FOUL: 3, ADVANTAGE: 3, CORNER: 2 };
 
 class Commentary {
@@ -115,7 +119,13 @@ class Commentary {
       case 'ADVANTAGE': this.say('ADVANTAGE', '', now); break;
       case 'KICK_OFF': if (r.minute <= 1 || (r.half === 2 && r.minute <= 46)) this.say('KICK_OFF', '', now); break;
       case 'HALF_TIME': this.lastShot = null; this.say('HALF_TIME', '', now); break;
-      case 'FULL_TIME': this.lastShot = null; this.say('FULL_TIME', '', now); break;
+      case 'FULL_TIME':
+        this.lastShot = null;
+        // si va ai rigori (reason 'Rigori') o la serie è finita (reason 'Rigori 4-3')
+        this.say(r.reason === 'Rigori' ? 'SHOOTOUT' : /^Rigori /.test(r.reason) ? 'SHOOTOUT_END' : 'FULL_TIME', '', now);
+        break;
+      case 'PENALTY_SCORED': this.say('PEN_SCORED', who, now); break;
+      case 'PENALTY_MISSED': this.say('PEN_MISSED', who, now); break;
       case 'GOAL_KICK': if (this.lastShot) { this.lastShot = null; this.say('MISS', '', now); } break;
     }
   }

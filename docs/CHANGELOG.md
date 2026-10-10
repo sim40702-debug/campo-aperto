@@ -2,6 +2,31 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.15.0 — 10/10/2026 (rigori, arbitro, carriera da giocatore, suoni, classifica online)
+- **Rigori nella partita rapida**: nuova scelta *In caso di pareggio* (resta pari, supplementari e rigori, subito i
+  rigori). Durante la serie la telecamera fa le inquadrature della TV (squadre a centrocampo, dietro al tiratore che
+  si avvicina piano, il tiratore visto dalla porta); in alto a destra un pallino per tiro (verde gol, rosso sbagliato,
+  quello da tirare lampeggia); durante la rincorsa lo stadio tace e si sente il battito del cuore. Telecronaca dei rigori.
+- **Arbitro in campo**: segue l'azione, fischia indicando la punizione, corre dal giocatore e alza il cartellino giallo
+  o rosso; sopra la testa del giocatore compare il cartellino.
+- **Infortuni**: dopo un fallo duro il giocatore resta a terra tenendosi la gamba, poi zoppica (corre un po' meno) per
+  un po'; con un fallo molto duro arrivano due barellieri con la barella. La ripresa aspetta che si rialzi. Solo nelle
+  partite sul computer e online: le partite del server restano come prima.
+- **Carriera da giocatore** (Competizioni): crei il tuo calciatore (nome, numero, ruolo, piede, pelle e capelli),
+  scegli la squadra e giochi solo con lui. Dopo ogni partita punti esperienza (voto, gol, vittoria, migliore in campo);
+  a ogni livello 3 punti per migliorare velocità, tiro, passaggio...; dal livello 5 una caratteristica speciale. A fine
+  stagione le squadre più forti ti fanno un'offerta se hai giocato bene: resti o cambi squadra.
+- **Suoni**: il pallone suona diverso per tiro, passaggio, cross e colpo di testa (con il fruscio dei tiri forti); palo
+  metallico; il pubblico fa "ooh" sulle occasioni, fischia i falli duri e i cartellini, esulta con le voci sul gol e
+  canta i cori durante la partita.
+- **Classifica online** (Multiplayer → Classifica online, o Amici → Classifica): punti e livelli dalle partite online
+  contro altre persone. Il risultato conta quando lo mandano uguale tutte e due le squadre: vittoria 30, pareggio 12,
+  sconfitta 5 (al massimo 15 partite con punti al giorno, 3 contro lo stesso avversario). A fine partita si vedono i punti presi.
+- **Amici**: si vede chi è online o in partita (o quando si è visto l'ultima volta) e il suo livello; l'invito a
+  giocare compare in alto con **Entra** in tutti i menu, non solo nella Home.
+- **Server**: migrazione `0009_classifica_online.sql` (solo tabelle e colonne nuove, i dati restano) e nuovo motore
+  (infortuni e calciatore fisso, spenti nelle partite del server): il server va aggiornato (`cd cloud && npm run deploy`).
+
 ## 0.14.2 — 10/10/2026 (corsa più realistica)
 - **Corsa dei giocatori rifatta**: passo vero con camminata, corsetta e scatto che si mescolano con la velocità
   (ginocchio che sale, tallone che calcia dietro, busto in avanti allo scatto, bacino e spalle che girano). Nuova

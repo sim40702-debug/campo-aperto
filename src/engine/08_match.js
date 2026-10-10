@@ -43,6 +43,10 @@ class Match {
     this.teams.push(new Team(awayData, 1, 'away', this));
     this.difficulty = opts.difficulty === undefined ? 1 : opts.difficulty;  // 0 facile, 1 normale, 2 difficile
     this.subsOn = !!opts.subs;     // sostituzioni (src/08_match_subs.js): partita rapida e competizioni, mai nelle partite del server
+    // infortuni (src/08_referee.js, INJURY): dopo un fallo duro chi lo subisce resta a terra e poi zoppica.
+    // Solo nelle partite sul computer e online, mai nelle partite del server (che restano come prima)
+    this.injuries = !!opts.injuries;
+    this.injuryPause = 0;
     // giocatori umani: ognuno controlla un calciatore della sua squadra.
     // opts.humans = [{ id, team }]; per compatibilità opts.humanTeam crea un solo umano 'local' (-1 = solo IA)
     this.humans = [];
@@ -70,17 +74,26 @@ class Match {
     this.pendingCards = [];        // cartellini da mostrare alla prossima interruzione
     this.bannerQueue = [];
     this.deadPause = 1.2;
-    for (const h of hs) this.addHuman(h.id, h.team);
+    for (const h of hs) this.addHuman(h.id, h.team, h.lock);
     this.startKickoff(this.teams[0]);
   }
 
   // ---------- GIOCATORI UMANI ----------
-  addHuman(id, team) {
+  // lock: numero del calciatore nella rosa (carriera di un giocatore): l'umano guida sempre e solo lui
+  addHuman(id, team, lock) {
     if (this.humanById(id)) return this.humanById(id);
-    const h = { id: id, team: team, player: null, input: null, shootCharge: 0, prevShoot: false };
+    const h = { id: id, team: team, player: null, input: null, shootCharge: 0, prevShoot: false, lock: null };
     this.humans.push(h);
-    h.player = this.nearestFree(this.teams[team], this.ball.x, this.ball.z);
+    if (Number.isInteger(lock) && this.teams[team].roster[lock]) h.lock = this.teams[team].roster[lock];
+    h.player = h.lock || this.nearestFree(this.teams[team], this.ball.x, this.ball.z);
     return h;
+  }
+  // calciatore fisso dell'umano, se è in campo (espulso o sostituito: si torna al cambio normale)
+  lockedPlayer(h) {
+    const p = h.lock;
+    if (!p) return null;
+    if (p.sentOff || p.gone) { h.lock = null; return null; }
+    return this.teams[h.team].players.indexOf(p) >= 0 ? p : null;
   }
   removeHuman(id) { this.humans = this.humans.filter(h => h.id !== id); }
   humanById(id) { return this.humans.find(h => h.id === id) || null; }
@@ -107,7 +120,9 @@ class Match {
     for (const h of this.humans) h.player = null;
     for (const h of this.humans) {
       const team = this.teams[h.team];
-      if (taker && team === takerTeam && !this.controllerOf(taker)) h.player = taker;
+      const lp = h.lock && this.lockedPlayer(h);
+      if (lp) h.player = lp;
+      else if (taker && team === takerTeam && !this.controllerOf(taker)) h.player = taker;
       else h.player = this.nearestFree(team, x, z, h);
     }
   }
@@ -116,7 +131,7 @@ class Match {
     if (this.controllerOf(p)) return;
     let best = null, bd = 1e9;
     for (const h of this.humans) {
-      if (h.team !== p.team.index) continue;
+      if (h.team !== p.team.index || (h.lock && this.lockedPlayer(h))) continue;
       const d = h.player ? dist2(h.player.x, h.player.z, p.x, p.z) : 0;
       if (d < bd) { bd = d; best = h; }
     }
@@ -209,7 +224,9 @@ class Match {
     this.emit('whistle', { type: type });
     this.matchEvent(type, { team: team, x: x, z: z, reason: reason || text || '' });
     // con un cartellino la ripresa aspetta che l'arbitro lo mostri
-    this.deadPause = 1.2 + this.issuePendingCards() * 1.6;
+    // con un infortunio la ripresa aspetta che il giocatore si rialzi (o che arrivi la barella)
+    this.deadPause = 1.2 + this.issuePendingCards() * 1.6 + this.injuryPause;
+    this.injuryPause = 0;
   }
 
   startSetPiece() {
@@ -438,6 +455,7 @@ class Match {
     if (b.owner === victim) { b.owner = null; b.vx = victim.vx * 0.7; b.vz = victim.vz * 0.7; }
     const card = d.red_card ? 'red' : d.yellow_card ? 'yellow' : null;
     const ev = this.matchEvent('FOUL', { player: offender, victim: victim, x: c.x, z: c.z, reason: d.reason, severity: d.severity, consequence: c.inPenaltyArea ? 'PENALTY' : 'FREE_KICK' });
+    if (this.injuries) this.injure(victim, d.severity);
     if (card) this.pendingCards.push({ player: offender, type: card, reason: d.reason });
     // vantaggio: mai per rigori, rossi o occasioni da rete negate (lì conviene il fischio)
     if (!noAdvantage && !c.inPenaltyArea && !d.red_card && !c.dogso && this.advantagePossible(victim.team, c.x)) {
@@ -711,13 +729,17 @@ class Match {
     const pressed = input.pressed || {};
     const team = this.teams[h.team];
     let p = h.player;
+    const locked = h.lock && this.lockedPlayer(h);
+    if (locked) p = h.player = locked;
     if (!p || p.sentOff || p.team !== team || (this.controllerOf(p) !== h)) p = h.player = this.nearestFree(team, this.ball.x, this.ball.z, h);
-    if (p && p.isGK && this.ball.owner !== p && this.state === 'PLAY') p = h.player = this.nearestFree(team, this.ball.x, this.ball.z, h);
+    if (!locked && p && p.isGK && this.ball.owner !== p && this.state === 'PLAY') p = h.player = this.nearestFree(team, this.ball.x, this.ball.z, h);
     if (!p) return null;
     const b = this.ball;
     const freeMate = t => !t.isGK && t !== p && !this.humans.some(o => o !== h && o.player === t);
     // cambio giocatore (esclusi quelli dei compagni umani)
-    if (pressed.switch && b.owner !== p) {
+    if (locked) {
+      // carriera di un giocatore: niente cambio, si guida sempre lo stesso
+    } else if (pressed.switch && b.owner !== p) {
       // se un tuo passaggio è in viaggio, il primo cambio va a chi lo deve ricevere
       const pp = this.pendingPass;
       const recv = pp && pp.to && !b.owner && pp.to.team === team && freeMate(pp.to) ? pp.to : null;

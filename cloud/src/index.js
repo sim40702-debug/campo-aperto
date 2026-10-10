@@ -12,6 +12,7 @@ import { engineVersion, gameVersion } from './simulate.js';
 import { leagueView } from './league.js';
 import { getCareer, putCareer, CAREER_MAX_BYTES } from './career.js';
 import { listUsers, myFriends, requestFriend, acceptFriend, removeFriend, inviteToGame, answerGameInvite } from './friends.js';
+import { reportOnline, onlineLeaderboard, myOnline, presence } from './online.js';
 import { listComps, compView, createComp, inviteFriend, chooseTeam, declineInvite, startComp, leaveComp, cancelComp, newSeason, reportResult, forceSim, setRoom } from './friendcomps.js';
 export { Engine } from './engine-do.js';
 export { Relay } from './relay-do.js';
@@ -102,6 +103,11 @@ async function route(request, env, ctx) {
   if (is('POST', 'friendcomps', '*', 'report')) return json(await reportResult(env, await user(), p[1], body, t));
   if (is('POST', 'friendcomps', '*', 'force')) return json(await forceSim(env, await user(), p[1], body, t));
   if (is('POST', 'friendcomps', '*', 'room')) return json(await setRoom(env, await user(), p[1], body, t));
+  // ---- classifica online e presenza ----
+  if (is('POST', 'online', 'report')) return json(await reportOnline(env, await user(), body, t));
+  if (is('GET', 'online', 'leaderboard')) return env.TEST_MODE === '1' ? json(await onlineLeaderboard(env)) : cached(request, 20, () => onlineLeaderboard(env));
+  if (is('GET', 'me', 'online')) return json(await myOnline(env, await user()));
+  if (is('POST', 'presence')) return json(await presence(env, await user(), body, t));
   if (is('POST', 'me', 'avatar')) return json(await setAvatar(env, await user(), body));
   if (is('POST', 'me', 'daily')) return json(await claimDaily(env, await user(), t));
   if (is('GET', 'players', '*')) return json(await publicProfile(env, p[1]));

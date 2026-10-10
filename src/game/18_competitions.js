@@ -62,7 +62,7 @@ class Career {
   strength(t) { const p = this.profile(t); return p.ovr; }
   // contesto delle regole per una competizione: quella della carriera da allenatore usa le sue rose
   ctxFor(comp) {
-    if (!comp || !comp.manager || !this.rosterTeam) return this.ctx;
+    if (!comp || !(comp.manager || comp.pro) || !this.rosterTeam) return this.ctx;
     return { profile: t => CompLogic.teamProfile(this.rosterTeam(comp, t) || this.db[t]), nameOf: this.ctx.nameOf };
   }
 
@@ -77,6 +77,7 @@ class Career {
       kind: made.kind, name: made.name, season: 1, config: made.config, history: [], createdAt: Date.now(),
     };
     if (cfg.manager) comp.manager = true;   // competizione della carriera da allenatore
+    if (cfg.pro) comp.pro = true;           // competizione della carriera da giocatore (30_pro_career.js)
     this.startSeason(comp, Math.floor(Math.random() * 2 ** 31) || 1);
     this.data.comps.unshift(comp);
     this.save();

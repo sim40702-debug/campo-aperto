@@ -17,6 +17,24 @@ const REF = {
   ADVANTAGE_SECS: 2.5,  // tempo per capire se il vantaggio si concretizza
 };
 
+// Infortuni (solo con opts.injuries): dopo un fallo duro chi lo subisce resta a terra qualche secondo e poi zoppica
+// (corre un po' meno) per un po'. Con un fallo molto duro arriva la barella (solo grafica) e l'attesa è più lunga.
+const INJURY = {
+  HURT: 0.55,          // gravità da cui si resta a terra (come un giallo)
+  STRETCHER: 0.82,     // gravità da barella
+  PAUSE: 2.5,          // secondi in più prima della ripresa
+  PAUSE_STRETCHER: 7,
+  LIMP: 25,            // secondi in cui zoppica
+  LIMP_STRETCHER: 45,
+  LIMP_SPEED: 0.86,    // velocità massima mentre zoppica
+};
+Match.prototype.injure = function (victim, severity) {
+  if (!(severity >= INJURY.HURT)) return;
+  const big = severity >= INJURY.STRETCHER;
+  victim.limp = Math.max(victim.limp || 0, big ? INJURY.LIMP_STRETCHER : INJURY.LIMP);
+  this.injuryPause = Math.max(this.injuryPause, big ? INJURY.PAUSE_STRETCHER : INJURY.PAUSE);
+};
+
 // Geometria e dinamica di un contrasto (tackler su victim). kind: 'stand' | 'slide' | 'charge'.
 // Restituisce i dati fisici che l'arbitro valuta; l'unica parte casuale è se il piede arriva davvero
 // sul pallone quando è raggiungibile (abilità contro abilità), mai la decisione sul fallo.

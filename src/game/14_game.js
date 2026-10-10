@@ -3,12 +3,14 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['manager', 'menu', 'update', 'training', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
+const SCREENS = ['manager', 'pro', 'ranking', 'menu', 'update', 'training', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 
 // meteo e ora del giorno da scegliere prima della partita (il motore conosce 'clear', 'rain', 'snow' e 'day', 'sunset', 'night')
 const WEATHER_CHOICES = [['clear', 'Sereno'], ['rain', 'Pioggia'], ['snow', 'Neve'], ['random', 'A caso']];
 const TIME_CHOICES = [['day', 'Giorno'], ['sunset', 'Tramonto'], ['night', 'Sera'], ['random', 'A caso']];
+// partita rapida finita in parità: resta pari, supplementari e poi rigori, oppure subito i rigori
+const DRAW_CHOICES = [['draw', 'Resta pari'], ['extra', 'Supplementari e rigori'], ['pens', 'Subito i rigori']];
 // "A caso": quasi sempre sereno, a volte pioggia, raramente neve
 function pickWeather(v) {
   if (WEATHERS.includes(v)) return v;
@@ -61,7 +63,7 @@ class Game {
     this.match = null; this.demo = null; this.net = null;
     this.netLog = []; this.netLastError = ''; this.lanStatus = null;
     this.paused = false; this.replay = null; this.replayPending = null;
-    this.setup = { home: 0, away: 4, side: 0, difficulty: 1, halfSeconds: 180, formation: null, mentality: 1, weather: 'clear', timeOfDay: 'night' };
+    this.setup = { home: 0, away: 4, side: 0, difficulty: 1, halfSeconds: 180, formation: null, mentality: 1, weather: 'clear', timeOfDay: 'night', onDraw: 'draw' };
     // le tue squadre (src/game/22_team_editor.js): solo nella partita rapida, dopo quelle del database
     this.teamEditor = new TeamEditor(this);
     this.myTeams = this.teamEditor.teams();
@@ -75,7 +77,10 @@ class Game {
     this.comps = new CompetitionsUI(this);
     // carriera da allenatore (src/game/24_manager.js): il suo campionato usa le rose della carriera
     this.manager = new Manager(this);
-    this.comps.career.rosterTeam = (comp, t) => this.manager.teamFor(comp, t);
+    // carriera da giocatore (src/game/30_pro_career.js): il tuo calciatore nella sua squadra
+    this.pro = new ProCareer(this);
+    this.ranking = new OnlineRanking(this);   // classifica online (src/game/31_online_ranking.js)
+    this.comps.career.rosterTeam = (comp, t) => comp.pro ? this.pro.teamFor(comp, t) : this.manager.teamFor(comp, t);
     this.social = new SocialUI(this);
     this.compMatch = null;      // partita di una competizione in corso: { compId, fid }
     this.startDemo();
@@ -96,7 +101,7 @@ class Game {
     this.screen = name;
     if (name !== 'match' && this.commentary) this.commentary.stopVoice();   // fuori dalla partita la voce tace
     for (const id of SCREENS) $(id).hidden = true;
-    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', training: 'training', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
+    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', training: 'training', ranking: 'ranking', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
     if (panel) {
       const el = $(panel);
       el.hidden = false;
@@ -194,6 +199,7 @@ class Game {
     $('on-create-server').onclick = () => this.createOnline('lan');
     $('on-join').onclick = () => this.joinOnline();
     $('on-back').onclick = () => this.showScreen('menu');
+    $('on-ranking').onclick = () => this.ranking.open('online');
     $('on-server-edit').onclick = () => this.openSettings('online', 'online');
     // diagnostica di rete: Ctrl+Maiusc+D o la casella nelle impostazioni
     window.addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') { e.preventDefault(); this.toggleNetDiag(); } });
@@ -318,6 +324,7 @@ class Game {
     // meteo e ora del giorno ("A caso" si decide al fischio d'inizio)
     this.segmented('opt-weather', WEATHER_CHOICES.map(w => ({ label: w[1], value: w[0] })), s.weather, v => { s.weather = v; this.renderSetup(); });
     this.segmented('opt-time', TIME_CHOICES.map(w => ({ label: w[1], value: w[0] })), s.timeOfDay, v => { s.timeOfDay = v; this.renderSetup(); });
+    this.segmented('opt-draw', DRAW_CHOICES.map(w => ({ label: w[1], value: w[0] })), s.onDraw, v => { s.onDraw = v; this.renderSetup(); });
     $('row-form').style.opacity = s.side === -1 ? 0.4 : 1;
   }
 
@@ -363,16 +370,19 @@ class Game {
     const side = f.home === cfg.userTeam ? 0 : f.away === cfg.userTeam ? 1 : -1;
     const team = (idx, mine) => {
       // carriera da allenatore: rosa della carriera (giocatori comprati, cresciuti, ragazzi del vivaio)
-      const t = namedTeam((comp.manager && this.manager.teamFor(comp, idx)) || this.db[idx], this.settings.teamNames[idx]);
+      const t = namedTeam((comp.manager && this.manager.teamFor(comp, idx)) || (comp.pro && this.pro.teamFor(comp, idx)) || this.db[idx], this.settings.teamNames[idx]);
       const copy = Object.assign({}, t, { tactics: Object.assign({}, t.tactics) });
       if (mine) copy.tactics.mentality = this.setup.mentality;
       return copy;
     };
     const rules = C.matchRules(comp, f);
     // nelle competizioni il meteo e l'ora cambiano da partita a partita
-    const opts = { humanTeam: side, difficulty: cfg.difficulty, halfSeconds: cfg.halfSeconds, subs: true, weather: pickWeather('random'), timeOfDay: pickTimeOfDay('random') };
-    const m = rules ? new KnockoutMatch(team(f.home, side === 0), team(f.away, side === 1), Object.assign(opts, { knockout: rules }))
-      : new Match(team(f.home, side === 0), team(f.away, side === 1), opts);
+    const opts = { humanTeam: side, difficulty: cfg.difficulty, halfSeconds: cfg.halfSeconds, subs: true, injuries: true, weather: pickWeather('random'), timeOfDay: pickTimeOfDay('random') };
+    const home = team(f.home, side === 0), away = team(f.away, side === 1);
+    // carriera da giocatore: guidi sempre e solo il tuo calciatore (lockIdx lo ha calcolato teamFor)
+    if (comp.pro && side >= 0) opts.humans = [{ id: 'local', team: side, lock: this.pro.lockIdx }];
+    const m = rules ? new KnockoutMatch(home, away, Object.assign(opts, { knockout: rules }))
+      : new Match(home, away, opts);
     if (!friend) C.markInProgress(comp, f.id);
     this.compMatch = { compId: comp.id, fid: f.id, friend: friend || null };
     this.lastCompId = comp.id;
@@ -386,11 +396,15 @@ class Game {
     this.compMatch = null;
     const s = this.setup;
     const home = this.teamForMatch(s.home, s.side === 0), away = this.teamForMatch(s.away, s.side === 1);
-    const m = new Match(home, away, { humanTeam: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, subs: true,
-      weather: pickWeather(s.weather), timeOfDay: pickTimeOfDay(s.timeOfDay) });
+    const opts = { humanTeam: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, subs: true, injuries: true,
+      weather: pickWeather(s.weather), timeOfDay: pickTimeOfDay(s.timeOfDay) };
+    // con "Supplementari e rigori" o "Subito i rigori" la partita è a eliminazione diretta (08_shootout.js)
+    const m = s.onDraw === 'extra' || s.onDraw === 'pens'
+      ? new KnockoutMatch(home, away, Object.assign(opts, { knockout: { extraTime: s.onDraw === 'extra', penalties: true } }))
+      : new Match(home, away, opts);
     // la prossima volta il menu propone la stessa partita
     this.settings.lastSetup = { home: s.home, away: s.away, side: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, formation: s.formation, mentality: s.mentality,
-      weather: s.weather, timeOfDay: s.timeOfDay };
+      weather: s.weather, timeOfDay: s.timeOfDay, onDraw: s.onDraw };
     saveSettings(this.settings);
     this.mode = 'offline';
     this.prepareMatchView(m, 'local', null);
@@ -535,6 +549,7 @@ class Game {
     if (Number.isInteger(l.mentality) && l.mentality >= 0 && l.mentality < MENTALITIES.length) s.mentality = l.mentality;
     if (WEATHER_CHOICES.some(w => w[0] === l.weather)) s.weather = l.weather;
     if (TIME_CHOICES.some(w => w[0] === l.timeOfDay)) s.timeOfDay = l.timeOfDay;
+    if (DRAW_CHOICES.some(w => w[0] === l.onDraw)) s.onDraw = l.onDraw;
   }
 
   // ---------- CONTROLLER E NAVIGAZIONE ----------
@@ -631,7 +646,8 @@ class Game {
       case 'fulltime': if (this.hlPlay) this.stopHighlights(); break;
       case 'center': this.eco.open('fixtures'); break;
       case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': case 'comps': this.showScreen('menu'); break;
-      case 'comp': case 'comp-new': case 'manager': this.comps.openDashboard(); break;
+      case 'comp': case 'comp-new': case 'manager': case 'pro': this.comps.openDashboard(); break;
+      case 'ranking': this.showScreen(this.ranking.back || 'menu'); break;
     }
   }
   // tasti nei menu (la partita non è in corso o è in pausa)
@@ -1146,7 +1162,12 @@ class Game {
     }
     R.syncFromMatch(m, dt, alpha);
     const excite = m.state === 'GOAL' ? 1 : Math.max(0, (Math.abs(m.ball.x) - 25) / 30);
-    this.audio.crowd(excite);
+    // rigori: durante la rincorsa lo stadio trattiene il fiato e si sente il battito del cuore
+    const tense = !!(m.so && m.so.phase === 'kick' && m.state !== 'PLAY' && !this.replay);
+    this.audio.crowd(tense ? 0 : m.so && m.so.phase !== 'done' ? Math.max(0.35, excite) : excite);
+    this.audio.heartbeat(dt, tense);
+    // cori: solo a palla lontana dalle porte, mai in allenamento o ai rigori
+    this.audio.chantTick(dt, m.state === 'PLAY' && !m.so && !m.training && !this.replay && !this.paused && Math.abs(m.ball.x) < 30);
     this.updateHUD();
     if (m.state === 'FULLTIME' && m.stateTime > 2.5 && this.screen === 'match') this.showFullTime();
   }
@@ -1184,7 +1205,7 @@ class Game {
     }
     switch (e.type) {
       case 'kick': {
-        this.audio.kick(e.power || 10); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });
+        this.audio.kick(e.power || 10, e.kind); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });
         // calcio del tuo calciatore: piccolo colpo nelle mani
         const me = this.localPlayer();
         if (me && dist2(me.x, me.z, e.x, e.z) < 1.6) {
@@ -1208,9 +1229,10 @@ class Game {
         break;
       case 'whistle': this.audio.whistle(e.kind === 'END' ? 3 : e.kind === 'HALF' ? 2 : 1); break;
       case 'post': this.audio.post(); this.rumble(160, 0.3, 0.8); if (m && this.mode !== 'client') m.showBanner('Palo!', 1.2); else if (m) m.banner = { text: 'Palo!', t: 1.2 }; break;
-      case 'save': this.audio.roar(false); break;
+      case 'save': this.audio.roar(false); this.audio.ooh(0.1); break;
       case 'goal': {
         this.audio.roar(true);
+        this.audio.chantWait = 5;   // dopo l'esultanza parte un coro
         // ai rigori niente replay: il prossimo tiro arriva subito
         if (!(m && m.so)) this.replayPending = true;
         const team = m && m.teams[e.team];
@@ -1227,13 +1249,17 @@ class Game {
   refereeFeedback(r) {
     if (!r) return;
     const R = this.renderer, me = this.localPlayer();
+    R.officialsEvent(r, this.match);   // arbitro, cartellini e infortuni in campo (09_render_referee.js)
     switch (r.type) {
       case 'FOUL':
         R.burst('dust', r.x, r.z, { amount: 1 + r.severity * 1.5 });
+        if (r.severity > 0.35) this.audio.crowdWhistles(r.severity);
         if (me && dist2(me.x, me.z, r.x, r.z) < 3) this.rumble(220, 0.9, 0.4);
         break;
-      case 'RED_CARD': case 'PENALTY': this.audio.roar(false); break;
-      case 'YELLOW_CARD': this.audio.whistle(1); break;
+      case 'RED_CARD': this.audio.crowdWhistles(1); break;
+      case 'PENALTY': this.audio.roar(false); break;
+      case 'PENALTY_MISSED': this.audio.ooh(); break;
+      case 'YELLOW_CARD': this.audio.whistle(1); this.audio.crowdWhistles(0.4); break;
     }
   }
 
@@ -1294,6 +1320,25 @@ class Game {
   setStyle(id, prop, v) { const c = this._hudCache || (this._hudCache = {}); const k = id + '.' + prop; if (c[k] === v) return; c[k] = v; $(id).style[prop] = v; }
   setHidden(id, v) { const c = this._hudCache || (this._hudCache = {}); const k = id + '.h'; if (c[k] === v) return; c[k] = v; $(id).hidden = v; }
 
+  // riquadro dei rigori: per ogni squadra i tiri fatti (gol o sbagliato) e quelli che mancano ai primi 5
+  renderShootoutPanel(m) {
+    const so = m.so;
+    this.setHidden('so-panel', !so || !!this.replay);
+    if (!so) return;
+    const key = so.log.length + so.phase + so.kicking;
+    if (this._soKey === key) return;
+    this._soKey = key;
+    for (const side of [0, 1]) {
+      $('so-n' + side).textContent = m.teams[side].data.short;
+      const kicks = so.log.filter(l => l.team === side);
+      let html = kicks.map(l => '<i class="' + (l.scored ? 'in' : 'out') + '"></i>').join('');
+      // il prossimo tiro lampeggia; a oltranza si aggiunge un pallino alla volta
+      const total = Math.max(5, kicks.length + (so.phase === 'kick' && so.kicking === side ? 1 : 0));
+      for (let i = kicks.length; i < total; i++) html += '<i class="' + (i === kicks.length && so.phase === 'kick' && so.kicking === side ? 'now' : '') + '"></i>';
+      $('so-d' + side).innerHTML = html;
+    }
+  }
+
   updateHUD() {
     const m = this.match;
     this.setText('sb-score', m.teams[0].score + ' – ' + m.teams[1].score);
@@ -1301,6 +1346,7 @@ class Game {
     this.setText('sb-time', m.so ? 'Rigori' : m.state === 'HALFTIME' ? 'Int.' : m.state === 'FULLTIME' ? 'Fine' : (min + 1) + "'");
     // serie dei rigori: punteggio della serie accanto al risultato
     if (m.so) this.setText('sb-score', m.teams[0].score + ' – ' + m.teams[1].score + '  (' + m.so.score[0] + '-' + m.so.score[1] + ')');
+    this.renderShootoutPanel(m);
     // espulsioni: un rettangolo rosso per ogni giocatore in meno
     for (const i of [0, 1]) { const n = m.teams[i].stats.red || 0; this.setHidden('sb-red-' + i, !n); this.setText('sb-red-' + i, '▮'.repeat(Math.min(n, 4))); }
     this.setHidden('sb-adv', !m.advantage);
@@ -1383,10 +1429,13 @@ class Game {
     const m = this.match;
     this.showScreen('fulltime');
     const [a, b] = m.teams;
-    $('ft-score').textContent = a.data.name + '  ' + a.score + ' – ' + b.score + '  ' + b.data.name;
+    // dopo i rigori: punteggio della serie tra parentesi, e vince chi l'ha vinta
+    const pens = m.so && m.so.phase === 'done' ? m.so.score : null;
+    $('ft-score').textContent = a.data.name + '  ' + a.score + ' – ' + b.score + '  ' + b.data.name + (pens ? '  (' + trf('rigori {0}-{1}', pens[0], pens[1]) + ')' : '');
     const h = m.humanById(this.renderer.localId);
     const human = h ? m.teams[h.team] : null;
-    $('ft-verdict').textContent = !human ? 'Partita terminata' : human.score > human.opponent().score ? 'Vittoria' : human.score === human.opponent().score ? 'Pareggio' : 'Sconfitta';
+    if (pens && human) $('ft-verdict').textContent = m.decided === human.index ? tr('Vittoria ai rigori') : tr('Sconfitta ai rigori');
+    else $('ft-verdict').textContent = !human ? 'Partita terminata' : human.score > human.opponent().score ? 'Vittoria' : human.score === human.opponent().score ? 'Pareggio' : 'Sconfitta';
     const goals = m.log.length ? m.log.map(g => g.minute + "' " + g.scorer + ' (' + g.team.data.short + (g.own ? ', autogol' : '') + ')').join(', ') : 'Nessun gol';
     const cards = (m.cardLog || cardList(m.timeline)).map(c => c.minute + "' " + c.name + ' (' + (c.type === 'red' ? 'rosso' : 'giallo') + ')');
     $('ft-goals').textContent = goals + (cards.length ? '. Cartellini: ' + cards.join(', ') : '');
@@ -1446,9 +1495,14 @@ class Game {
           const o = this.comps.career.overview(c);
           $('ft-comp-note').textContent = c.status === 'finished' ? '🏆 ' + c.name + ': vince ' + this.teamName(c.champion) + '!' :
             c.name + ' · ' + tr('risultato registrato') + (o.position ? ' · ' + trf('{0}º posto', o.position) : '') + (o.userOut ? ' · ' + tr('la tua squadra è eliminata') : '') + (o.round ? ' · ' + trf('prossimo turno: {0}', tr(o.round)) : '');
+          // carriera da giocatore: voto ed esperienza del tuo calciatore
+          const pr = c.pro && this.comps.lastPro;
+          if (pr) $('ft-comp-note').textContent += ' · ' + trf('Il tuo voto {0}, +{1} esperienza', pr.rating === null ? '—' : pr.rating.toLocaleString(uiLocale(), { minimumFractionDigits: 1 }), pr.xp) + (pr.ups ? ' · ' + trf('Livello {0}!', this.pro.data.level) : '');
         }
       }
     }
+    // partita online: il risultato va alla classifica online (31_online_ranking.js)
+    if (this.mode === 'host' || this.mode === 'client') this.reportOnlineResult(m); else $('ft-online-note').hidden = true;
     $('ft-wait').hidden = this.mode !== 'client';
     $('ft-rematch').textContent = this.mode === 'host' ? 'Torna alla lobby' : 'Rivincita';
     $('ft-menu').textContent = this.mode === 'host' ? 'Chiudi la partita' : this.mode === 'client' ? 'Esci' : this.mode === 'fixture' ? 'Torna al centro partita' : 'Menu principale';

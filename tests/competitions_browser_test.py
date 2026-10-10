@@ -29,7 +29,7 @@ async def main():
         await pg.click('#btn-comps')
         await pg.wait_for_function("game.screen==='comps'", timeout=5000)
         secs = await pg.evaluate("[...document.querySelectorAll('#comps .comp-sec:not([hidden]) h3')].map(e=>e.textContent)")
-        check('Competizioni: Carriera da allenatore, Campionato, Torneo, Coppe', secs[:4] == ['Carriera da allenatore', 'Campionato', 'Torneo', 'Coppe'], secs)
+        check('Competizioni: Carriera da giocatore, Carriera da allenatore, Campionato, Torneo, Coppe', secs[:5] == ['Carriera da giocatore', 'Carriera da allenatore', 'Campionato', 'Torneo', 'Coppe'], secs)
         await pg.wait_for_timeout(400); await pg.screenshot(path=HERE + '/shots/70_competizioni_vuoto.png')
 
         # ---- nuovo campionato a 8 con la squadra 0

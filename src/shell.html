@@ -100,6 +100,16 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 #tr-hud { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 18px; background: rgba(12,26,43,0.85); border-left: 4px solid var(--flood); padding: 6px 14px;
   font-family: var(--display); font-weight: 700; font-size: 20px; }
 #hud.training .scoreboard, #hud.training #minimap { display: none; }
+/* serie dei rigori: un pallino per tiro (verde gol, rosso sbagliato, vuoto da tirare) */
+#so-panel { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 18px; background: rgba(12,26,43,0.88); border-left: 4px solid var(--flood); padding: 8px 14px; display: grid; gap: 6px; }
+.sop-row { display: flex; align-items: center; gap: 10px; }
+.sop-row b { font-family: var(--display); font-weight: 800; font-size: 20px; min-width: 48px; }
+.sop-row span { display: flex; gap: 5px; }
+.sop-row i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(243,245,238,0.45); }
+.sop-row i.in { background: #39c46b; border-color: #39c46b; }
+.sop-row i.out { background: var(--signal); border-color: var(--signal); }
+.sop-row i.now { border-color: var(--flood); animation: so-blink 0.8s ease-in-out infinite alternate; }
+@keyframes so-blink { from { opacity: 1; } to { opacity: 0.35; } }
 
 /* ---------- home ---------- */
 .menu-col { display: flex; flex-direction: column; min-height: 100%; justify-content: center; padding-top: max(3vh, 84px); width: 100%; min-width: 0; }
@@ -396,6 +406,18 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 .mg-teams { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 14px; }
 .mg-team { display: flex; align-items: center; gap: 10px; font: inherit; color: var(--chalk); background: var(--night-2); border: 1px solid transparent; padding: 12px 14px; cursor: pointer; text-align: left; }
 .mg-team:hover { border-color: var(--flood); } .mg-team small { margin-left: auto; color: var(--slate); }
+.mg-team.on { border-color: var(--flood); background: rgba(255,216,74,0.12); }
+/* carriera da giocatore */
+.pr-top { display: flex; gap: 16px; align-items: center; margin: 4px 0 14px; } .pr-top > div:last-child { flex: 1; min-width: 0; }
+.pr-badge { display: grid; place-items: center; width: 74px; height: 74px; background: var(--night-2); border-left: 4px solid var(--flood); }
+.pr-badge b { font-family: var(--display); font-size: 30px; line-height: 1; color: var(--flood); } .pr-badge span { font-size: 13px; color: var(--slate); }
+.pr-attrs { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px 22px; margin: 8px 0; }
+.pr-attr { display: grid; grid-template-columns: 120px 1fr 34px 46px; align-items: center; gap: 10px; }
+.pr-attr .bar { margin: 0; height: 7px; } .pr-attr .bar div { background: var(--flood); }
+.pr-head, .pr-row { grid-template-columns: minmax(0, 2fr) 1fr 1fr 60px 90px !important; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(243,245,238,0.25); cursor: pointer; padding: 0; }
+.swatch.on { border-color: var(--flood); box-shadow: 0 0 0 2px var(--flood); }
 .mg-head, .mg-row { display: grid; grid-template-columns: 34px minmax(150px, 2fr) 90px 44px 54px 74px 80px 84px; gap: 8px; align-items: center; font-size: 14px; }
 .mg-head { color: var(--slate); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 8px; margin-top: 8px; }
 .mg-row { background: var(--night-2); border: 1px solid transparent; padding: 5px 8px; margin-top: 3px; cursor: pointer; }
@@ -430,6 +452,18 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 #toast { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); z-index: 60; background: var(--night-3); border-left: 4px solid var(--flood); padding: 12px 18px; max-width: min(560px, 90vw); box-shadow: 0 6px 24px rgba(0,0,0,0.4); animation: toast-in 0.18s ease-out; }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 #toast.err { border-left-color: var(--signal); }
+/* invito di un amico a giocare: in tutti i menu, con Entra */
+#invite-pop { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 0; right: 0; margin: 0 auto; width: fit-content; z-index: 61; display: flex; align-items: center; gap: 12px;
+  background: var(--night-3); border-left: 4px solid var(--flood); padding: 10px 12px 10px 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); max-width: calc(100vw - 32px); }
+/* classifica online */
+.rk-me { display: flex; gap: 16px; align-items: center; margin: 14px 0; } .rk-me > div:last-child { flex: 1; min-width: 0; }
+.rk-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.rk-table th, .rk-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid rgba(243,245,238,0.08); }
+.rk-table th { color: var(--slate); font-weight: 600; font-size: 13px; }
+.rk-table tr.mine td { background: rgba(255,216,74,0.1); }
+.rk-table .lv, .so-lv { display: inline-block; min-width: 24px; text-align: center; background: var(--night-2); color: var(--flood); font-weight: 700; padding: 1px 6px; font-size: 13px; }
+.so-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: rgba(243,245,238,0.25); }
+.so-dot.online { background: #39c46b; } .so-dot.match { background: var(--flood); }
 #netdiag { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 42; width: min(380px, calc(100vw - 24px)); max-height: 60vh; overflow: auto;
   background: rgba(12,26,43,0.92); border-left: 3px solid var(--sky); padding: 8px 12px; font: 12px/1.45 Consolas, 'Courier New', monospace; }
 #netdiag h4 { margin: 0 0 6px; font: 700 13px var(--text); color: var(--sky); } #netdiag h4 small { color: var(--slate); font-weight: 400; }
@@ -746,6 +780,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <label>Telecronaca</label><div class="segs" id="opt-comm"></div>
       <label>Meteo</label><div class="segs" id="opt-weather"></div>
       <label>Ora</label><div class="segs" id="opt-time"></div>
+      <label>In caso di pareggio</label><div class="segs" id="opt-draw"></div>
     </div>
     <div class="actions">
       <button class="primary" id="setup-start">Scendi in campo</button>
@@ -816,7 +851,15 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
     <div class="status" id="on-status" role="status" aria-live="polite"></div>
     <p class="hintline">Server online: <span id="on-server"></span> <button class="ghost" id="on-server-edit" style="padding:4px 10px;font-size:14px;margin-left:6px">Cambia</button></p>
-    <div class="actions"><button class="ghost" id="on-back">Indietro</button></div>
+    <div class="actions"><button class="ghost" id="on-back">Indietro</button><button class="ghost" id="on-ranking">Classifica online</button></div>
+  </div>
+</section>
+
+<section id="ranking" class="panel" hidden>
+  <div class="sheet wide">
+    <h2>Classifica online</h2>
+    <div id="rk-body"></div>
+    <div class="actions"><button class="ghost" id="rk-back">Indietro</button><button class="ghost" id="rk-refresh">Aggiorna</button></div>
   </div>
 </section>
 
@@ -961,6 +1004,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
   <div class="sheet wide">
     <h2>Competizioni</h2>
     <div class="comp-secs">
+      <section class="comp-sec"><header><h3>Carriera da giocatore</h3><button class="ghost" id="cl-pro-open">Nuova carriera</button></header><div class="comp-list" id="cl-pro"></div></section>
       <section class="comp-sec"><header><h3>Carriera da allenatore</h3><button class="ghost" id="cl-manager-open">Nuova carriera</button></header><div class="comp-list" id="cl-manager"></div></section>
       <section class="comp-sec"><header><h3>Campionato</h3><button class="ghost" data-new="league">Nuovo campionato</button></header><div class="comp-list" id="cl-league"></div></section>
       <section class="comp-sec"><header><h3>Torneo</h3><button class="ghost" data-new="tournament">Nuovo torneo</button></header><div class="comp-list" id="cl-tournament"></div></section>
@@ -978,6 +1022,15 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <div id="mg-body"></div>
     <div class="status" id="mg-status" aria-live="polite"></div>
     <div class="actions"><button class="ghost" id="mg-back">Competizioni</button><button class="ghost danger" id="mg-quit" hidden>Abbandona la carriera</button></div>
+  </div>
+</section>
+
+<section id="pro" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2 id="pr-title" translate="no">Carriera da giocatore</h2><span class="pill" id="pr-sub"></span></div>
+    <div id="pr-body"></div>
+    <div class="status" id="pr-status" aria-live="polite"></div>
+    <div class="actions"><button class="ghost" id="pr-back">Competizioni</button><button class="ghost danger" id="pr-quit" hidden>Abbandona la carriera</button></div>
   </div>
 </section>
 
@@ -1169,6 +1222,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
   <div id="commentary" hidden role="status" aria-live="polite"></div>
   <div id="replay-tag" hidden>Replay<small></small></div>
   <div id="tr-hud" hidden></div>
+  <div id="so-panel" hidden><div class="sop-row"><b id="so-n0"></b><span id="so-d0"></span></div><div class="sop-row"><b id="so-n1"></b><span id="so-d1"></span></div></div>
   <div class="pc" id="pc" hidden>
     <div class="pc-top"><span id="pc-num"></span><span id="pc-name"></span><span id="pc-role"></span></div>
     <div class="bar"><div id="pc-energy"></div></div>
@@ -1279,6 +1333,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <h2 id="ft-verdict">Fine partita</h2>
     <p class="ft-score" id="ft-score"></p>
     <p class="ft-comp-note" id="ft-comp-note" hidden></p>
+    <p class="ft-comp-note" id="ft-online-note" hidden></p>
     <div id="ft-goals"></div>
     <div class="ft-grid">
       <table id="ft-stats"></table>
@@ -1302,6 +1357,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 <!-- azioni migliori a fine partita (src/game/27_highlights.js) -->
 <div id="hl-bar" hidden><span id="hl-label"></span><button class="ghost" id="hl-next">Prossima</button><button class="ghost" id="hl-exit">Fine</button></div>
 <div id="toast" hidden role="alert"></div>
+<div id="invite-pop" hidden role="alertdialog" aria-live="assertive"><span id="invite-text"></span><button class="primary sm" id="invite-join">Entra</button><button class="ghost sm" id="invite-later">Più tardi</button></div>
 <div id="fps" hidden></div>
 <aside id="netdiag" hidden aria-label="Diagnostica di rete"><h4>Diagnostica di rete <small>Ctrl+Maiusc+D</small></h4><dl id="nd-info"></dl><ol id="nd-log"></ol></aside>
 <div id="fatal" hidden></div>

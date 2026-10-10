@@ -23,7 +23,8 @@ const NET = {
   PSTRIDE: 14,            // valori per ogni calciatore (posizione, animazioni, energia, cartellini, caduta)
   BANNER_KINDS: ['goal', 'foul', 'yellow', 'red', 'advantage', 'offside', 'penalty', 'info'],
   REF_TYPES: ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'SECOND_YELLOW', 'PENALTY', 'FREE_KICK', 'CORNER', 'OFFSIDE',
-    'THROW_IN', 'GOAL_KICK', 'ADVANTAGE', 'KICK_OFF', 'HALF_TIME', 'FULL_TIME', 'SHOT', 'SHOT_ON_TARGET', 'SUB'],
+    'THROW_IN', 'GOAL_KICK', 'ADVANTAGE', 'KICK_OFF', 'HALF_TIME', 'FULL_TIME', 'SHOT', 'SHOT_ON_TARGET', 'SUB',
+    'PENALTY_SCORED', 'PENALTY_MISSED'],
   EV_TYPES: ['kick', 'whistle', 'post', 'save', 'goal', 'tackle', 'switch', 'ref'],
 };
 const netNow = () => performance.now() / 1000;
@@ -249,7 +250,7 @@ function sanitizeInput(d) {
 // evento della simulazione -> formato compatto per audio, grafica e rete (uguale in locale e sui client)
 function matchEventForNet(m, e) {
   const ev = { type: e.type, x: m.ball.x, z: m.ball.z };
-  if (e.type === 'kick') ev.power = e.data.power;
+  if (e.type === 'kick') { ev.power = e.data.power; ev.kind = e.data.kind; }   // kind: pass, lob, cross, shot, header... (per il suono)
   if (e.type === 'whistle') ev.kind = e.data.type;
   if (e.type === 'goal') { ev.team = e.data.team; ev.y = m.ball.netHit ? m.ball.netHit.y : m.ball.y; if (m.ball.netHit) { ev.z = m.ball.netHit.z; ev.power = m.ball.netHit.v; } }
   if (e.type === 'switch') ev.id = e.data.id;
@@ -428,7 +429,7 @@ class HostSession {
     const humans = this.slots.map(id => ({ id: id, team: this.members.get(id).side }));
     this.mid = Math.random().toString(36).slice(2, 10);
     const nm = cleanTeamNames(s.names);
-    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: humans, difficulty: s.difficulty, halfSeconds: s.halfSeconds, weather: s.weather, timeOfDay: s.timeOfDay });
+    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: humans, difficulty: s.difficulty, halfSeconds: s.halfSeconds, weather: s.weather, timeOfDay: s.timeOfDay, injuries: true });
     this.phase = 'playing';
     this.acc = 0; this.steps = 0; this.simTime = 0; this.seq = 0; this.inputs.clear();
     this.link.toAll(this.startPayload());
@@ -606,7 +607,7 @@ class ClientSession {
     this.names = {}; hs.forEach(h => { this.names[h.id] = h.name; });
     // la partita del client è un "manichino": non viene simulata, riceve solo le posizioni
     const nm = cleanTeamNames(s.names);
-    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: hs.map(h => ({ id: h.id, team: h.team })), difficulty: s.difficulty, halfSeconds: s.halfSeconds, weather: s.weather, timeOfDay: s.timeOfDay });
+    this.match = new Match(namedTeam(this.db[s.home], nm[0]), namedTeam(this.db[s.away], nm[1]), { humans: hs.map(h => ({ id: h.id, team: h.team })), difficulty: s.difficulty, halfSeconds: s.halfSeconds, weather: s.weather, timeOfDay: s.timeOfDay, injuries: true });
     this.match.events.length = 0;
     this.match.timeline.length = 0;   // il registro degli eventi arriva solo dall'host
     this.mid = d.mid; this.snaps = []; this.delay = undefined; this.events = []; this.replayAcc = 0;

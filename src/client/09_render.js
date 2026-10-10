@@ -638,6 +638,7 @@ class Renderer {
     this.playerMeshes = (match.allSlots ? match.allSlots() : match.allPlayers()).map(p => this.makePlayerMesh(p));
     this.match = match;
     this.applyEnvironment(match.weather, match.timeOfDay);   // meteo e ora del giorno della partita
+    this.setupOfficials(match);   // arbitro e barellieri (09_render_referee.js)
   }
 
   // aspetto comprato (letto dal server) per un calciatore: si ricostruisce solo il suo modello
@@ -684,6 +685,7 @@ class Renderer {
     for (const pm of this.playerMeshes) this.disposePlayerMesh(pm);
     this.playerMeshes = [];
     this.footShadows.count = 0;
+    this.clearOfficials();
     this.match = null;
   }
 
@@ -892,8 +894,10 @@ class Renderer {
       this.poseMesh(pm, p.rx, p.rz, f, ph, p.speed(), p.anim.kick, p.anim.dive > 0 ? p.anim.diveDir : 0,
         { tackle: p.anim.tackle, header: p.anim.header, fall: p.anim.fall, celebrate: scorers === p.team && match.stateTime > 0.4, charge: hc || 0,
           vx: p.vx, vz: p.vz, bx: bx, bz: bz, isGK: p.isGK });
+      // a terra dopo un fallo duro, poi zoppica (09_render_referee.js)
+      if (pm.hurtT > 0 || pm.limpT > 0 || pm.hurtAmt > 0.01) this.poseHurt(pm, dt, p.speed(), ph);
       // ombra di contatto: allungata quando è a terra (caduta, scivolata, tuffo)
-      const lying = p.anim.fall > 0 || p.anim.tackle > 0.3 || p.anim.dive > 0;
+      const lying = p.anim.fall > 0 || p.anim.tackle > 0.3 || p.anim.dive > 0 || pm.hurtAmt > 0.5;
       if (ns < 22) this.setFootShadow(ns++, p.rx + (lying ? Math.cos(f) * 0.7 : 0), p.rz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0);
     }
     this.footShadows.count = ns;
@@ -907,6 +911,7 @@ class Renderer {
     const mine = match.humanById ? match.humanById(this.localId) : null;
     this.updateFx(dt);
     this.updateNets(dt);
+    this.updateOfficials(match, dt, bx, bz);
     this.updateCamera(dt, bx, by, bz, mine && mine.player, match);
     this.updateWeather(dt);
   }
@@ -933,6 +938,7 @@ class Renderer {
     }
     this.footShadows.count = ns;
     this.footShadows.instanceMatrix.needsUpdate = true;
+    if (this.officials) this.officials.ref.root.visible = false;   // nel replay niente arbitro (non è registrato)
     this.updateNets(dt);
     for (const mk of this.humanMarks) { mk.ring.visible = false; if (mk.label) mk.label.visible = false; }
     this.arrow.visible = false;
@@ -951,6 +957,9 @@ class Renderer {
   updateCamera(dt, bx, by, bz, controlled, match) {
     // vettori riusati (niente oggetti nuovi a ogni fotogramma)
     const want = this._want || (this._want = new THREE.Vector3()), look = this._look || (this._look = new THREE.Vector3());
+    // serie dei rigori: inquadrature come in televisione (09_render_shootout.js)
+    if (match && match.so && match.so.phase !== 'done') { this.shootoutCamera(dt, match, bx, by, bz); return; }
+    this._soShot = null;
     if (this.camMode === 0) {
       want.set(bx * 0.82, 24, bz * 0.3 + 47);
       look.set(bx * 0.9, 0, bz * 0.55 + 2);

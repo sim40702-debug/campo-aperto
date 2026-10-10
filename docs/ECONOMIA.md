@@ -274,6 +274,18 @@ partita iniziata e mai finita al secondo avvio si simula; tra due amici: valgono
 simulazione), nell'eliminazione diretta la parità si completa con supplementari e rigori simulati. Le partite tra due
 persone si giocano con il relay del Worker: il codice della stanza passa dal server (`friend_comp_rooms`, valido 3 ore).
 
+## Classifica online e amici online
+
+Dalla 0.15.0 (migrazione 0009, solo tabelle e colonne nuove: i dati che ci sono non cambiano). A fine partita online
+ogni giocatore con l'account manda il risultato (`POST /api/online/report` con il codice della stanza e della partita,
+la sua squadra e i gol). La partita vale quando arrivano i risultati di tutte e due le squadre e sono uguali: vittoria
+30 punti, pareggio 12, sconfitta 5 (`cloud/src/online.js`). Contro l'IA o da soli non si prendono punti; al massimo 15
+partite con punti al giorno e 3 contro lo stesso avversario. Il livello viene dai punti (25 per il 2, 100 per il 3,
+225 per il 4…). `GET /api/online/leaderboard` dà i primi 50, `GET /api/me/online` i propri numeri e il posto.
+Presenza: aprendo la lista degli amici, e ogni minuto durante una partita (`POST /api/presence`), il server salva
+l'ultima volta che il gioco si è fatto vivo (`users.last_seen`, `users.presence`): gli amici vedono "online",
+"in partita" o "visto 3 ore fa", e il livello della classifica.
+
 ### Account nascosti
 
 Un account con `users.hidden = 1` gioca normalmente ma non lo vede nessuno (giocatori, amici, inviti, profilo pubblico,
