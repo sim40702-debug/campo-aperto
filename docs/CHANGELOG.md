@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.14.2 — 10/10/2026 (corsa più realistica)
+- **Corsa dei giocatori rifatta**: passo vero con camminata, corsetta e scatto che si mescolano con la velocità
+  (ginocchio che sale, tallone che calcia dietro, busto in avanti allo scatto, bacino e spalle che girano). Nuova
+  caviglia: la punta si alza e spinge. I piedi restano appoggiati sull'erba invece di affondare o galleggiare.
+- Chi corre all'indietro (difensori che rientrano) fa il passo al contrario invece del moonwalk.
+- Il portiere si piega pronto quando il pallone è vicino; tutti girano la testa verso il pallone.
+- Solo grafica: il motore non cambia, partite e server restano identici.
+
 ## 0.14.1 — 09/10/2026
 - Download e aggiornamenti dell'app sempre da questo repository (campo-aperto), come prima.
 

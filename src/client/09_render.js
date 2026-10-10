@@ -583,15 +583,19 @@ class Renderer {
         { geo: cyl(0.068, 0.052, 0.2), color: kit[2], pos: [-0.006, -0.12, 0] },          // polpaccio
         { geo: cyl(0.052, 0.042, 0.2), color: kit[2], pos: [0, -0.3, 0] },
         { geo: cyl(0.07, 0.066, 0.05), color: kit[2], pos: [0, -0.035, 0] },               // risvolto del calzettone
-        // scarpa: tomaia, punta arrotondata, tallone e suola
-        { geo: new THREE.BoxGeometry(0.19, 0.07, 0.088), color: look.boots, pos: [0.045, -0.41, 0] },
-        { geo: new THREE.SphereGeometry(0.047, seg(7), seg(5)), color: look.boots, pos: [0.14, -0.418, 0], scale: [1.2, 0.68, 0.94] },
-        { geo: new THREE.SphereGeometry(0.044, seg(6), seg(4)), color: look.boots, pos: [-0.045, -0.405, 0], scale: [0.8, 0.85, 0.95] },
-        { geo: new THREE.BoxGeometry(0.24, 0.016, 0.09), color: '#141414', pos: [0.055, -0.452, 0] },
       ];
       if (it.calzettoni && it.calzettoni.stripe) shinParts.push({ geo: cyl(0.068, 0.064, 0.05, 9), color: it.calzettoni.stripe, pos: [-0.004, -0.09, 0] });
       knee.add(mesh(shinParts));
-      legs.push({ hip, knee });
+      // ---- caviglia (perno 40 cm sotto il ginocchio): la scarpa si piega da sola nella corsa
+      const ankle = new THREE.Group(); ankle.position.y = -0.4; knee.add(ankle);
+      ankle.add(mesh([
+        // scarpa: tomaia, punta arrotondata, tallone e suola
+        { geo: new THREE.BoxGeometry(0.19, 0.07, 0.088), color: look.boots, pos: [0.045, -0.01, 0] },
+        { geo: new THREE.SphereGeometry(0.047, seg(7), seg(5)), color: look.boots, pos: [0.14, -0.018, 0], scale: [1.2, 0.68, 0.94] },
+        { geo: new THREE.SphereGeometry(0.044, seg(6), seg(4)), color: look.boots, pos: [-0.045, -0.005, 0], scale: [0.8, 0.85, 0.95] },
+        { geo: new THREE.BoxGeometry(0.24, 0.016, 0.09), color: '#141414', pos: [0.055, -0.052, 0] },
+      ]));
+      legs.push({ hip, knee, ankle });
       // ---- braccio: manica (con bordo), pelle fino al gomito; avambraccio e mano (o guanto)
       const sh = new THREE.Group(); sh.position.set(0, 1.43 - WAIST, side * 0.228 * w); chest.add(sh);
       const sleeve = pat && pat.pattern === 'maniche' ? pat.color : kit[0];
@@ -707,23 +711,23 @@ class Renderer {
     chest.position.set(0, 0.98, 0); chest.rotation.set(0, 0, 0);
     neck.rotation.set(0, 0, 0);
     for (const A of pm.arms) { A.sh.rotation.set(0, 0, 0); A.elbow.rotation.set(0, 0, 0); }
-    for (const L of pm.legs) { L.hip.rotation.set(0, 0, 0); L.knee.rotation.set(0, 0, 0); }
-    // ---- corsa
-    const sw = s * (0.5 + 0.45 * amt + 0.16 * sprint) * amt;
-    const lift = (0.85 + 0.9 * sprint) * amt;
+    for (const L of pm.legs) { L.hip.rotation.set(0, 0, 0); L.knee.rotation.set(0, 0, 0); if (L.ankle) L.ankle.rotation.set(0, 0, 0); }
+    // ---- corsa: passo vero (camminata, corsetta, scatto) da src/client/09_render_gait.js
     const cr = pm.crouch;
-    L0.hip.rotation.z = sw + cr * 0.9; L1.hip.rotation.z = -sw + cr * 0.9;
-    L0.knee.rotation.z = -(Math.max(0, -s) * lift + 0.06 + 0.1 * amt * Math.max(0, c) + cr * 1.8);
-    L1.knee.rotation.z = -(Math.max(0, s) * lift + 0.06 + 0.1 * amt * Math.max(0, -c) + cr * 1.8);
-    pelvis.rotation.y = s * 0.12 * amt;
-    chest.rotation.y = -s * 0.2 * amt;
-    A0.sh.rotation.z = -sw * (0.8 + 0.4 * sprint); A1.sh.rotation.z = sw * (0.8 + 0.4 * sprint);
-    A0.elbow.rotation.z = A1.elbow.rotation.z = 0.3 + 0.7 * amt + 0.5 * sprint;
+    // all'indietro (es. un difensore che rincula): il passo va al contrario, più corto e senza piegarsi in avanti
+    let back = 0;
+    if (extra && extra.vx !== undefined && speed > 0.6) back = clamp(-(extra.vx * Math.cos(facing) + extra.vz * Math.sin(facing)) / speed, 0, 1);
+    pm.back = (pm.back || 0) + (back - (pm.back || 0)) * Math.min(1, dt * 6);
+    const gait = this.poseGait(pm, pm.back > 0.5 ? -phase : phase, speed * (1 - 0.45 * pm.back), Math.min(1, speed / 1.2) * (1 - 0.3 * pm.back));
+    if (pm.back > 0.05) { gait.lean *= 1 - 1.4 * pm.back; gait.tilt *= 1 - pm.back; }
+    // frenata o partenza: ginocchia un po' piegate
+    L0.hip.rotation.z += cr * 0.9; L1.hip.rotation.z += cr * 0.9;
+    L0.knee.rotation.z -= cr * 1.8; L1.knee.rotation.z -= cr * 1.8;
     A0.sh.rotation.x = -0.1 - 0.06 * amt; A1.sh.rotation.x = 0.1 + 0.06 * amt;
     body.rotation.x = pm.bank;
-    chest.rotation.z = -(amt * 0.1 + sprint * 0.08 + pm.lean + cr * 0.4);
-    pelvis.rotation.z = -(amt * 0.04 + pm.lean * 0.3);
-    body.position.y = Math.abs(s) * 0.045 * amt - sprint * 0.02 - cr * 0.35;
+    chest.rotation.z = -(gait.lean + pm.lean + cr * 0.4);
+    pelvis.rotation.z = -(gait.tilt + pm.lean * 0.3);
+    body.position.y = gait.bodyY - cr * 0.35;
     if (amt < 0.08) {
       // fermo: respiro, peso che passa da una gamba all'altra, braccia sciolte, sguardo che si muove
       chest.rotation.z += Math.sin(pm.t * 2.1) * 0.014;
@@ -732,6 +736,28 @@ class Renderer {
       L0.knee.rotation.z -= Math.max(0, Math.sin(pm.t * 0.6)) * 0.08; L1.knee.rotation.z -= Math.max(0, -Math.sin(pm.t * 0.6)) * 0.08;
       A0.sh.rotation.x = -0.14; A1.sh.rotation.x = 0.14; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.22;
       neck.rotation.y = Math.sin(pm.t * 0.37 + (pm.player.slotIndex || 0)) * 0.3;
+    }
+    // portiere pronto: ginocchia piegate, busto in avanti, braccia aperte quando la palla è vicina e lui è quasi fermo
+    if (extra && extra.isGK && speed < 2.2 && extra.bx !== undefined) {
+      const near = clamp(1 - (Math.hypot(extra.bx - x, extra.bz - z) - 12) / 22, 0, 1) * clamp(1 - speed / 2.2, 0, 1);
+      pm.ready = (pm.ready || 0) + (near - (pm.ready || 0)) * Math.min(1, dt * 4);
+      const r = pm.ready;
+      if (r > 0.01) {
+        for (const L of pm.legs) { L.hip.rotation.z += 0.35 * r; L.knee.rotation.z -= 0.75 * r; if (L.ankle) L.ankle.rotation.z += 0.35 * r; }
+        L0.hip.rotation.x = -0.12 * r; L1.hip.rotation.x = 0.12 * r;   // gambe un po' larghe
+        chest.rotation.z -= 0.28 * r;
+        A0.sh.rotation.x -= 0.45 * r; A1.sh.rotation.x += 0.45 * r; A0.elbow.rotation.z += 0.5 * r; A1.elbow.rotation.z += 0.5 * r;
+        A0.sh.rotation.z += 0.35 * r; A1.sh.rotation.z += 0.35 * r;
+        body.position.y = body.position.y * (1 - r) - 0.07 * r;
+      }
+    }
+    // tutti guardano la palla (la testa gira, non tutto il corpo)
+    if (extra && extra.bx !== undefined) {
+      const dx = extra.bx - x, dz = extra.bz - z;
+      const lx = dx * Math.cos(facing) + dz * Math.sin(facing), lz = -dx * Math.sin(facing) + dz * Math.cos(facing);
+      const want = Math.hypot(dx, dz) > 0.8 ? clamp(Math.atan2(-lz, lx), -0.85, 0.85) : 0;
+      pm.look = (pm.look || 0) + (want - (pm.look || 0)) * Math.min(1, dt * 5);
+      neck.rotation.y = pm.look;
     }
     // la testa resta dritta: compensa in parte inclinazione e rotazione del busto
     neck.rotation.z -= chest.rotation.z * 0.6;
@@ -864,7 +890,8 @@ class Renderer {
       const ph = mix(p.pph, p.anim.phase, 1.5);
       const hc = charges && charges.get(p);
       this.poseMesh(pm, p.rx, p.rz, f, ph, p.speed(), p.anim.kick, p.anim.dive > 0 ? p.anim.diveDir : 0,
-        { tackle: p.anim.tackle, header: p.anim.header, fall: p.anim.fall, celebrate: scorers === p.team && match.stateTime > 0.4, charge: hc || 0 });
+        { tackle: p.anim.tackle, header: p.anim.header, fall: p.anim.fall, celebrate: scorers === p.team && match.stateTime > 0.4, charge: hc || 0,
+          vx: p.vx, vz: p.vz, bx: bx, bz: bz, isGK: p.isGK });
       // ombra di contatto: allungata quando è a terra (caduta, scivolata, tuffo)
       const lying = p.anim.fall > 0 || p.anim.tackle > 0.3 || p.anim.dive > 0;
       if (ns < 22) this.setFootShadow(ns++, p.rx + (lying ? Math.cos(f) * 0.7 : 0), p.rz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0);
