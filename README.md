@@ -8,7 +8,14 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.14)
+### Le novità (0.10 – 0.15)
+
+- **Carriera da giocatore** (0.15): crei il tuo calciatore e giochi solo con lui; cresce di livello partita dopo
+  partita e a fine stagione le squadre più forti possono chiamarlo.
+- **Rigori** anche nella partita rapida (0.15), con le inquadrature della TV e la tensione del tiro.
+- **Arbitro in campo** con i cartellini, **infortuni** con la barella e i giocatori che zoppicano (0.15).
+- **Suoni nuovi** (0.15): pallone diverso per ogni tiro, palo metallico, pubblico che fa "ooh", fischia e canta.
+- **Classifica online** con punti e livelli (0.15), **amici online** e inviti con Entra in tutti i menu.
 
 - **Allenamento** (0.14): tiri, punizioni con la barriera, rigori, dribbling e passaggi, con sfide a punti e record.
 - **Meteo e ora del giorno** (0.14): sereno, pioggia o neve, di giorno, al tramonto o di sera. Con la pioggia la palla
@@ -127,14 +134,15 @@ Ogni tasto si può rimappare in **Impostazioni → Controlli**. Nell'app desktop
 ## Modalità
 
 - **Partita rapida** contro l'IA (o IA contro IA da guardare), con le 8 squadre del gioco o con le tue. Prima del fischio
-  scegli anche **meteo** (sereno, pioggia, neve, a caso) e **ora** (giorno, tramonto, sera).
+  scegli anche **meteo** (sereno, pioggia, neve, a caso), **ora** (giorno, tramonto, sera) e cosa succede **in caso di
+  pareggio**: resta pari, supplementari e rigori, oppure subito i rigori.
 - **Allenamento** (nella home, accanto a Gioca): cinque esercizi con un obiettivo da superare e il tuo record:
   - **Tiri in porta**: 10 tiri da fuori area contro il portiere (obiettivo 5 gol);
   - **Punizioni**: 10 punizioni con la barriera, con il mirino (obiettivo 3);
   - **Rigori**: 10 rigori (obiettivo 7);
   - **Dribbling**: 8 attacchi contro due difensori e il portiere (obiettivo 4);
   - **Passaggi**: tieni palla con tre compagni contro due difensori, passaggi riusciti in 60 secondi (obiettivo 15).
-- **Competizioni**: campionato, torneo, coppe e la **carriera da allenatore**.
+- **Competizioni**: campionato, torneo, coppe, la **carriera da giocatore** e la **carriera da allenatore**.
 - **Multiplayer** online o in rete locale, fino a 8 persone.
 - **Partite del server** da guardare in 3D, con scommesse in monete (serve un account).
 
@@ -240,6 +248,24 @@ giornata si simulano. **Simula partita** usa la simulazione ufficiale (forza del
 partita dà sempre lo stesso risultato, quindi non si può "rilanciare". Uscire a metà simula il tempo che manca dal punteggio
 attuale; se il gioco si chiude a metà partita, al riavvio la partita si completa con la simulazione.
 
+## Carriera da giocatore
+
+Da **Competizioni → Carriera da giocatore** crei il tuo calciatore: nome, numero, ruolo (attaccante, centrocampista,
+difensore), piede, pelle e capelli. Scegli la squadra in cui cominci (le 8 del gioco) e giochi il campionato a 8 squadre
+con andata e ritorno.
+
+- **In partita** guidi sempre e solo lui: il tasto Cambio non cambia giocatore, gli altri li muove l'IA.
+- **Esperienza**: dopo ogni partita arrivano punti esperienza, di più con un voto alto, i gol, la vittoria e il premio di
+  migliore in campo (una partita simulata ne dà pochi). A ogni livello hai **3 punti** da mettere su velocità,
+  accelerazione, resistenza, tiro, passaggio, dribbling, difesa e fisico; dal **livello 5** scegli una caratteristica
+  speciale (Bomber, Regista, Muro…).
+- **Fine stagione**: **Chiudi la stagione** dà un premio in esperienza in base alla posizione e porta le **offerte**
+  delle squadre più forti, se hai giocato bene (voto medio, gol). Resti o cambi squadra; dopo i 30 anni si perde un po'
+  di velocità ogni stagione.
+- Le schede **Partite** e **Storico** mostrano voto, gol ed esperienza di ogni partita e di ogni stagione.
+
+La carriera si salva su questo computer.
+
 ## Carriera da allenatore
 
 Da **Competizioni → Carriera da allenatore** scegli una delle 8 squadre e la guidi stagione dopo stagione, in un
@@ -258,14 +284,24 @@ campionato a 8 squadre con andata e ritorno.
 
 La carriera si salva su questo computer.
 
+## Classifica online
+
+**Multiplayer → Classifica online** (o **Classifica** nel pannello Amici): punti e livelli dalle partite online contro
+altre persone. A fine partita ognuno con l'account manda il risultato da solo; vale quando lo manda uguale anche chi era
+nell'altra squadra: **vittoria 30 punti, pareggio 12, sconfitta 5**. Contro l'IA non si prendono punti, e al massimo
+15 partite al giorno danno punti (3 contro lo stesso avversario). Il livello sale con i punti (25 per il livello 2,
+100 per il 3, 225 per il 4…). A fine partita, sotto il risultato, compaiono i punti presi.
+
 ## Amici e sfide tra amici
 
 Con l'account, nella Home c'è il pannello **Amici** a destra (si chiude e riapre con la linguetta):
 
 - **Tutti i giocatori**: chi è iscritto al server, con la ricerca per nome. **Aggiungi** manda la richiesta di amicizia;
   l'altro la trova in **Richieste e inviti** (pallino rosso sulla linguetta) e la accetta.
-- **Gioca** accanto a un amico: partita online 1 contro 1, ognuno con la sua squadra da 11. L'amico riceve l'invito nel
-  pannello e preme **Entra**. Nella lobby di qualunque partita online c'è anche **Invita amici**.
+- Accanto a ogni amico: **online** (pallino verde), **in partita** (giallo) o quando si è visto l'ultima volta, e il suo
+  livello della classifica online.
+- **Gioca** accanto a un amico: partita online 1 contro 1, ognuno con la sua squadra da 11. L'amico riceve l'invito in
+  alto, in qualunque menu sia, e preme **Entra** (lo trova anche nel pannello). Nella lobby di qualunque partita online c'è anche **Invita amici**.
 - **Sfida** accanto a un amico (o **Nuova sfida**): scegli campionato, torneo o coppa, le regole come nelle competizioni
   e la tua squadra, invita gli amici. Ognuno accetta scegliendo una squadra libera; le altre le guida l'IA.
   Quando ci siete, chi l'ha creata preme **Inizia la competizione**.
@@ -321,7 +357,7 @@ Per compilare Windows, macOS e Linux insieme con GitHub Actions basta pubblicare
 `package.json`:
 
 ```bash
-git tag v0.14.1 && git push --tags
+git tag v0.15.0 && git push --tags
 ```
 
 Dopo qualche minuto i file dei tre sistemi compaiono in **Releases**, con le note prese dal
@@ -331,6 +367,9 @@ scheda **Actions**: la release esce con gli altri e rilanciando il flusso più t
 Appena la release è pubblicata, le app già installate (dalla 0.13) la vedono da sole e propongono l'aggiornamento.
 Il flusso pubblica anche i file `latest.yml`, `latest-mac.yml`, `latest-linux.yml` e `latest-portable.yml`: servono
 all'app per scegliere il file giusto e controllarne l'impronta, quindi non vanno tolti dalla release.
+
+**Dalla 0.15** il server ha una migrazione nuova (`0009_classifica_online.sql`, solo tabelle e colonne nuove: i dati
+che ci sono restano) e il motore cambia impronta: va aggiornato con `npm run deploy` (vedi sotto).
 
 Quando cambia il **motore della partita** (i file di `src/engine/`) o il codice di `cloud/`, il **server dell'economia si
 aggiorna da solo** appena le modifiche arrivano nel `main` (flusso **Aggiorna il server** in Actions), perché le
@@ -402,6 +441,8 @@ python3 tests/economy_browser_test.py    # account, scommesse, social, negozio, 
 python3 tests/competitions_browser_test.py  # campionato, torneo con supplementari e rigori, coppa con gironi
 python3 tests/feel_browser_test.py       # reattività: tasti al fotogramma dopo, pulsanti, cambio schermata
 python3 tests/social_browser_test.py     # amici, inviti e sfide tra amici (serve cloud/: npm install)
+python3 tests/novita015_browser_test.py  # rigori, arbitro e cartellini, infortuni, suoni, carriera da giocatore
+python3 tests/classifica_browser_test.py # classifica online, amici online, invito con Entra (serve cloud/: npm install)
 ```
 
 Per provare la vera app desktop:

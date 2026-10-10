@@ -38,6 +38,7 @@ class Player {
     let s = sprint ? top : top * 0.64;
     if (this.energy < 45) s *= 0.82 + 0.18 * (this.energy / 45);
     if (this.hasBall()) s *= 0.9;
+    if (this.limp > 0) s *= INJURY.LIMP_SPEED;   // zoppica dopo un fallo duro (08_referee.js)
     return s;
   }
   accel() { return 5 + this.data.attr.accel * 0.045; }
@@ -134,6 +135,7 @@ class Player {
   }
 
   update(dt) {
+    if (this.limp > 0) this.limp -= dt;
     this.x += this.vx * dt;
     this.z += this.vz * dt;
     const sp = this.speed();

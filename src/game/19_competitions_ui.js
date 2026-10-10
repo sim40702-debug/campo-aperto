@@ -3,7 +3,7 @@
 // statistiche, storico), creazione. I dati vengono da Career (18_competitions.js); le partite si giocano con il
 // motore vero (Game.startCompMatch) o si simulano con la simulazione ufficiale.
 // ============================================================
-const COMP_SCREENS = ['comps', 'comp', 'comp-new', 'manager'];
+const COMP_SCREENS = ['comps', 'comp', 'comp-new', 'manager', 'pro'];
 
 class CompetitionsUI {
   constructor(game) {
@@ -66,6 +66,9 @@ class CompetitionsUI {
     $('btn-comps').onclick = () => this.openDashboard();
     $('comps-back').onclick = () => g.showScreen('menu');
     $('cl-manager-open').onclick = () => g.manager.open();
+    $('cl-pro-open').onclick = () => g.pro.open();
+    $('pr-back').onclick = () => this.openDashboard();
+    $('pr-quit').onclick = () => g.confirmClick($('pr-quit'), tr('Sicuro? Abbandona'), () => { g.pro.quit(); g.pro.render(); });
     $('mg-back').onclick = () => this.openDashboard();
     $('mg-quit').onclick = () => g.confirmClick($('mg-quit'), tr('Sicuro? Abbandona'), () => { g.manager.quit(); g.manager.render(); });
     $('cp-back').onclick = () => this.openDashboard();
@@ -97,6 +100,10 @@ class CompetitionsUI {
     $('cl-manager').innerHTML = mc ? '<p class="small">' + esc(this.g.teamName(mg.team)) + ' · ' + trf('Stagione {0}', mg.season) + ' · ' + trf('Budget {0}', fmtMoney(mg.budget)) + '</p>'
       : '<p class="empty">' + tr('Guida una squadra per più stagioni: mercato, giovani che crescono, premi a fine campionato.') + '</p>';
     $('cl-manager-open').textContent = tr(mc ? 'Apri la carriera' : 'Nuova carriera');
+    const pd = this.g.pro && this.g.pro.data;
+    $('cl-pro').innerHTML = pd ? '<p class="small"><span translate="no">' + esc(pd.p.name) + '</span> · ' + esc(this.g.teamName(pd.team)) + ' · ' + trf('Livello {0}', pd.level) + ' · ' + trf('Stagione {0}', pd.season) + '</p>'
+      : '<p class="empty">' + tr('Crea il tuo calciatore e gioca solo con lui: cresce partita dopo partita.') + '</p>';
+    $('cl-pro-open').textContent = tr(pd ? 'Apri la carriera' : 'Nuova carriera');
     for (const kind of ['league', 'tournament', 'cup']) {
       const list = this.career.comps.filter(c => c.kind === kind);
       $('cl-' + kind).innerHTML = list.length ? list.map(c => this.card(c)).join('') :
@@ -164,7 +171,7 @@ class CompetitionsUI {
     if (b('cp-sim')) b('cp-sim').onclick = () => this.simUser(c);
     if (b('cp-simround')) b('cp-simround').onclick = () => { const n = this.career.simulateRound(c); this.flash('Giornata simulata (' + n + ' partite)'); this.render(); };
     if (b('cp-simend')) b('cp-simend').onclick = () => this.g.confirmClick(b('cp-simend'), 'Sicuro? Simula tutto', () => { this.career.simulateToEnd(c); this.render(); });
-    if (b('cp-tomanager')) b('cp-tomanager').onclick = () => this.g.manager.open();
+    if (b('cp-tomanager')) b('cp-tomanager').onclick = () => (c.pro ? this.g.pro : this.g.manager).open();
     if (b('cp-newseason')) b('cp-newseason').onclick = () => { this.career.newSeason(c.id); this.flash(c.kind === 'league' ? 'Nuova stagione: calendario pronto' : 'Nuova edizione: sorteggio fatto'); this.render(); };
     $('cp-body').querySelectorAll('[data-calr]').forEach(x => x.onclick = () => { this.calRound = Number(x.dataset.calr); this.render(); });
   }
@@ -229,7 +236,7 @@ class CompetitionsUI {
     if (c.kind === 'league' && s.bestAttack) h += '<div><span class="small">Miglior attacco</span><b>' + this.name(s.bestAttack.team) + '</b><span>' + s.bestAttack.gf + ' gol fatti</span></div><div><span class="small">Miglior difesa</span><b>' + this.name(s.bestDefense.team) + '</b><span>' + s.bestDefense.gs + ' gol subiti</span></div>';
     if (s.topScorers && s.topScorers[0]) h += '<div><span class="small">Capocannoniere</span><b>' + esc(s.topScorers[0].name) + '</b><span>' + s.topScorers[0].goals + ' gol, ' + this.name(s.topScorers[0].team) + '</span></div>';
     h += '<div><span class="small">Partite</span><b>' + (s.matches || 0) + '</b><span>' + (s.goals || 0) + ' gol, media ' + (s.avgGoals || 0) + '</span></div></div>';
-    if (c.manager) h += '<div class="actions" style="margin-top:14px"><button class="primary" id="cp-tomanager">' + tr('Vai alla carriera') + '</button></div>';
+    if (c.manager || c.pro) h += '<div class="actions" style="margin-top:14px"><button class="primary" id="cp-tomanager">' + tr('Vai alla carriera') + '</button></div>';
     else if (!this.friend || this.friend.view.isOwner) h += '<div class="actions" style="margin-top:14px"><button class="primary" id="cp-newseason">' + (c.kind === 'league' ? 'Nuova stagione' : 'Nuova edizione') + '</button></div>';
     else h += '<p class="small" style="margin-top:12px">La nuova stagione la avvia ' + esc(this.friend.view.owner) + ', che ha creato la competizione.</p>';
     h += '</div>';
@@ -330,6 +337,7 @@ class CompetitionsUI {
     const cr = this.career.currentRound(c), f = this.career.userFixture(c, cr);
     if (!f) return;
     this.career.simulateFixture(c, f.id);
+    if (c.pro) this.g.pro.afterSim(c, f);   // carriera da giocatore: presenza e gol della simulazione
     this.career.simulateRound(c);
     this.flash('Partita simulata: ' + this.g.teamName(f.home) + ' ' + f.h + '-' + f.a + ' ' + this.g.teamName(f.away) + (f.pens ? ' (rigori ' + f.pens.h + '-' + f.pens.a + ')' : f.et ? ' (d.t.s.)' : ''));
     const keep = $('cp-status').textContent;
@@ -344,6 +352,8 @@ class CompetitionsUI {
     if (!m.result) r.winner = r.h > r.a ? 0 : r.h < r.a ? 1 : null;
     r.scorers = m.log.filter(g => !g.own).map(g => ({ team: g.team.index, name: g.scorer, minute: g.minute }));
     this.career.record(c, cm.fid, r, 'played');
+    // carriera da giocatore: voto, gol ed esperienza del tuo calciatore
+    this.lastPro = c.pro ? this.g.pro.afterMatch(c, this.career.fixture(c, cm.fid), m) : null;
     this.career.simulateRound(c);
     return c;
   }
@@ -354,6 +364,7 @@ class CompetitionsUI {
     const played = m.half <= 2 ? ((m.half - 1) * 2700 + m.clock) / 5400 : 1;
     const scorers = m.log.filter(g => !g.own).map(g => ({ team: g.team.index, name: g.scorer, minute: g.minute }));
     const f = this.career.finishFromScore(c, cm.fid, [m.teams[0].score, m.teams[1].score], played, scorers);
+    if (c.pro && f) this.g.pro.afterSim(c, f);   // carriera da giocatore: conta come partita simulata
     this.career.simulateRound(c);
     return f;
   }

@@ -3,6 +3,7 @@
 // Gli account nascosti (users.hidden, es. "admin") non compaiono da nessuna parte e non possono avere amici.
 import { fail } from './util.js';
 import { USERNAME_RE } from './auth.js';
+import { pointsOf, levelOf, friendStatus } from './online.js';
 
 const PAGE = 50;
 const MAX_PENDING = 50;
@@ -46,10 +47,16 @@ export async function listUsers(env, user, q) {
 
 export async function myFriends(env, user, t) {
   const { results } = await env.DB.prepare(
-    'SELECT u.username, f.status, f.requested_by, f.created_at, f.accepted_at FROM friendships f JOIN users u ON u.id = (CASE WHEN f.user_a = ? THEN f.user_b ELSE f.user_a END) ' +
+    'SELECT u.id AS uid, u.username, u.last_seen, u.presence, f.status, f.requested_by, f.created_at, f.accepted_at FROM friendships f JOIN users u ON u.id = (CASE WHEN f.user_a = ? THEN f.user_b ELSE f.user_a END) ' +
     'WHERE (f.user_a = ? OR f.user_b = ?) AND u.hidden = 0 ORDER BY u.username_lc').bind(user.id, user.id, user.id).all();
+  // chi apre la lista è online (nel menu)
+  await env.DB.prepare("UPDATE users SET last_seen = ?, presence = 'menu' WHERE id = ?").bind(t, user.id).run();
+  const accepted = results.filter(r => r.status === 'ACCEPTED');
+  // livello nella classifica online e chi è online adesso (in partita o nel menu)
+  const pts = await pointsOf(env, accepted.map(r => r.uid));
   return {
-    friends: results.filter(r => r.status === 'ACCEPTED').map(r => ({ username: r.username, since: r.accepted_at })),
+    friends: accepted.map(r => ({ username: r.username, since: r.accepted_at, level: levelOf(pts.get(r.uid) || 0),
+      status: friendStatus(r.last_seen, r.presence, t), lastSeen: r.last_seen || null })),
     incoming: results.filter(r => r.status === 'PENDING' && r.requested_by !== user.id).map(r => ({ username: r.username, at: r.created_at })),
     outgoing: results.filter(r => r.status === 'PENDING' && r.requested_by === user.id).map(r => ({ username: r.username, at: r.created_at })),
     // inviti a partite online ricevuti (nella stessa risposta: nessuna richiesta in più per il pannello)

@@ -24,7 +24,17 @@ class SocialUI {
     });
     // nella Home, anche con il pannello chiuso: il pallino deve mostrare gli inviti a giocare (una richiesta ogni 30 s)
     this.seenGames = new Set();
-    setInterval(() => { if (this.g.screen === 'menu' && !document.hidden && this.ready()) this.refresh(); }, SOCIAL_REFRESH_MS);
+    // in tutti i menu (non in partita): così l'invito di un amico arriva anche nelle competizioni o nello Shop
+    setInterval(() => {
+      if (this.g.mode !== 'menu' || document.hidden || !this.ready()) return;
+      if (this.g.screen === 'menu') this.refresh(); else this.pollInvites();
+    }, SOCIAL_REFRESH_MS);
+    // in partita (o fuori dalla Home) il gioco si fa vivo ogni minuto: gli amici vedono "in partita"
+    setInterval(() => {
+      if (document.hidden || !this.ready() || this.g.mode === 'menu') return;
+      this.api.post('/api/presence', { status: 'match' }).catch(() => { /* server vecchio o rete assente: niente */ });
+    }, 60000);
+    $('invite-later').onclick = () => { $('invite-pop').hidden = true; };
     this.render();
   }
   setOpen(open, quiet) {
@@ -46,7 +56,7 @@ class SocialUI {
     this.busyReq = Promise.all([this.api.get('/api/friends'), this.api.get('/api/friendcomps'), this.api.get('/api/users' + q)]).then(([f, c, u]) => {
       this.friends = f; this.comps = c; this.users = u; this.err = '';
       // invito nuovo a una partita: avviso anche con il pannello chiuso
-      for (const gi of f.games || []) if (!this.seenGames.has(gi.id)) { this.seenGames.add(gi.id); if (this.g.screen === 'menu') this.g.toast(gi.from + ' ti invita a giocare online: apri Amici'); }
+      for (const gi of f.games || []) if (!this.seenGames.has(gi.id)) { this.seenGames.add(gi.id); if (this.g.mode === 'menu') this.showInvite(gi); }
     }).catch(e => { this.err = e.status === 404 && e.code === 'NOT_FOUND' ? 'Il server non ha ancora gli amici: va aggiornato alla 0.9 (nella cartella cloud: npm run deploy).' : e.message; }).then(() => { this.busyReq = null; this.render(); if (this.g.screen === 'comps') this.g.comps.renderDashboard(); });
     return this.busyReq;
   }
@@ -56,6 +66,37 @@ class SocialUI {
     this.searchTimer = setTimeout(() => {
       this.api.get('/api/users' + (this.usersQ ? '?q=' + encodeURIComponent(this.usersQ) : '')).then(u => { this.users = u; this.renderUsers(); }).catch(e => this.g.toast(e.message, true));
     }, 300);
+  }
+  // fuori dalla Home: solo amici e inviti (una richiesta), senza ridisegnare la schermata in cui si è
+  pollInvites() {
+    if (this.busyReq) return;
+    this.api.get('/api/friends').then(f => {
+      this.friends = f;
+      for (const gi of f.games || []) if (!this.seenGames.has(gi.id)) { this.seenGames.add(gi.id); if (this.g.mode === 'menu') this.showInvite(gi); }
+      const n = this.pendingCount();
+      $('social-badge').hidden = !n; $('social-badge').textContent = n;
+    }).catch(() => { /* rete assente: si riprova tra poco */ });
+  }
+  // avviso in alto con Entra: l'invito di un amico a una partita online
+  showInvite(gi) {
+    $('invite-text').textContent = trf('{0} ti invita a giocare online', gi.from);
+    $('invite-pop').hidden = false;
+    $('invite-join').onclick = async () => {
+      $('invite-pop').hidden = true;
+      try {
+        const r = await this.api.post('/api/invites/' + encodeURIComponent(gi.id) + '/accept');
+        this.g.joinOnline({ code: r.room });
+      } catch (e) { this.g.toast(e.message, true); }
+      this.refresh();
+    };
+  }
+  // stato di un amico: pallino verde online, giallo in partita; altrimenti quando si è visto l'ultima volta
+  friendState(x) {
+    if (x.status === 'match') return '<small><span class="so-dot match"></span>' + tr('in partita') + '</small>';
+    if (x.status === 'online') return '<small><span class="so-dot online"></span>' + tr('online') + '</small>';
+    if (!x.lastSeen) return '';
+    const min = Math.max(1, Math.round((Date.now() - x.lastSeen) / 60000));
+    return '<small><span class="so-dot"></span>' + (min < 60 ? trf('visto {0} min fa', min) : min < 1440 ? trf('visto {0} ore fa', Math.round(min / 60)) : trf('visto {0} giorni fa', Math.round(min / 1440))) + '</small>';
   }
   // numero di cose che aspettano una risposta: richieste di amicizia e inviti
   pendingCount() {
@@ -91,8 +132,11 @@ class SocialUI {
     }
     h += '<h3>Le tue sfide <button class="ghost" data-so="new">Nuova sfida</button></h3>';
     h += mine.length ? mine.map(c => this.compCard(c)).join('') : '<p class="empty">Nessuna sfida: invita un amico con «Sfida».</p>';
-    h += '<h3>Amici · ' + f.friends.length + '</h3>';
-    h += f.friends.length ? f.friends.map(x => '<div class="so-row"><span class="nm"><b>' + esc(x.username) + '</b></span>' +
+    h += '<h3>Amici · ' + f.friends.length + ' <button class="ghost" data-so="ranking">Classifica</button></h3>';
+    // amici online prima degli altri
+    const order = x => x.status === 'online' ? 0 : x.status === 'match' ? 1 : 2;
+    const fl = f.friends.slice().sort((a, b) => order(a) - order(b));
+    h += fl.length ? fl.map(x => '<div class="so-row"><span class="nm"><b>' + esc(x.username) + '</b>' + (x.level ? ' <span class="so-lv" title="' + esc(tr('Livello nella classifica online')) + '">' + x.level + '</span>' : '') + this.friendState(x) + '</span>' +
       '<button class="ghost" data-so="play" data-u="' + esc(x.username) + '" title="Partita online 1 contro 1: ognuno con la sua squadra da 11">Gioca</button><button class="ghost" data-so="challenge" data-u="' + esc(x.username) + '" title="Campionato, torneo o coppa insieme">Sfida</button><button class="ghost" data-so="unfriend" data-u="' + esc(x.username) + '" title="Togli dagli amici">✕</button></div>').join('')
       : '<p class="empty">Ancora nessun amico: aggiungili dall\'elenco qui sotto.</p>';
     h += f.outgoing.map(x => '<div class="so-row"><span class="nm">' + esc(x.username) + '<small>richiesta inviata</small></span><button class="ghost" data-so="remove" data-u="' + esc(x.username) + '">Annulla</button></div>').join('');
@@ -139,6 +183,7 @@ class SocialUI {
   async act(b) {
     const k = b.dataset.so, u = b.dataset.u, c = b.dataset.c;
     if (k === 'login') { this.g.eco.open('account'); return; }
+    if (k === 'ranking') { this.g.ranking.open(this.g.screen); return; }
     if (k === 'new') { this.g.comps.openNewFriend([]); return; }
     if (k === 'challenge') { this.g.comps.openNewFriend([u]); return; }
     if (k === 'open') { this.g.comps.openFriend(c); return; }
