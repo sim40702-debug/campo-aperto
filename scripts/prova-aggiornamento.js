@@ -9,7 +9,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   let pg = null;
   for (let i = 0; i < 30 && !pg; i++) { pg = b.contexts().flatMap(c => c.pages()).find(p => p.url().includes('index.html')); if (!pg) await sleep(1000); }
   if (!pg) { console.log('niente pagina'); return; }
-  await pg.waitForFunction(() => window.campoUpdate && window.game && window.game.loaded, null, { timeout: 60000 });
+  // (niente waitForFunction: la pagina non permette eval)
+  for (let i = 0; i < 60; i++) { if (await pg.evaluate(() => !!(window.campoUpdate && window.game && window.game.loaded)).catch(() => false)) break; await sleep(1000); }
   const s1 = await pg.evaluate(() => window.campoUpdate.controlla());
   console.log('controlla ' + JSON.stringify({ fase: s1.fase, attuale: s1.attuale, nuova: s1.nuova, automatico: s1.automatico, saltate: s1.saltate, errore: s1.errore, note: (s1.note || '').length }));
   pg.evaluate(() => window.campoUpdate.aggiorna()).catch(() => {});
