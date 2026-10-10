@@ -32,7 +32,22 @@ class ProCareer {
   load() {
     try {
       const d = JSON.parse(localStorage.getItem(PRO_KEY) || 'null');
-      if (!d || d.v !== 1 || !d.p || !d.p.attr || !Number.isInteger(d.team)) return null;
+      if (!d || d.v !== 1 || !d.p || !d.p.attr || !Number.isInteger(d.team) || d.team < 0 || d.team > 7) return null;
+      // dati salvati da un'altra versione: quello che manca o è sbagliato torna al valore iniziale
+      const num = (v, def) => (Number.isFinite(v) ? v : def);
+      const stats = o => ({ apps: num(o && o.apps, 0), goals: num(o && o.goals, 0), ratingSum: num(o && o.ratingSum, 0), rated: num(o && o.rated, 0), wins: num(o && o.wins, 0), mvp: num(o && o.mvp, 0) });
+      d.total = stats(d.total); d.cur = stats(d.cur);
+      d.level = Math.max(1, num(d.level, 1)); d.xp = Math.max(0, num(d.xp, 0)); d.points = Math.max(0, num(d.points, 0)); d.season = Math.max(1, num(d.season, 1));
+      d.log = Array.isArray(d.log) ? d.log.filter(l => l && typeof l === 'object') : [];
+      d.history = Array.isArray(d.history) ? d.history.filter(h => h && typeof h === 'object') : [];
+      if (d.offers !== null && !Array.isArray(d.offers)) d.offers = null;
+      const p = d.p;
+      if (!['FW', 'MF', 'DF'].includes(p.role)) p.role = 'FW';
+      p.name = typeof p.name === 'string' && p.name ? p.name.slice(0, 24) : 'Giocatore';
+      p.number = Math.min(99, Math.max(1, Math.round(num(p.number, 9))));
+      p.age = num(p.age, 18); p.foot = p.foot === 'Sinistro' ? 'Sinistro' : 'Destro';
+      for (const a of PRO.ATTRS) p.attr[a[0]] = Math.min(99, Math.max(30, Math.round(num(p.attr[a[0]], PRO.START_RATING))));
+      p.look = Object.assign({ skin: SKIN_TONES[1], hair: HAIR_COLORS[1], hairStyle: 'corti', height: 1.8, build: 1, boots: '#111111', beard: false }, p.look && typeof p.look === 'object' ? p.look : {});
       return d;
     } catch (e) { return null; }
   }

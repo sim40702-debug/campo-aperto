@@ -13,7 +13,7 @@ function check(name, cond, extra) {
 const fakeElectron = { app: { getVersion: () => '1.4.0', getPath: () => '/tmp', isPackaged: false }, net: {}, ipcMain: { handle() {} }, shell: {}, BrowserWindow: { getAllWindows: () => [] } };
 const load = Module._load;
 Module._load = function (req, ...rest) { return req === 'electron' ? fakeElectron : load.call(this, req, ...rest); };
-const { confronta, leggiYml, scriptMac } = require(path.join(__dirname, '..', 'desktop', 'aggiornamenti.js'));
+const { confronta, leggiYml, scegliRelease, scriptMac } = require(path.join(__dirname, '..', 'desktop', 'aggiornamenti.js'));
 Module._load = load;
 
 // ---- versioni
@@ -23,6 +23,22 @@ check('1.9.0 < 1.10.0 (numeri, non testo)', confronta('1.10.0', '1.9.0') === 1 &
 check('mai una versione più vecchia: 0.12.1 < 0.13.0', confronta('0.12.1', '0.13.0') === -1);
 check('"v" davanti al tag va bene', confronta('v2.0.0', '1.99.99') === 1 && confronta('v1.0.0', '1.0.0') === 0);
 check('suffisso di pre-release ignorato nel confronto', confronta('1.2.0-beta.1', '1.2.0') === 0);
+
+// ---- scelta della release: si saltano più versioni, le release incomplete non bloccano
+const R = (v, files, extra) => Object.assign({ tag_name: 'v' + v, body: '- novità ' + v, draft: false, prerelease: false, assets: files.map(n => ({ name: n })) }, extra || {});
+const tutte = ['latest.yml', 'latest-mac.yml', 'latest-linux.yml', 'latest-portable.yml'];
+const lista = [R('0.20.0', ['latest.yml']), R('0.19.0', tutte), R('0.18.0', tutte, { draft: true }), R('0.17.0', tutte, { prerelease: true }), R('0.16.0', tutte), R('0.15.0', tutte), R('0.14.2', tutte)];
+let sc = scegliRelease(lista, '0.15.0', 'latest.yml');
+check('dalla 0.15.0 si va direttamente alla 0.20.0 (Windows)', sc && sc.nuova === '0.20.0' && sc.automatico, sc && sc.nuova);
+check('novità di tutte le versioni saltate (senza bozze e pre-release)', sc.saltate.join(',') === '0.20.0,0.19.0,0.16.0' && sc.note.includes('## 0.16.0') && sc.note.includes('novità 0.19.0') && !sc.note.includes('0.18.0'), sc.saltate);
+sc = scegliRelease(lista, '0.15.0', 'latest-mac.yml');
+check('ultima release senza i file del Mac: il Mac va alla 0.19.0 (la più nuova completa)', sc.nuova === '0.19.0' && sc.automatico && sc.saltate.join(',') === '0.19.0,0.16.0', sc);
+sc = scegliRelease([R('0.21.0', [])], '0.15.0', 'latest-mac.yml');
+check('nessuna release con il file: si propone la più nuova da scaricare a mano', sc.nuova === '0.21.0' && !sc.automatico);
+check('già aggiornato: niente', scegliRelease(lista, '0.20.0', 'latest.yml') === null && scegliRelease(lista, '0.25.0', 'latest.yml') === null);
+check('lista vuota o rotta: niente, senza errori', scegliRelease([], '0.15.0', 'latest.yml') === null && scegliRelease(null, '0.15.0', 'latest.yml') === null && scegliRelease([{ tag_name: 'prova' }, null], '0.15.0', 'latest.yml') === null);
+check('una sola versione nuova: le sue novità così come sono', scegliRelease([R('0.15.1', tutte)], '0.15.0', 'latest.yml').note === '- novità 0.15.1');
+check('versioni a due cifre in ordine giusto (0.9 < 0.10 < 0.100)', scegliRelease([R('0.9.0', tutte), R('0.100.0', tutte), R('0.10.0', tutte)], '0.8.0', 'latest.yml').nuova === '0.100.0');
 
 // ---- latest.yml (Windows, come lo scrive electron-builder)
 const win = leggiYml(`version: 0.12.1

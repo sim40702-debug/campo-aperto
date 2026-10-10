@@ -1,7 +1,9 @@
 // ============================================================
 // AGGIORNAMENTI — l'app controlla da sola se su GitHub Releases c'è una versione nuova e la installa
-// Il controllo legge l'ultima release del repository (senza bozze e pre-release) e confronta la versione con quella
-// installata (1.9.0 < 1.10.0). Una versione uguale o più vecchia non viene mai installata.
+// Il controllo legge le ultime release del repository (senza bozze e pre-release) e sceglie la più nuova che ha i file
+// per questo sistema (se l'ultima è incompleta, per esempio la compilazione per il Mac non è finita, si usa quella
+// prima). Si può saltare quante versioni si vuole: dalla 0.15 si va direttamente alla 0.20, e le novità mostrate sono
+// quelle di tutte le versioni saltate. Una versione uguale o più vecchia non viene mai installata (1.9.0 < 1.10.0).
 // Come si installa dipende da come è installata l'app:
 //   Windows (installer)        electron-updater (la soluzione ufficiale di electron-builder): scarica l'installer,
 //   Linux .AppImage e .deb     controlla l'impronta sha512 di latest.yml / latest-linux.yml, chiude l'app, installa e riapre
@@ -68,6 +70,27 @@ async function leggi(url, comeJson) {
 }
 function errore(codice, testo) { const e = new Error(testo || codice); e.codice = codice; return e; }
 
+// sceglie la release da installare tra quelle lette da GitHub (lista, dalla più nuova o in qualunque ordine).
+// attuale: versione installata; yml: il file delle impronte per questo sistema (latest.yml, latest-mac.yml…).
+// Restituisce null se non c'è niente di più nuovo, altrimenti { rel, nuova, automatico, note, saltate }:
+// rel è la più nuova con il file delle impronte (se nessuna lo ha, la più nuova: si scarica a mano dalla pagina),
+// note sono le novità di tutte le versioni più nuove di quella installata, fino a quella scelta.
+function scegliRelease(lista, attuale, yml) {
+  const valide = (Array.isArray(lista) ? lista : [])
+    .filter(r => r && !r.draft && !r.prerelease && /^v?\d+\.\d+\.\d+$/.test(String(r.tag_name || '')))
+    .map(r => ({ r: r, v: String(r.tag_name).replace(/^v/, '') }))
+    .filter(x => confronta(x.v, attuale) > 0)
+    .sort((a, b) => confronta(b.v, a.v));
+  if (!valide.length) return null;
+  const conFile = valide.find(x => (x.r.assets || []).some(a => a.name === yml));
+  const scelta = conFile || valide[0];
+  // novità: dalla versione scelta in giù, fino alla prima dopo quella installata
+  const comprese = valide.filter(x => confronta(x.v, scelta.v) <= 0);
+  const note = comprese.length === 1 ? String(scelta.r.body || '')
+    : comprese.map(x => '## ' + x.v + '\n\n' + String(x.r.body || '').trim()).join('\n\n');
+  return { rel: scelta.r, nuova: scelta.v, automatico: !!conFile, note: note.slice(0, 30000), saltate: comprese.map(x => x.v) };
+}
+
 // legge i file elencati in latest*.yml: [{ url, sha512, size }]
 function leggiYml(testo) {
   const files = [];
@@ -92,21 +115,22 @@ async function controlla(manuale) {
   if (tipo === 'sviluppo' || tipo === 'altro') { cambia({ fase: 'non-supportato' }); return stato; }
   if (manuale) cambia({ fase: 'controllo', errore: null });
   try {
-    const rel = await leggi('https://api.github.com/repos/' + REPO + '/releases/latest', true);
-    const nuova = String(rel.tag_name || '').replace(/^v/, '');
+    // le ultime 30 release: anche chi non aggiorna da tanto trova la più nuova e le novità di quelle saltate
+    const lista = await leggi('https://api.github.com/repos/' + REPO + '/releases?per_page=30', true);
+    const s = scegliRelease(lista, app.getVersion(), YML[tipo]);
     // niente bozze, niente pre-release, mai una versione uguale o più vecchia
-    if (!/^\d+\.\d+\.\d+$/.test(nuova) || rel.draft || rel.prerelease || confronta(nuova, app.getVersion()) <= 0) {
+    if (!s) {
       release = null;
       cambia({ fase: 'nessuno', nuova: null, controllato: Date.now() });
       return stato;
     }
-    release = rel;
-    const nomi = (rel.assets || []).map(a => a.name);
+    release = s.rel;
     cambia({
       fase: 'disponibile',
-      nuova,
-      note: String(rel.body || '').slice(0, 20000),
-      automatico: nomi.includes(YML[tipo]),   // senza il file delle impronte non si installa da soli
+      nuova: s.nuova,
+      note: s.note,
+      saltate: s.saltate,                     // versioni comprese nell'aggiornamento (per le novità)
+      automatico: s.automatico,               // senza il file delle impronte non si installa da soli
       errore: null,
       controllato: Date.now(),
     });
@@ -287,6 +311,9 @@ async function aggiornaConElectronUpdater() {
   autoUpdater.allowDowngrade = false;
   autoUpdater.allowPrerelease = false;
   autoUpdater.logger = null;
+  // si scarica proprio dalla release scelta (che ha latest.yml / latest-linux.yml), non da "l'ultima" di GitHub:
+  // così un'ultima release incompleta non blocca l'aggiornamento
+  autoUpdater.setFeedURL({ provider: 'generic', url: 'https://github.com/' + REPO + '/releases/download/' + release.tag_name + '/' });
   const r = await autoUpdater.checkForUpdates();
   if (!r || !r.updateInfo || confronta(r.updateInfo.version, app.getVersion()) <= 0) throw errore('nessun-file');
   const token = new CancellationToken();
@@ -335,7 +362,8 @@ function init(fidato) {
   } catch (e) { /* nessun aggiornamento in corso */ }
 
   ipcMain.handle('upd:stato', e => (fidato(e) ? stato : null));
-  ipcMain.handle('upd:controlla', e => (fidato(e) ? controlla(true) : null));
+  // silenzioso (schermata di caricamento): se GitHub non risponde non compare nessun errore
+  ipcMain.handle('upd:controlla', (e, silenzioso) => (fidato(e) ? controlla(silenzioso !== true) : null));
   ipcMain.handle('upd:aggiorna', e => (fidato(e) ? aggiorna() : null));
   ipcMain.handle('upd:annulla', e => { if (fidato(e) && annulla) annulla(); return true; });
   ipcMain.handle('upd:pagina', e => {
@@ -350,4 +378,4 @@ function init(fidato) {
 }
 
 // per i test (tests/aggiornamenti_test.js)
-module.exports = { init, confronta, leggiYml, scriptMac, scriptPortable, scaricaFile };
+module.exports = { init, confronta, leggiYml, scegliRelease, scriptMac, scriptPortable, scaricaFile };

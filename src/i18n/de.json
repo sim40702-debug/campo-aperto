@@ -1649,6 +1649,15 @@
     "Livello nella classifica online": "Level in der Online-Rangliste",
     "Vittoria 30 punti, pareggio 12, sconfitta 5. Valgono le partite online contro altre persone con l'account: il risultato conta quando lo manda uguale anche chi era nell'altra squadra. Al massimo 15 partite con punti al giorno, 3 contro lo stesso avversario.": "Sieg 30 Punkte, Unentschieden 12, Niederlage 5. Es zählen Online-Spiele gegen andere Personen mit Konto: das Resultat gilt, wenn jemand aus dem anderen Team dasselbe meldet. Höchstens 15 Spiele mit Punkten pro Tag, 3 gegen denselben Gegner.",
     "Livello": "Level",
-    "Punti": "Punkte"
+    "Punti": "Punkte",
+    "Stadio pronto": "Stadion bereit",
+    "Cerco aggiornamenti…": "Suche nach Updates…",
+    "C'è la versione {0}: la trovi in alto nella home": "Version {0} ist da: du findest sie oben im Hauptmenü",
+    "Pronto": "Bereit",
+    "Non aggiornavi da un po': in un colpo solo arrivano {0} versioni ({1}). Sotto ci sono le novità di tutte.": "Du hast länger nicht aktualisiert: {0} Versionen kommen auf einmal ({1}). Unten stehen die Neuheiten von allen.",
+    "Il gioco non è partito": "Das Spiel ist nicht gestartet",
+    "Forse i dati salvati su questo computer (impostazioni, carriere, squadre) non vanno d'accordo con questa versione. Puoi ripristinarli: prima ne faccio una copia, poi il gioco riparte pulito. L'account resta collegato.": "Vielleicht passen die auf diesem Computer gespeicherten Daten (Einstellungen, Karrieren, Teams) nicht zu dieser Version. Du kannst sie zurücksetzen: zuerst mache ich eine Kopie, dann startet das Spiel sauber. Dein Konto bleibt angemeldet.",
+    "Ripristina i dati e riavvia": "Daten zurücksetzen und neu starten",
+    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "Das Spiel ist nicht gestartet: es braucht einen Browser oder Computer mit aktiver 3D-Grafik (WebGL)."
   }
 }

@@ -2,6 +2,17 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.15.1 — 11/10/2026 (aggiornamenti anche dopo tanto tempo, caricamento)
+- **Aggiornamenti che saltano più versioni**: chi non aggiorna da tanto va direttamente all'ultima versione, in un colpo
+  solo, e vede le novità di tutte le versioni saltate. Se l'ultima release è incompleta per il suo sistema si prende la
+  più nuova che ha il file giusto. Provato davvero su Windows (installer e portable), Mac e Linux: da una 0.10.0 alla
+  0.15.0 saltando sei versioni.
+- **Dati salvati al sicuro tra le versioni**: il gioco ricorda con che versione ha salvato impostazioni, carriere e squadre
+  e, se servirà, li sistema da solo; dati rovinati o di versioni vecchie non bloccano più l'avvio. Se il gioco non parte
+  compare **Ripristina i dati e riavvia** (con una copia di tutto, l'account resta collegato) invece di uno schermo nero.
+- **Caricamento iniziale** con la barra a passi: stadio pronto, collegamento ai server, ricerca degli aggiornamenti; se
+  c'è una versione nuova lo dice già qui.
+
 ## 0.15.0 — 10/10/2026 (rigori, arbitro, carriera da giocatore, suoni, classifica online)
 - **Rigori nella partita rapida**: nuova scelta *In caso di pareggio* (resta pari, supplementari e rigori, subito i
   rigori). Durante la serie la telecamera fa le inquadrature della TV (squadre a centrocampo, dietro al tiratore che

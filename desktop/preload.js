@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('campoWindow', {
 // aggiornamenti dell'app (desktop/aggiornamenti.js): la pagina legge lo stato e chiede di controllare o aggiornare
 contextBridge.exposeInMainWorld('campoUpdate', {
   stato: () => ipcRenderer.invoke('upd:stato'),
-  controlla: () => ipcRenderer.invoke('upd:controlla'),
+  controlla: silenzioso => ipcRenderer.invoke('upd:controlla', silenzioso === true),
   aggiorna: () => ipcRenderer.invoke('upd:aggiorna'),
   annulla: () => ipcRenderer.invoke('upd:annulla'),
   apriPagina: () => ipcRenderer.invoke('upd:pagina'),
