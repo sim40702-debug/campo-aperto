@@ -2,6 +2,12 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.15.2 — 11/10/2026 (versione nella home)
+- Nella home, sotto il profilo (Accedi), c'è sempre la **versione del gioco** con un pallino: **verde** "Versione
+  aggiornata" se hai l'ultima, **arancione** "Nuova versione X" con **Aggiorna ora** di lato quando ne esce una nuova.
+  Aggiorna ora apre la schermata dell'aggiornamento e lo fa partire subito; un clic sul riquadro apre la schermata
+  (novità, versioni comprese). Grigio mentre controlla o se GitHub non risponde.
+
 ## 0.15.1 — 11/10/2026 (aggiornamenti anche dopo tanto tempo, caricamento)
 - **Aggiornamenti che saltano più versioni**: chi non aggiorna da tanto va direttamente all'ultima versione, in un colpo
   solo, e vede le novità di tutte le versioni saltate. Se l'ultima release è incompleta per il suo sistema si prende la

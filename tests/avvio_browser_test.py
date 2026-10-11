@@ -71,7 +71,7 @@ async def main():
         check('caricamento: avvisa che c\'è la versione nuova', any('0.20.0' in t for t in seen['texts']), seen['texts'])
         check('caricamento: la barra si riempie fino al 100%', '100%' in seen['bars'] and len(seen['bars']) >= 3, seen['bars'])
         check('caricamento: dura abbastanza per vederlo (almeno 1,3 s) e il controllo è silenzioso', seen['ms'] > 1200 and 'controlla:true' in await pg.evaluate("__calls"), seen['ms'])
-        check('menu visibile con l\'avviso dell\'aggiornamento', await pg.evaluate("game.screen === 'menu' && !document.getElementById('upd-pill').hidden"))
+        check('menu visibile con l\'avviso dell\'aggiornamento', await pg.evaluate("game.screen === 'menu' && document.getElementById('upd-pill').className.includes('new') && !document.getElementById('upd-pill-go').hidden"))
         st = await pg.evaluate("""() => ({ lang: game.settings.lang, vol: game.settings.volMaster, ver: localStorage.getItem('campoAperto.dataVersion'), home: game.setup.home, away: game.setup.away, onDraw: game.setup.onDraw,
             comps: game.comps.career.comps.length, manager: game.manager.data, pro: game.pro.data && game.pro.data.p.name, proShot: game.pro.data && game.pro.data.p.attr.shot, proTotal: game.pro.data && game.pro.data.total.apps })""")
         check('dati vecchi rovinati: valori predefiniti al loro posto, il gioco parte', st['lang'] in ('it', 'en', 'de', 'fr') and isinstance(st['vol'], (int, float)) and st['home'] != 99 and st['onDraw'] == 'draw' and st['comps'] == 0 and st['manager'] is None, st)

@@ -11,7 +11,16 @@ Game.prototype.initUpdates = function () {
   const set = s => { if (s) { this.upd = s; this.onUpdateState(); } };
   u.onCambio(set);
   u.stato().then(set, () => {});
+  // clic sul riquadro della versione: schermata Aggiornamento; «Aggiorna»: schermata Aggiornamento e parte subito
   $('upd-pill').onclick = () => this.showScreen('update');
+  $('upd-pill').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.showScreen('update'); } };
+  $('upd-pill-go').onclick = e => {
+    e.stopPropagation();
+    this.showScreen('update');
+    const s = this.upd || {};
+    // senza il file per l'aggiornamento automatico la schermata propone di scaricarlo dalla pagina
+    if (s.automatico !== false && (s.fase === 'disponibile' || s.fase === 'errore')) u.aggiorna().catch(() => {});
+  };
   $('upd-back').onclick = () => this.showScreen('menu');
   $('upd-go').onclick = () => { u.aggiorna().catch(() => {}); };
   $('upd-cancel').onclick = () => { u.annulla().catch(() => {}); };
@@ -28,12 +37,24 @@ Game.prototype.onUpdateState = function () {
     else this.toast(trf('L\'aggiornamento alla versione {0} non è stato completato: il gioco usa ancora la versione {1}.', s.nonRiuscito, s.attuale), true);
     window.campoUpdate.visto().catch(() => {});
   }
-  // avviso discreto nella home, solo se c'è davvero qualcosa
-  const show = s.fase === 'disponibile' || s.fase === 'scarico' || s.fase === 'installo' || (s.fase === 'errore' && !!s.nuova);
-  $('upd-pill').hidden = !show;
-  $('upd-pill-text').textContent = s.fase === 'scarico' ? trf('Scarico l\'aggiornamento… {0}%', Math.floor(s.percentuale || 0))
-    : s.fase === 'installo' ? tr('Installazione dell\'aggiornamento…')
-    : tr('Nuovo aggiornamento disponibile');
+  // nella home, sotto il profilo: la versione con il pallino.
+  // verde = versione aggiornata; arancione = c'è una versione nuova (con «Aggiorna»); grigio = controllo in corso o non riuscito
+  const pill = $('upd-pill'), go = $('upd-pill-go');
+  const newer = !!s.nuova && (s.fase === 'disponibile' || s.fase === 'scarico' || s.fase === 'installo' || s.fase === 'errore');
+  pill.hidden = s.fase === 'non-supportato';
+  pill.className = 'update-pill ' + (newer ? 'new' : s.fase === 'nessuno' && s.controllato ? 'ok' : 'wait');
+  let text;
+  if (s.fase === 'scarico') text = trf('Scarico l\'aggiornamento… {0}%', Math.floor(s.percentuale || 0));
+  else if (s.fase === 'installo') text = tr('Installazione dell\'aggiornamento…');
+  else if (newer && s.fase === 'errore') text = trf('Aggiornamento alla {0} non riuscito', s.nuova);
+  else if (newer) text = trf('Nuova versione {0}', s.nuova);
+  else if (s.fase === 'controllo') text = tr('Controllo aggiornamenti…');
+  else if (s.fase === 'errore') text = tr('Controllo degli aggiornamenti non riuscito');
+  else if (s.controllato) text = trf('Versione aggiornata · {0}', s.attuale || GAME_VERSION);
+  else text = trf('Versione {0}', s.attuale || GAME_VERSION);
+  $('upd-pill-text').textContent = text;
+  go.hidden = !(newer && (s.fase === 'disponibile' || s.fase === 'errore'));
+  go.textContent = s.fase === 'errore' ? tr('Riprova') : tr('Aggiorna ora');
   if (this.screen === 'update') this.renderUpdate();
   if (this.screen === 'settings') this.renderUpdateOpt();
 };

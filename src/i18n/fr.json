@@ -1658,6 +1658,12 @@
     "Il gioco non è partito": "Le jeu n'a pas démarré",
     "Forse i dati salvati su questo computer (impostazioni, carriere, squadre) non vanno d'accordo con questa versione. Puoi ripristinarli: prima ne faccio una copia, poi il gioco riparte pulito. L'account resta collegato.": "Les données enregistrées sur cet ordinateur (paramètres, carrières, équipes) ne s'accordent peut-être pas avec cette version. Tu peux les réinitialiser : j'en fais d'abord une copie, puis le jeu redémarre proprement. Ton compte reste connecté.",
     "Ripristina i dati e riavvia": "Réinitialiser les données et redémarrer",
-    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "Le jeu n'a pas démarré : il faut un navigateur ou un ordinateur avec les graphismes 3D (WebGL) activés."
+    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "Le jeu n'a pas démarré : il faut un navigateur ou un ordinateur avec les graphismes 3D (WebGL) activés.",
+    "Nuova versione {0}": "Nouvelle version {0}",
+    "Aggiornamento alla {0} non riuscito": "Mise à jour vers la {0} échouée",
+    "Controllo aggiornamenti…": "Vérification des mises à jour…",
+    "Controllo degli aggiornamenti non riuscito": "Échec de la vérification des mises à jour",
+    "Versione aggiornata · {0}": "Version à jour · {0}",
+    "Versione {0}": "Version {0}"
   }
 }

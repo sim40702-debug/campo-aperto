@@ -81,7 +81,7 @@ Per la partita in rete locale il firewall (per esempio `ufw`) deve lasciar passa
 ### Aggiornamenti
 
 Dalla versione 0.13 non serve più tornare qui per ogni versione nuova. All'avvio (e poi ogni 6 ore) l'app controlla le
-Releases di GitHub; se c'è una versione più recente compare in alto a destra **● Nuovo aggiornamento disponibile**.
+Releases di GitHub; nella home, sotto il profilo, c'è sempre la versione con un pallino: **verde** «Versione aggiornata» se hai l'ultima, **arancione** «Nuova versione X» con **Aggiorna ora** di lato quando ne esce una nuova (Aggiorna ora apre la schermata dell'aggiornamento e lo fa partire).
 Cliccando si vedono la versione installata, quella nuova e le novità: **Aggiorna ora** scarica il file giusto per il tuo
 sistema (con percentuale e MB), lo controlla, chiude il gioco, lo installa e lo riapre. Si può anche controllare a mano da
 Impostazioni → Generale → Aggiornamenti.
