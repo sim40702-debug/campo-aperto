@@ -1658,6 +1658,12 @@
     "Il gioco non è partito": "The game didn't start",
     "Forse i dati salvati su questo computer (impostazioni, carriere, squadre) non vanno d'accordo con questa versione. Puoi ripristinarli: prima ne faccio una copia, poi il gioco riparte pulito. L'account resta collegato.": "The data saved on this computer (settings, careers, teams) may not get along with this version. You can reset it: I make a copy first, then the game starts clean. Your account stays logged in.",
     "Ripristina i dati e riavvia": "Reset the data and restart",
-    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "The game didn't start: it needs a browser or computer with 3D graphics (WebGL) enabled."
+    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "The game didn't start: it needs a browser or computer with 3D graphics (WebGL) enabled.",
+    "Nuova versione {0}": "New version {0}",
+    "Aggiornamento alla {0} non riuscito": "Update to {0} failed",
+    "Controllo aggiornamenti…": "Checking for updates…",
+    "Controllo degli aggiornamenti non riuscito": "Update check failed",
+    "Versione aggiornata · {0}": "Up to date · {0}",
+    "Versione {0}": "Version {0}"
   }
 }

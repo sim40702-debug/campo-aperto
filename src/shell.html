@@ -65,10 +65,20 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 
 /* ---------- aggiornamento (app desktop) ---------- */
 /* sotto il riquadro del giocatore in alto a destra, come le altre informazioni dell'account */
-.update-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; font-size: 13px; color: var(--chalk);
+.update-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 6px 6px 13px; min-height: 34px; font-size: 13px; color: var(--chalk); cursor: pointer;
   background: var(--night-2); border: 1px solid rgba(255,154,60,0.55); box-shadow: 0 6px 18px rgba(0,0,0,0.3); transition: background 0.12s, border-color 0.12s; }
-.update-pill:hover { background: var(--night-3); border-color: #ff9a3c; }
-.update-pill i { width: 9px; height: 9px; border-radius: 50%; background: #ff9a3c; box-shadow: 0 0 0 3px rgba(255,154,60,0.25); animation: upd-pulse 2.4s ease-in-out infinite; }
+.update-pill:hover, .update-pill:focus-visible { background: var(--night-3); border-color: #ff9a3c; outline: none; }
+.update-pill > span { padding-right: 7px; }
+.update-pill i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #ff9a3c; box-shadow: 0 0 0 3px rgba(255,154,60,0.25); animation: upd-pulse 2.4s ease-in-out infinite; }
+/* aggiornato: pallino verde fermo */
+.update-pill.ok { border-color: rgba(57,196,107,0.45); }
+.update-pill.ok:hover, .update-pill.ok:focus-visible { border-color: #39c46b; }
+.update-pill.ok i { background: #39c46b; box-shadow: 0 0 0 3px rgba(57,196,107,0.22); animation: none; }
+/* controllo in corso o non riuscito: grigio */
+.update-pill.wait { border-color: rgba(243,245,238,0.25); }
+.update-pill.wait i { background: var(--slate); box-shadow: none; animation: none; }
+.upd-pill-go { font: inherit; font-weight: 700; font-size: 13px; color: var(--night); background: #ff9a3c; border: 0; padding: 5px 12px; cursor: pointer; }
+.upd-pill-go:hover, .upd-pill-go:focus-visible { background: #ffb36b; outline: none; }
 @keyframes upd-pulse { 50% { box-shadow: 0 0 0 6px rgba(255,154,60,0); } }
 .upd-versions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 20px; }
 .upd-versions > div { background: var(--night-2); padding: 12px 18px; border-top: 4px solid rgba(243,245,238,0.25); min-width: 150px; }
@@ -744,7 +754,8 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <button class="ghost" id="eco-user">Accedi</button>
   </div>
   <div class="home-notices">
-    <button class="update-pill" id="upd-pill" hidden><i aria-hidden="true"></i><span id="upd-pill-text">Nuovo aggiornamento disponibile</span></button>
+    <!-- versione del gioco (app desktop): verde = aggiornato, arancione = c'è una versione nuova, con «Aggiorna» -->
+    <div class="update-pill" id="upd-pill" role="button" tabindex="0" hidden title="Aggiornamenti"><i aria-hidden="true"></i><span id="upd-pill-text">Nuovo aggiornamento disponibile</span><button class="upd-pill-go" id="upd-pill-go" hidden>Aggiorna ora</button></div>
     <button class="offline-pill" id="offline-pill" hidden title="Riprova a collegarti ai server"><i aria-hidden="true"></i><span>Offline · Riprova</span></button>
   </div>
   <aside class="social" id="social" aria-label="Amici">

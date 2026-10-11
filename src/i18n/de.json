@@ -1658,6 +1658,12 @@
     "Il gioco non è partito": "Das Spiel ist nicht gestartet",
     "Forse i dati salvati su questo computer (impostazioni, carriere, squadre) non vanno d'accordo con questa versione. Puoi ripristinarli: prima ne faccio una copia, poi il gioco riparte pulito. L'account resta collegato.": "Vielleicht passen die auf diesem Computer gespeicherten Daten (Einstellungen, Karrieren, Teams) nicht zu dieser Version. Du kannst sie zurücksetzen: zuerst mache ich eine Kopie, dann startet das Spiel sauber. Dein Konto bleibt angemeldet.",
     "Ripristina i dati e riavvia": "Daten zurücksetzen und neu starten",
-    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "Das Spiel ist nicht gestartet: es braucht einen Browser oder Computer mit aktiver 3D-Grafik (WebGL)."
+    "Il gioco non è partito: serve un browser o un computer con la grafica 3D (WebGL) attiva.": "Das Spiel ist nicht gestartet: es braucht einen Browser oder Computer mit aktiver 3D-Grafik (WebGL).",
+    "Nuova versione {0}": "Neue Version {0}",
+    "Aggiornamento alla {0} non riuscito": "Update auf {0} fehlgeschlagen",
+    "Controllo aggiornamenti…": "Suche nach Updates…",
+    "Controllo degli aggiornamenti non riuscito": "Suche nach Updates fehlgeschlagen",
+    "Versione aggiornata · {0}": "Aktuelle Version · {0}",
+    "Versione {0}": "Version {0}"
   }
 }

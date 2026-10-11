@@ -46,14 +46,25 @@ async def main():
         check('dopo il riavvio: "Aggiornato alla versione 0.13.0"', 'Aggiornato alla versione 0.13.0' in toast, toast)
         check('il messaggio del riavvio viene segnato come visto', 'visto' in await pg.evaluate("__calls"))
 
-        # nessun aggiornamento: niente avviso
-        check('nessuna versione nuova: nessun avviso nella home', await pg.evaluate("document.getElementById('upd-pill').hidden"))
+        # nessun aggiornamento: nella home la versione, grigia finché non si è controllato, poi verde
+        st0 = await pg.evaluate("(()=>{const e=document.getElementById('upd-pill'); return {hidden: e.hidden, cls: e.className, text: document.getElementById('upd-pill-text').textContent, go: !document.getElementById('upd-pill-go').hidden}})()")
+        check('home: versione installata (grigia prima del controllo), niente Aggiorna', not st0['hidden'] and 'wait' in st0['cls'] and st0['text'] == 'Versione 0.13.0' and not st0['go'], st0)
+        await pg.evaluate("s => __upd(s)", {'fase': 'nessuno', 'attuale': '0.13.0', 'controllato': 1})
+        ok0 = await pg.evaluate("(()=>{const e=document.getElementById('upd-pill'); const b=getComputedStyle(e.querySelector('i')).backgroundColor; return {cls: e.className, text: document.getElementById('upd-pill-text').textContent, dot: b, go: !document.getElementById('upd-pill-go').hidden}})()")
+        check('home: pallino verde "Versione aggiornata · 0.13.0"', 'ok' in ok0['cls'] and ok0['text'] == 'Versione aggiornata · 0.13.0' and ok0['dot'] == 'rgb(57, 196, 107)' and not ok0['go'], ok0)
+        box = await pg.evaluate("(()=>{const a=document.querySelector('.home-user').getBoundingClientRect(), b=document.getElementById('upd-pill').getBoundingClientRect(); return {below: b.top >= a.bottom - 1, right: Math.abs(a.right - b.right) < 2}})()")
+        check('home: sotto il riquadro del profilo (Accedi), allineato a destra', box['below'] and box['right'], box)
 
         # versione nuova disponibile
         await pg.evaluate("s => __upd(s)", {'fase': 'disponibile', 'attuale': '0.13.0', 'nuova': '0.14.0', 'note': NOTES, 'automatico': True})
-        pill = await pg.evaluate("(()=>{const e=document.getElementById('upd-pill'); return {hidden: e.hidden, text: e.textContent.trim(), visible: e.offsetParent !== null}})()")
-        check('versione nuova: avviso "Nuovo aggiornamento disponibile" nella home', not pill['hidden'] and pill['visible'] and 'Nuovo aggiornamento disponibile' in pill['text'], pill)
-        await pg.click('#upd-pill')
+        pill = await pg.evaluate("(()=>{const e=document.getElementById('upd-pill'); return {hidden: e.hidden, cls: e.className, text: document.getElementById('upd-pill-text').textContent, visible: e.offsetParent !== null, dot: getComputedStyle(e.querySelector('i')).backgroundColor, go: !document.getElementById('upd-pill-go').hidden, goText: document.getElementById('upd-pill-go').textContent}})()")
+        check('versione nuova: pallino arancione "Nuova versione 0.14.0" con Aggiorna di lato', not pill['hidden'] and pill['visible'] and 'new' in pill['cls'] and pill['text'] == 'Nuova versione 0.14.0' and pill['dot'] == 'rgb(255, 154, 60)' and pill['go'] and pill['goText'] == 'Aggiorna ora', pill)
+        # «Aggiorna» nella home: schermata Aggiornamento e l'aggiornamento parte subito
+        await pg.evaluate("__calls.length = 0")
+        await pg.click('#upd-pill-go')
+        check('Aggiorna nella home: apre la schermata Aggiornamento e fa partire l\'aggiornamento', await pg.evaluate("game.screen") == 'update' and await pg.evaluate("__calls.includes('aggiorna')"))
+        await pg.evaluate("game.showScreen('menu')")
+        await pg.click('#upd-pill-text')
         check('clic sull\'avviso: schermata Aggiornamento', await pg.evaluate("game.screen") == 'update')
         v = await pg.evaluate("[document.getElementById('upd-cur').textContent, document.getElementById('upd-new').textContent]")
         check('versione installata e nuova versione', v == ['0.13.0', '0.14.0'], v)
@@ -104,7 +115,7 @@ async def main():
         # impostazioni: riga Aggiornamenti
         await pg.evaluate("s => __upd(s)", {'fase': 'nessuno', 'attuale': '0.13.0', 'controllato': 1})
         await pg.evaluate("game.showScreen('menu')")
-        check('di nuovo nessun aggiornamento: l\'avviso sparisce', await pg.evaluate("document.getElementById('upd-pill').hidden"))
+        check('di nuovo aggiornato: torna verde, senza Aggiorna', await pg.evaluate("document.getElementById('upd-pill').className.includes('ok') && document.getElementById('upd-pill-go').hidden"))
         await pg.click('#btn-settings')
         row = await pg.evaluate("(()=>({shown: !document.getElementById('st-updrow').hidden, b: document.getElementById('st-upd').textContent, i: document.getElementById('st-updinfo').textContent}))()")
         check('impostazioni: "Controlla ora" e versione installata', row['shown'] and row['b'] == 'Controlla ora' and row['i'] == 'Hai l\'ultima versione (0.13.0)', row)
@@ -114,7 +125,8 @@ async def main():
         # lingua inglese
         await pg.evaluate("setLanguage('en')")
         await pg.evaluate("s => __upd(s)", {'fase': 'disponibile', 'attuale': '0.13.0', 'nuova': '0.14.0', 'automatico': True})
-        check('in inglese: "New update available"', await pg.evaluate("document.getElementById('upd-pill-text').textContent") == 'New update available')
+        en = await pg.evaluate("[document.getElementById('upd-pill-text').textContent, document.getElementById('upd-pill-go').textContent]")
+        check('in inglese: "New version 0.14.0" e "Update"', en[0] == 'New version 0.14.0' and en[1] not in ('Aggiorna ora', 'Refresh'), en)
         await pg.evaluate("setLanguage('it')")
 
         check('nessun errore nella pagina', not errs, errs)
