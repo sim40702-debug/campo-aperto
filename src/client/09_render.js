@@ -639,6 +639,7 @@ class Renderer {
     this.match = match;
     this.applyEnvironment(match.weather, match.timeOfDay);   // meteo e ora del giorno della partita
     this.setupOfficials(match);   // arbitro e barellieri (09_render_referee.js)
+    this.setupStadiumLife(match);   // bandiere, sciarpe e flash (09_render_stadium.js)
   }
 
   // aspetto comprato (letto dal server) per un calciatore: si ricostruisce solo il suo modello
@@ -899,6 +900,8 @@ class Renderer {
           vx: cel ? Math.cos(cel.f) * cel.speed : p.vx, vz: cel ? Math.sin(cel.f) * cel.speed : p.vz, bx: bx, bz: bz, isGK: p.isGK });
       // portiere: tuffi, prese, pugni, uscite (09_render_keeper.js)
       if (p.isGK && !cel) this.poseKeeper(pm, p, match, dt, bx, by, bz);
+      // gesto del calcio, rovesciata, tuffo di testa (09_render_kicks.js)
+      if (!cel) this.poseKick(pm, p, dt);
       if (cel) this.poseCelebration(pm, cel);
       // a terra dopo un fallo duro, poi zoppica (09_render_referee.js)
       if (pm.hurtT > 0 || pm.limpT > 0 || pm.hurtAmt > 0.01) this.poseHurt(pm, dt, p.speed(), ph);
@@ -914,6 +917,7 @@ class Renderer {
     const target = match.state === 'GOAL' ? 1 : nearGoal * 0.5;
     this.crowdExcite = lerp(this.crowdExcite, target, dt * 2);
     this.animateCrowd(dt);
+    this.updateStadiumLife(dt);
     const mine = match.humanById ? match.humanById(this.localId) : null;
     this.updateFx(dt);
     this.updateNets(dt);
@@ -951,6 +955,7 @@ class Renderer {
     this.updateFx(dt);
     this.crowdExcite = lerp(this.crowdExcite, 0.6, dt);
     this.animateCrowd(dt);
+    this.updateStadiumLife(dt);
     // telecamera del replay: bassa e laterale verso la porta
     const side = Math.sign(frame[0]) || 1;
     const want = new THREE.Vector3(frame[0] - side * 14, 5, frame[2] + 16);
@@ -1003,6 +1008,8 @@ class Renderer {
     if (!QUALITY_PRESETS[id] || id === this.qualityId) return;
     const old = this.Q;
     this.qualityId = id; this.Q = QUALITY_PRESETS[id];
+    // bandiere e sciarpe solo con il pubblico animato (qualità media in su)
+    if (this.match && old.crowd !== this.Q.crowd) this.setupStadiumLife(this.match);
     const r = this.renderer;
     r.shadowMap.enabled = this.Q.shadows;
     r.shadowMap.type = this.Q.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;

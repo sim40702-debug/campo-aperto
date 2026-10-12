@@ -2,6 +2,15 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.17.0 — 12/10/2026 (tiri più belli e stadio vivo)
+- **Un gesto per ogni calcio**: passaggio di piatto (corto, gamba ruotata in fuori), tiro di collo pieno (caricamento
+  lungo, punta in giù, braccia larghe), lancio e cross con il busto indietro, tiro al volo con la gamba alta e il corpo
+  inclinato. Con il pallone alto si calcia in **rovesciata**, con il pallone basso di testa si fa il **tuffo di testa**.
+- **Stadio vivo**: bandiere con i colori delle due squadre che sventolano tra il pubblico (di più quando la partita si
+  scalda), sciarpe tese che si alzano e ondeggiano, **flash dei fotografi** sul gol (e sui tiri) in tribuna e dietro
+  le porte. Con la grafica bassa solo i flash.
+- Solo grafica: partite e server non cambiano.
+
 ## 0.16.0 — 12/10/2026 (tuffi del portiere ed esultanze)
 - **Tuffi veri del portiere**: carica sulle gambe, vola sul fianco con le braccia tese e atterra, poi si rialza. Il
   tuffo cambia con l'altezza del pallone: rasoterra quasi sdraiato, a mezza altezza, oppure alto, più dritto e più su.

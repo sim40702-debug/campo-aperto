@@ -8,7 +8,10 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.16)
+### Le novità (0.10 – 0.17)
+
+- **Calci diversi** (piatto, collo, al volo, rovesciata, tuffo di testa) e **stadio vivo** con bandiere, sciarpe e
+  flash dei fotografi (0.17).
 
 - **Tuffi del portiere** rasoterra, a mezza altezza e alti, prese, pugni e uscite basse; **esultanze** con la
   scivolata in ginocchio e i compagni che abbracciano chi ha segnato (0.16).

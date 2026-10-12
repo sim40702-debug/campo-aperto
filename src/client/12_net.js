@@ -250,7 +250,7 @@ function sanitizeInput(d) {
 // evento della simulazione -> formato compatto per audio, grafica e rete (uguale in locale e sui client)
 function matchEventForNet(m, e) {
   const ev = { type: e.type, x: m.ball.x, z: m.ball.z };
-  if (e.type === 'kick') { ev.power = e.data.power; ev.kind = e.data.kind; }   // kind: pass, lob, cross, shot, header... (per il suono)
+  if (e.type === 'kick') { ev.power = e.data.power; ev.kind = e.data.kind; ev.y = m.ball.y; }   // kind: pass, lob, cross, shot, header... (per il suono)
   if (e.type === 'whistle') ev.kind = e.data.type;
   if (e.type === 'goal') { ev.team = e.data.team; ev.y = m.ball.netHit ? m.ball.netHit.y : m.ball.y; if (m.ball.netHit) { ev.z = m.ball.netHit.z; ev.power = m.ball.netHit.v; } }
   if (e.type === 'switch') ev.id = e.data.id;
