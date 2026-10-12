@@ -1205,7 +1205,7 @@ class Game {
     }
     switch (e.type) {
       case 'kick': {
-        this.audio.kick(e.power || 10, e.kind); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });
+        this.audio.kick(e.power || 10, e.kind); R.onKick(e); if (e.kind === 'shot') R.cameraFlashes(0.35); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });
         // calcio del tuo calciatore: piccolo colpo nelle mani
         const me = this.localPlayer();
         if (me && dist2(me.x, me.z, e.x, e.z) < 1.6) {
@@ -1239,6 +1239,7 @@ class Game {
         R.burst('confetti', Math.sign(e.x || 1) * 46, 0, { colors: team ? [team.kit[0], team.kit[1]] : null });
         R.netBulge(Math.sign(e.x || 1), e.y || 1, e.z || 0, e.power || 15);
         R.shake = 0.6;
+        R.cameraFlashes(2.8);   // flash dei fotografi (09_render_stadium.js)
         this.rumble(450, 1, 0.7);
         break;
       }

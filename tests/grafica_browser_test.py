@@ -1,5 +1,6 @@
 # Grafica dei giocatori nel gioco vero (Chromium headless): tuffi del portiere (basso, medio, alto), palla in mano,
-# uscita bassa, esultanze dopo il gol (marcatore, compagni che lo abbracciano, portiere disperato, chi subisce).
+# uscita bassa, esultanze dopo il gol (marcatore, compagni che lo abbracciano, portiere disperato, chi subisce),
+# gesti dei calci (piatto, collo, rovesciata, tuffo di testa), stadio vivo (bandiere, sciarpe, flash).
 # Prima: node build.js test. Uso: python3 tests/grafica_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -65,6 +66,36 @@ async def main():
         back = await pg.evaluate("""() => { const m = game.match, R = game.renderer; while (m.state === 'GOAL') { game.updateOffline(1/60); game.replay = null; } for (let i = 0; i < 3; i++) game.updateOffline(1/60);
             return R.playerMeshes.every(q => !q.cel) && R.playerMeshes.every(q => Math.hypot(q.root.position.x - q.player.rx, q.root.position.z - q.player.rz) < 0.01); }""")
         check('al calcio d\'inizio tutti tornano al loro posto', back)
+        # ---- tiri e passaggi: un gesto diverso per ogni calcio
+        KICK = """(a) => { const [kind, y, frames] = a; const m = game.match, R = game.renderer, p = m.teams[0].players[9], pm = R.playerMeshes.find(q => q.player === p);
+            p.vx = p.vz = 0; pm.bike = 0; pm.dh = 0; p.anim.kick = kind === 'header' ? 0 : 0.3; p.anim.header = kind === 'header' ? 0.35 : 0;
+            R.onKick({ x: p.x, z: p.z, kind: kind, y: y, power: 28 });
+            let hip = -9, twist = 0, bodyZ = 0, bodyY = 0;
+            for (let i = 0; i < frames; i++) { if (p.anim.kick > 0) p.anim.kick -= 1/60; if (p.anim.header > 0) p.anim.header -= 1/60; R.syncFromMatch(m, 1/60);
+              hip = Math.max(hip, pm.legs[1].hip.rotation.z); twist = Math.min(twist, pm.legs[1].hip.rotation.y); bodyZ = Math.abs(pm.body.rotation.z) > Math.abs(bodyZ) ? pm.body.rotation.z : bodyZ; bodyY = Math.max(bodyY, pm.body.position.y); }
+            return { hip, twist, bodyZ, bodyY }; }"""
+        await pg.evaluate("() => { game.setup.side = -1; game.startMatch(); for (let i = 0; i < 30; i++) game.updateOffline(1/60); }")
+        ps, sh, bk, dh = [await pg.evaluate(KICK, a) for a in (['pass', 0.11, 18], ['shot', 0.11, 18], ['shot', 1.8, 50], ['header', 0.6, 50])]
+        check('passaggio di piatto: movimento corto con la gamba ruotata in fuori', ps['twist'] < -0.6 and ps['hip'] < 0.9, ps)
+        check('tiro di collo: caricamento e accompagnamento più ampi', sh['hip'] > 1.3 and sh['hip'] > ps['hip'] + 0.4, sh)
+        check('rovesciata: in aria all\'indietro con la gamba sopra la testa', bk['bodyZ'] > 1.2 and bk['bodyY'] > 0.6 and bk['hip'] > 2.5, bk)
+        check('tuffo di testa: in avanti a corpo steso', dh['bodyZ'] < -1.2 and dh['bodyY'] > 0.3, dh)
+        # ---- stadio vivo (con la qualità media in su)
+        st = await pg.evaluate("""() => { const R = game.renderer; game.applyQuality ? 0 : 0; R.setQuality('media'); const L = R.life;
+            const f = L.flags[0].geo.attributes.position.array, a0 = f[5];
+            const sc = new THREE.Matrix4(), v = new THREE.Vector3();
+            R.crowdExcite = 0; R.updateStadiumLife(1/60); L.scarves.getMatrixAt(3, sc); const y0 = v.setFromMatrixPosition(sc).y;
+            for (let i = 0; i < 30; i++) R.updateStadiumLife(1/60);
+            const a1 = f[5];
+            R.crowdExcite = 1; R.updateStadiumLife(1/60); L.scarves.getMatrixAt(3, sc); const y1 = v.setFromMatrixPosition(sc).y;
+            R.cameraFlashes(2); R.updateStadiumLife(1/60); const on = L.flashPts.visible; let lit = 0; for (let i = 1; i < L.flashPos.length; i += 3) if (L.flashPos[i] > 0) lit++;
+            for (let i = 0; i < 200; i++) R.updateStadiumLife(1/60);
+            R.setQuality('bassa'); const low = !!(R.life && R.life.flags.length);
+            return { flags: L.flags.length, waving: a0 !== a1, up: y1 - y0, on: on, lit: lit, off: !L.flashPts.visible, low: low }; }""")
+        check('stadio: bandiere delle squadre che sventolano', st['flags'] >= 30 and st['waving'], st)
+        check('sciarpe che si alzano quando il pubblico si scalda', st['up'] > 0.5, st)
+        check('flash dei fotografi dopo il gol, poi si spengono', st['on'] and st['lit'] > 20 and st['off'], st)
+        check('qualità bassa: niente bandiere e sciarpe', not st['low'], st)
         check('nessun errore', not errs, errs[:3])
         await b.close()
     ok = sum(results); print('\nRisultato: %d superati, %d falliti' % (ok, len(results) - ok))
