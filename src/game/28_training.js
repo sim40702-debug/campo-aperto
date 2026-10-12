@@ -207,7 +207,11 @@ Game.prototype.renderTraining = function () {
       esc(tr(d.name)) + ': ' + esc(trf(d.seconds ? '{0} passaggi (obiettivo {1})' : '{0} su {2} (obiettivo {1})', last.score, d.target, d.tries)) +
       (last.record && last.score > 0 ? ' · <span class="rec">' + esc(tr('Nuovo record!')) + '</span>' : '');
   }
-  $('tr-list').innerHTML = DRILLS.map(d => {
+  // il tutorial, prima degli esercizi (32_tutorial.js)
+  const tut = '<button class="tr-card tut' + (tutorialDone() ? ' done' : '') + '" data-tutorial="1"><b>' + esc(tr('Tutorial')) + '</b>' +
+    '<small>' + esc(tr('Prima volta? Una partita guidata passo dopo passo: muoversi, scattare, passare, finta, tiro e contrasto.')) + '</small>' +
+    '<span class="tr-best">' + esc(tr(tutorialDone() ? 'Completato' : 'Da fare')) + '</span></button>';
+  $('tr-list').innerHTML = tut + DRILLS.map(d => {
     const best = Number.isFinite(rec[d.id]) ? rec[d.id] : null;
     const goal = d.seconds ? trf('Obiettivo: {0} passaggi in {1} secondi', d.target, d.seconds) : trf('Obiettivo: {0} su {1}', d.target, d.tries);
     return '<button class="tr-card' + (best !== null && best >= d.target ? ' done' : '') + '" data-drill="' + d.id + '"><b>' + esc(tr(d.name)) + '</b>' +
@@ -215,6 +219,7 @@ Game.prototype.renderTraining = function () {
       '<span class="tr-best">' + (best === null ? esc(tr('Nessun record')) : esc(trf('Record: {0}', best))) + '</span></button>';
   }).join('');
   $('tr-list').querySelectorAll('[data-drill]').forEach(b => { b.onclick = () => this.startTraining(b.dataset.drill); });
+  $('tr-list').querySelector('[data-tutorial]').onclick = () => this.startTutorial();
 };
 
 Game.prototype.startTraining = function (drill) {
@@ -247,6 +252,7 @@ Game.prototype.renderTrainingHud = function () {
   if (t.phase === 'over' && m.stateTime > 2.6 && this.screen === 'match' && !t.leaving) {
     t.leaving = true;
     this.trainingLast = { drill: d.id, score: t.score, passed: t.passed, record: t.record };
+    if (this.trophies) this.trophies.checkAll();   // tutti gli esercizi superati?
     // subito dopo questo fotogramma (la partita serve ancora a chi disegna il fotogramma)
     setTimeout(() => { if (this.match === m) this.endTraining(); }, 0);
   }

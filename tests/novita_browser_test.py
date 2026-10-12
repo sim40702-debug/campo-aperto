@@ -69,7 +69,7 @@ async def main():
 
         # ---- allenamento
         await pg.click('#btn-training')
-        cards = await pg.evaluate("[...document.querySelectorAll('#tr-list .tr-card b')].map(b => b.textContent)")
+        cards = await pg.evaluate("[...document.querySelectorAll('#tr-list .tr-card[data-drill] b')].map(b => b.textContent)")
         check('Allenamento: cinque esercizi', cards == ['Tiri in porta', 'Punizioni', 'Rigori', 'Dribbling', 'Passaggi'], cards)
         await pg.click('[data-drill="penalty"]')
         await pg.wait_for_timeout(300)
@@ -126,7 +126,7 @@ async def main():
         # ---- inglese: le scritte nuove sono tradotte
         await pg.evaluate("setLanguage('en')")
         await pg.click('#btn-training')
-        en = await pg.evaluate("[document.querySelector('#training h2').textContent, document.querySelector('#tr-list .tr-card b').textContent]")
+        en = await pg.evaluate("[document.querySelector('#training h2').textContent, document.querySelector('#tr-list .tr-card[data-drill] b').textContent]")
         check('in inglese: Training, Shots on target', en == ['Training', 'Shots on target'], en)
         await pg.evaluate("setLanguage('it')")
 
@@ -150,7 +150,7 @@ async def main():
                 txt = await q.evaluate("document.getElementById('ld-offline').textContent")
                 check('server spento: "Server non raggiungibile" con Gioca offline e Riprova', 'Server non raggiungibile' in txt and 'Gioca offline' in txt and 'Riprova' in txt, txt[:80])
                 await q.click('#ld-play-offline')
-                await q.wait_for_timeout(800)
+                await q.wait_for_function("document.getElementById('loading').hidden", timeout=8000, polling=100)
                 st = await q.evaluate("({hidden: document.getElementById('loading').hidden, offline: game.offline, pill: !document.getElementById('offline-pill').hidden, screen: game.screen})")
                 check('Gioca offline: si entra nel menu con "Offline · Riprova"', st['hidden'] and st['offline'] and st['pill'] and st['screen'] == 'menu', st)
                 await q.click('#btn-training')

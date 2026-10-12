@@ -2,6 +2,15 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.18.0 — 12/10/2026 (trofei e tutorial)
+- **Trofei** (Home → Trofei): 22 obiettivi che si sbloccano da soli giocando: primo gol, 25 e 100 gol, vittorie,
+  porta inviolata, goleada, rimonta da due gol sotto, vittoria ai rigori, a difficoltà Difficile, senza cartellini,
+  gol da fuori area, pali, competizioni vinte, carriere, allenamento completo, partite online. Quando se ne sblocca
+  uno compare l'avviso in alto; i trofei a contatore hanno la barra (es. 12 / 25). Si salvano sul computer.
+- **Tutorial** (Allenamento → Tutorial): una partita guidata in sei passi con i tasti che usi tu (anche controller e
+  tasti cambiati): muoversi verso il cerchio giallo, scattare, passare, finta, tiro in porta, rubare la palla. Ogni
+  passo finisce da solo quando lo fai giusto; se sbagli si riprova. Alla prima apertura il gioco lo suggerisce.
+
 ## 0.17.0 — 12/10/2026 (tiri più belli e stadio vivo)
 - **Un gesto per ogni calcio**: passaggio di piatto (corto, gamba ruotata in fuori), tiro di collo pieno (caricamento
   lungo, punta in giù, braccia larghe), lancio e cross con il busto indietro, tiro al volo con la gamba alta e il corpo
