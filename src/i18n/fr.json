@@ -1725,6 +1725,22 @@
     "Ora difendi: avvicinati all'avversario e premi {0} per rubargli la palla": "Maintenant défends : approche-toi de l'adversaire et appuie sur {0} pour lui prendre le ballon",
     "Bravo!": "Bravo !",
     "Perfetto!": "Parfait !",
-    "Ottimo!": "Excellent !"
+    "Ottimo!": "Excellent !",
+    "Questa azione è già salvata": "Cette action est déjà enregistrée",
+    "Nessun replay salvato. A fine partita, in «Rivedi le azioni migliori», premi «Salva» sull'azione che ti piace.": "Aucun replay enregistré. En fin de match, dans « Revoir les meilleures actions », appuie sur « Enregistrer » sur l'action qui te plaît.",
+    "Replay rovinato: non si può guardare": "Replay abîmé : impossible de le regarder",
+    "Avanti": "Lecture",
+    "TV": "TV",
+    "Tribuna": "Tribune",
+    "Dietro la porta": "Derrière le but",
+    "Segui la palla": "Suivre le ballon",
+    "Dall'alto": "Vue du dessus",
+    "Le azioni che hai salvato a fine partita: rivedile con la telecamera che vuoi, anche al rallentatore.": "Les actions que tu as enregistrées en fin de match : revois-les avec la caméra de ton choix, même au ralenti.",
+    "Chiudi": "Fermer",
+    "Hai già {0} replay salvati: eliminane uno dalla schermata Replay": "Tu as déjà {0} replays enregistrés : supprimes-en un depuis l'écran Replay",
+    "Spazio pieno: elimina qualche replay dalla schermata Replay": "Espace plein : supprime quelques replays depuis l'écran Replay",
+    "Replay salvato: lo trovi in Home → Replay": "Replay enregistré : tu le trouves dans Accueil → Replay",
+    "Salva questa azione: la rivedi da Home → Replay": "Enregistre cette action : revois-la depuis Accueil → Replay",
+    "Posizione nel replay": "Position dans le replay"
   }
 }

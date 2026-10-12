@@ -479,6 +479,17 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 .tp-card b { font-family: var(--display); font-size: 18px; } .tp-card p { margin: 2px 0 4px; color: var(--slate); font-size: 13px; }
 .tp-card small { color: var(--slate); font-size: 12px; } .tp-card .bar { margin: 6px 0 2px; } .tp-card .bar div { background: var(--flood); }
 .tp-ico { font-size: 26px; line-height: 1; }
+/* replay salvati */
+.rp-list { display: grid; gap: 8px; margin: 12px 0; max-width: 860px; }
+.rp-card { display: flex; align-items: center; gap: 14px; background: var(--night-2); padding: 10px 14px; border-left: 3px solid var(--flood); }
+.rp-card > div:nth-child(2) { flex: 1; min-width: 0; display: grid; gap: 2px; } .rp-card b { font-family: var(--display); font-size: 19px; }
+.rp-card small { color: var(--slate); font-size: 12.5px; } .rp-card .acts { display: flex; gap: 8px; } .rp-ico { font-size: 26px; }
+/* la scena del replay resta visibile: solo una barra in basso */
+.panel.rview { background: none; pointer-events: none; align-items: flex-end; }
+.rv-bar { pointer-events: auto; margin: 0 auto calc(18px + env(safe-area-inset-bottom, 0px)); width: min(900px, calc(100vw - 32px)); background: rgba(12,26,43,0.9);
+  border-left: 4px solid var(--flood); padding: 12px 16px; display: grid; gap: 10px; }
+.rv-bar b { font-family: var(--display); font-size: 20px; } .rv-bar input[type=range] { width: 100%; }
+.rv-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; } .rv-row .ghost:last-child { margin-left: auto; }
 /* invito di un amico a giocare: in tutti i menu, con Entra */
 #invite-pop { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 0; right: 0; margin: 0 auto; width: fit-content; z-index: 61; display: flex; align-items: center; gap: 12px;
   background: var(--night-3); border-left: 4px solid var(--flood); padding: 10px 12px 10px 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); max-width: calc(100vw - 32px); }
@@ -755,6 +766,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <button id="btn-graphics">Grafica</button>
       <button data-eco="profile">Account</button>
       <button id="btn-trophies">Trofei <span class="pill" id="tp-mini"></span></button>
+      <button id="btn-replays">Replay</button>
       <span id="li-quit" hidden><button id="btn-quit">Esci</button></span>
     </nav>
     <p class="version" id="version"></p>
@@ -882,6 +894,15 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <div class="status" id="on-status" role="status" aria-live="polite"></div>
     <p class="hintline">Server online: <span id="on-server"></span> <button class="ghost" id="on-server-edit" style="padding:4px 10px;font-size:14px;margin-left:6px">Cambia</button></p>
     <div class="actions"><button class="ghost" id="on-back">Indietro</button><button class="ghost" id="on-ranking">Classifica online</button></div>
+  </div>
+</section>
+
+<section id="replays" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2>Replay</h2><span class="pill" id="rp-count"></span></div>
+    <p class="sub">Le azioni che hai salvato a fine partita: rivedile con la telecamera che vuoi, anche al rallentatore.</p>
+    <div class="rp-list" id="rp-list"></div>
+    <div class="actions"><button class="ghost" id="rp-back">Indietro</button></div>
   </div>
 </section>
 
@@ -1395,7 +1416,16 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 
 <div id="busy" hidden><div class="box" role="status" aria-live="polite"><h3 id="busy-text">Collegamento…</h3><div class="sweep"><div></div></div><button class="ghost" id="busy-cancel">Annulla</button></div></div>
 <!-- azioni migliori a fine partita (src/game/27_highlights.js) -->
-<div id="hl-bar" hidden><span id="hl-label"></span><button class="ghost" id="hl-next">Prossima</button><button class="ghost" id="hl-exit">Fine</button></div>
+<div id="hl-bar" hidden><span id="hl-label"></span><button class="ghost" id="hl-save" title="Salva questa azione: la rivedi da Home → Replay">Salva</button><button class="ghost" id="hl-next">Prossima</button><button class="ghost" id="hl-exit">Fine</button></div>
+<!-- replay salvato: barra con comandi (34_replays.js) -->
+<section id="rview" class="panel rview" hidden>
+  <div class="rv-bar">
+    <b id="rv-label" translate="no"></b>
+    <input type="range" id="rv-pos" min="0" max="1" step="1" value="0" aria-label="Posizione nel replay">
+    <div class="rv-row"><button class="primary sm" id="rv-play">Pausa</button><span class="small">Velocità</span><div class="segs" id="rv-speed"></div></div>
+    <div class="rv-row"><span class="small">Telecamera</span><div class="segs" id="rv-cam"></div><button class="ghost" id="rv-exit">Chiudi</button></div>
+  </div>
+</section>
 <div id="toast" hidden role="alert"></div>
 <div id="trophy-pop" hidden role="status" aria-live="polite"><span aria-hidden="true">🏆</span><div><small>Trofeo sbloccato</small><b id="trophy-name"></b></div></div>
 <div id="invite-pop" hidden role="alertdialog" aria-live="assertive"><span id="invite-text"></span><button class="primary sm" id="invite-join">Entra</button><button class="ghost sm" id="invite-later">Più tardi</button></div>

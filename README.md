@@ -8,7 +8,9 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.18)
+### Le novità (0.10 – 0.19)
+
+- **Replay salvati** delle azioni più belle, da rivedere con la telecamera che vuoi e al rallentatore (0.19).
 
 - **Trofei** da sbloccare giocando e **tutorial** guidato per chi inizia (0.18).
 
@@ -465,6 +467,7 @@ python3 tests/feel_browser_test.py       # reattività: tasti al fotogramma dopo
 python3 tests/social_browser_test.py     # amici, inviti e sfide tra amici (serve cloud/: npm install)
 python3 tests/novita015_browser_test.py  # rigori, arbitro e cartellini, infortuni, suoni, carriera da giocatore
 python3 tests/classifica_browser_test.py # classifica online, amici online, invito con Entra (serve cloud/: npm install)
+python3 tests/replay_browser_test.py     # salva un'azione, schermata Replay, telecamere, velocità, eliminazione
 python3 tests/trofei_browser_test.py     # tutorial giocato da un bot, trofei, schermata Trofei
 python3 tests/grafica_browser_test.py    # tuffi del portiere, palla in mano, uscite, esultanze dopo il gol
 python3 tests/avvio_browser_test.py      # caricamento a passi, aggiornamento che salta versioni, dati vecchi, ripristino
