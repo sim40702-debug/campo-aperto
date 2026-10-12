@@ -152,6 +152,7 @@ class Manager {
     this.career.newSeason(comp.id);
     this.refreshMarket();
     this.save();
+    if (this.g.trophies) this.g.trophies.checkAll();
     return report;
   }
 

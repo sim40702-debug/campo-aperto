@@ -466,6 +466,19 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 #toast { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); z-index: 60; background: var(--night-3); border-left: 4px solid var(--flood); padding: 12px 18px; max-width: min(560px, 90vw); box-shadow: 0 6px 24px rgba(0,0,0,0.4); animation: toast-in 0.18s ease-out; }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 #toast.err { border-left-color: var(--signal); }
+/* trofeo sbloccato: in alto, sotto il tabellone */
+#trophy-pop { position: fixed; top: calc(70px + env(safe-area-inset-top, 0px)); left: 0; right: 0; margin: 0 auto; width: fit-content; z-index: 62; display: flex; align-items: center; gap: 12px;
+  background: var(--night-3); border-left: 4px solid var(--flood); padding: 10px 18px 10px 14px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); pointer-events: none; }
+#trophy-pop.in { animation: tp-in 0.35s cubic-bezier(.2,1.5,.4,1); }
+@keyframes tp-in { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+#trophy-pop > span { font-size: 30px; } #trophy-pop small { display: block; color: var(--flood); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+#trophy-pop b { font-family: var(--display); font-size: 22px; }
+.tp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin: 12px 0; }
+.tp-card { display: flex; gap: 12px; align-items: flex-start; background: var(--night-2); padding: 12px 14px; border-left: 3px solid rgba(243,245,238,0.15); opacity: 0.72; }
+.tp-card.got { opacity: 1; border-left-color: var(--flood); }
+.tp-card b { font-family: var(--display); font-size: 18px; } .tp-card p { margin: 2px 0 4px; color: var(--slate); font-size: 13px; }
+.tp-card small { color: var(--slate); font-size: 12px; } .tp-card .bar { margin: 6px 0 2px; } .tp-card .bar div { background: var(--flood); }
+.tp-ico { font-size: 26px; line-height: 1; }
 /* invito di un amico a giocare: in tutti i menu, con Entra */
 #invite-pop { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 0; right: 0; margin: 0 auto; width: fit-content; z-index: 61; display: flex; align-items: center; gap: 12px;
   background: var(--night-3); border-left: 4px solid var(--flood); padding: 10px 12px 10px 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); max-width: calc(100vw - 32px); }
@@ -741,6 +754,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <button id="btn-audio">Audio</button>
       <button id="btn-graphics">Grafica</button>
       <button data-eco="profile">Account</button>
+      <button id="btn-trophies">Trofei <span class="pill" id="tp-mini"></span></button>
       <span id="li-quit" hidden><button id="btn-quit">Esci</button></span>
     </nav>
     <p class="version" id="version"></p>
@@ -868,6 +882,15 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <div class="status" id="on-status" role="status" aria-live="polite"></div>
     <p class="hintline">Server online: <span id="on-server"></span> <button class="ghost" id="on-server-edit" style="padding:4px 10px;font-size:14px;margin-left:6px">Cambia</button></p>
     <div class="actions"><button class="ghost" id="on-back">Indietro</button><button class="ghost" id="on-ranking">Classifica online</button></div>
+  </div>
+</section>
+
+<section id="trophies" class="panel" hidden>
+  <div class="sheet wide">
+    <div class="ecohead"><h2>Trofei</h2><span class="pill" id="tp-count"></span></div>
+    <p class="sub">Si sbloccano da soli giocando: partite, competizioni, carriere, allenamento e online.</p>
+    <div class="tp-list" id="tp-list"></div>
+    <div class="actions"><button class="ghost" id="tp-back">Indietro</button></div>
   </div>
 </section>
 
@@ -1374,6 +1397,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 <!-- azioni migliori a fine partita (src/game/27_highlights.js) -->
 <div id="hl-bar" hidden><span id="hl-label"></span><button class="ghost" id="hl-next">Prossima</button><button class="ghost" id="hl-exit">Fine</button></div>
 <div id="toast" hidden role="alert"></div>
+<div id="trophy-pop" hidden role="status" aria-live="polite"><span aria-hidden="true">🏆</span><div><small>Trofeo sbloccato</small><b id="trophy-name"></b></div></div>
 <div id="invite-pop" hidden role="alertdialog" aria-live="assertive"><span id="invite-text"></span><button class="primary sm" id="invite-join">Entra</button><button class="ghost sm" id="invite-later">Più tardi</button></div>
 <div id="fps" hidden></div>
 <aside id="netdiag" hidden aria-label="Diagnostica di rete"><h4>Diagnostica di rete <small>Ctrl+Maiusc+D</small></h4><dl id="nd-info"></dl><ol id="nd-log"></ol></aside>

@@ -187,6 +187,7 @@ class ProCareer {
       rating: r.rating, goals: r.goals, res: r.res, mvp: r.mvp, how: r.how, xp: Math.round(r.xp) });
     d.log = d.log.slice(0, 40);
     this.save();
+    if (this.g.trophies) this.g.trophies.checkAll();   // livello 10, gol del tuo calciatore
     return { xp: Math.round(r.xp), ups: ups, rating: r.rating, goals: r.goals, mvp: r.mvp };
   }
   // un punto su una caratteristica

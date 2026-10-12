@@ -339,6 +339,7 @@ class CompetitionsUI {
     this.career.simulateFixture(c, f.id);
     if (c.pro) this.g.pro.afterSim(c, f);   // carriera da giocatore: presenza e gol della simulazione
     this.career.simulateRound(c);
+    this.g.trophies.checkComp(c);
     this.flash('Partita simulata: ' + this.g.teamName(f.home) + ' ' + f.h + '-' + f.a + ' ' + this.g.teamName(f.away) + (f.pens ? ' (rigori ' + f.pens.h + '-' + f.pens.a + ')' : f.et ? ' (d.t.s.)' : ''));
     const keep = $('cp-status').textContent;
     this.render();
@@ -355,6 +356,7 @@ class CompetitionsUI {
     // carriera da giocatore: voto, gol ed esperienza del tuo calciatore
     this.lastPro = c.pro ? this.g.pro.afterMatch(c, this.career.fixture(c, cm.fid), m) : null;
     this.career.simulateRound(c);
+    this.g.trophies.checkComp(c);
     return c;
   }
   // uscita a metà: il tempo che manca si simula dal punteggio attuale

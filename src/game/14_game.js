@@ -3,7 +3,7 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['manager', 'pro', 'ranking', 'menu', 'update', 'training', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
+const SCREENS = ['manager', 'pro', 'ranking', 'trophies', 'menu', 'update', 'training', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 
 // meteo e ora del giorno da scegliere prima della partita (il motore conosce 'clear', 'rain', 'snow' e 'day', 'sunset', 'night')
@@ -80,6 +80,8 @@ class Game {
     // carriera da giocatore (src/game/30_pro_career.js): il tuo calciatore nella sua squadra
     this.pro = new ProCareer(this);
     this.ranking = new OnlineRanking(this);   // classifica online (src/game/31_online_ranking.js)
+    this.trophies = new Trophies(this);       // trofei (src/game/33_trophies.js)
+    setTimeout(() => this.trophies.checkAll(), 1500);
     this.comps.career.rosterTeam = (comp, t) => comp.pro ? this.pro.teamFor(comp, t) : this.manager.teamFor(comp, t);
     this.social = new SocialUI(this);
     this.compMatch = null;      // partita di una competizione in corso: { compId, fid }
@@ -101,7 +103,7 @@ class Game {
     this.screen = name;
     if (name !== 'match' && this.commentary) this.commentary.stopVoice();   // fuori dalla partita la voce tace
     for (const id of SCREENS) $(id).hidden = true;
-    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', training: 'training', ranking: 'ranking', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
+    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', training: 'training', ranking: 'ranking', trophies: 'trophies', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
     if (panel) {
       const el = $(panel);
       el.hidden = false;
@@ -122,6 +124,15 @@ class Game {
     if (first && (name !== 'menu' || this.input.lastDevice === 'pad')) setTimeout(() => first.focus({ preventScroll: true }), 30);
     if (this.eco) this.eco.onShow(name);
     if (this.social && name === 'menu') this.social.onHome();
+    if (this.trophies && name === 'menu') {
+      $('tp-mini').textContent = this.trophies.done() + '/' + this.trophies.total();
+      // prima volta: si suggerisce il tutorial (una volta sola)
+      if (!tutorialDone() && !this.trophies.count('wins') && !this.tutHintShown && this.loaded) {
+        this.tutHintShown = true;
+        let seen = false; try { seen = localStorage.getItem('campoAperto.tutorialHint') === '1'; localStorage.setItem('campoAperto.tutorialHint', '1'); } catch (e) { seen = true; }
+        if (!seen) setTimeout(() => { if (this.screen === 'menu') this.toast(tr('Prima volta? Prova il Tutorial in Allenamento')); }, 1200);
+      }
+    }
   }
 
   toast(text, isErr) {
@@ -200,6 +211,8 @@ class Game {
     $('on-join').onclick = () => this.joinOnline();
     $('on-back').onclick = () => this.showScreen('menu');
     $('on-ranking').onclick = () => this.ranking.open('online');
+    $('btn-trophies').onclick = () => this.trophies.open();
+    $('tp-back').onclick = () => this.showScreen('menu');
     $('on-server-edit').onclick = () => this.openSettings('online', 'online');
     // diagnostica di rete: Ctrl+Maiusc+D o la casella nelle impostazioni
     window.addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') { e.preventDefault(); this.toggleNetDiag(); } });
@@ -360,6 +373,7 @@ class Game {
     this.showScreen('match');
     this.audio.whistle(1);
     this.eco.dressMatch(m, localId, names);
+    if (this.trophies) this.trophies.startMatch(m, localId);   // trofei: chi gioca e come va la partita
   }
 
   // partita di una competizione: motore vero (con supplementari e rigori quando serve un vincitore).
@@ -648,6 +662,7 @@ class Game {
       case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': case 'comps': this.showScreen('menu'); break;
       case 'comp': case 'comp-new': case 'manager': case 'pro': this.comps.openDashboard(); break;
       case 'ranking': this.showScreen(this.ranking.back || 'menu'); break;
+      case 'trophies': this.showScreen('menu'); break;
     }
   }
   // tasti nei menu (la partita non è in corso o è in pausa)
@@ -1146,7 +1161,8 @@ class Game {
   afterSim(m, dt, replaySpeed, online, alpha) {
     const R = this.renderer;
     this.hlTick(m);
-    if (m.training) this.renderTrainingHud();   // allenamento (28_training.js)
+    if (m.tutorial) this.renderTutorialHud();   // tutorial (32_tutorial.js)
+    else if (m.training) this.renderTrainingHud();   // allenamento (28_training.js)
     if (this.replayPending && m.state === 'GOAL' && m.stateTime > 1.6) {
       this.replayPending = false;
       let frames = m.replay.slice();
@@ -1195,6 +1211,7 @@ class Game {
   }
   handleEvent(e) {
     const R = this.renderer, m = this.match;
+    if (this.trophies) this.trophies.onEvent(e, m);
     this.hlEvent(e);   // azioni migliori da rivedere a fine partita (27_highlights.js)
     if (this.commentary) {
       const c = this.commentary, s = this.settings;
@@ -1504,6 +1521,7 @@ class Game {
     }
     // partita online: il risultato va alla classifica online (31_online_ranking.js)
     if (this.mode === 'host' || this.mode === 'client') this.reportOnlineResult(m); else $('ft-online-note').hidden = true;
+    if (this.mode !== 'fixture') this.trophies.endMatch(m, this.mode === 'host' || this.mode === 'client');
     $('ft-wait').hidden = this.mode !== 'client';
     $('ft-rematch').textContent = this.mode === 'host' ? 'Torna alla lobby' : 'Rivincita';
     $('ft-menu').textContent = this.mode === 'host' ? 'Chiudi la partita' : this.mode === 'client' ? 'Esci' : this.mode === 'fixture' ? 'Torna al centro partita' : 'Menu principale';
