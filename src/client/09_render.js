@@ -891,14 +891,20 @@ class Renderer {
       const f = useA && p.pf !== undefined ? p.pf + angleDiff(p.pf, p.facing) * a : p.facing;
       const ph = mix(p.pph, p.anim.phase, 1.5);
       const hc = charges && charges.get(p);
-      this.poseMesh(pm, p.rx, p.rz, f, ph, p.speed(), p.anim.kick, p.anim.dive > 0 ? p.anim.diveDir : 0,
-        { tackle: p.anim.tackle, header: p.anim.header, fall: p.anim.fall, celebrate: scorers === p.team && match.stateTime > 0.4, charge: hc || 0,
-          vx: p.vx, vz: p.vz, bx: bx, bz: bz, isGK: p.isGK });
+      // esultanza dopo il gol: posizione e corsa disegnate a parte (09_render_celebrate.js)
+      const cel = scorers ? this.celebrationFor(pm, p, match, dt) : (pm.cel = null);
+      const dx = cel ? cel.x : p.rx, dz = cel ? cel.z : p.rz;
+      this.poseMesh(pm, dx, dz, cel ? cel.f : f, cel ? cel.phase : ph, cel ? cel.speed : p.speed(), p.anim.kick, p.anim.dive > 0 ? p.anim.diveDir : 0,
+        { tackle: p.anim.tackle, header: p.anim.header, fall: p.anim.fall, celebrate: false, charge: hc || 0,
+          vx: cel ? Math.cos(cel.f) * cel.speed : p.vx, vz: cel ? Math.sin(cel.f) * cel.speed : p.vz, bx: bx, bz: bz, isGK: p.isGK });
+      // portiere: tuffi, prese, pugni, uscite (09_render_keeper.js)
+      if (p.isGK && !cel) this.poseKeeper(pm, p, match, dt, bx, by, bz);
+      if (cel) this.poseCelebration(pm, cel);
       // a terra dopo un fallo duro, poi zoppica (09_render_referee.js)
       if (pm.hurtT > 0 || pm.limpT > 0 || pm.hurtAmt > 0.01) this.poseHurt(pm, dt, p.speed(), ph);
       // ombra di contatto: allungata quando è a terra (caduta, scivolata, tuffo)
       const lying = p.anim.fall > 0 || p.anim.tackle > 0.3 || p.anim.dive > 0 || pm.hurtAmt > 0.5;
-      if (ns < 22) this.setFootShadow(ns++, p.rx + (lying ? Math.cos(f) * 0.7 : 0), p.rz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0);
+      if (ns < 22) this.setFootShadow(ns++, dx + (lying ? Math.cos(f) * 0.7 : 0), dz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0);
     }
     this.footShadows.count = ns;
     this.footShadows.instanceMatrix.needsUpdate = true;
