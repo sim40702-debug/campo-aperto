@@ -2,6 +2,16 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.16.0 — 12/10/2026 (tuffi del portiere ed esultanze)
+- **Tuffi veri del portiere**: carica sulle gambe, vola sul fianco con le braccia tese e atterra, poi si rialza. Il
+  tuffo cambia con l'altezza del pallone: rasoterra quasi sdraiato, a mezza altezza, oppure alto, più dritto e più su.
+- **Palla in mano**: il portiere la tiene davanti al petto; se il pallone arriva alto salta e lo prende sopra la testa.
+  Dopo una parata senza presa respinge con i pugni; quando esce sui piedi dell'attaccante si butta basso a braccia larghe.
+- **Esultanze dopo il gol**: chi segna corre via a braccia larghe e poi esulta (braccia al cielo, aeroplano, pugno o
+  scivolata in ginocchio); i compagni vicini gli corrono incontro e lo abbracciano; il portiere della squadra che
+  segna alza le braccia, quello che subisce si inginocchia con le mani in testa, gli altri restano a testa bassa.
+- Solo grafica: partite e server non cambiano.
+
 ## 0.15.2 — 11/10/2026 (versione nella home)
 - Nella home, sotto il profilo (Accedi), c'è sempre la **versione del gioco** con un pallino: **verde** "Versione
   aggiornata" se hai l'ultima, **arancione** "Nuova versione X" con **Aggiorna ora** di lato quando ne esce una nuova.
