@@ -41,7 +41,7 @@ async def main():
         await pg.goto(URL)
         await pg.wait_for_function('window.game && game.loaded', timeout=60000, polling=250)
         await pg.evaluate("game.loop = () => {}")
-        check('home: pulsante Trofei con il conteggio', await pg.evaluate("document.getElementById('tp-mini').textContent") == '0/22')
+        check('home: pulsante Trofei con il conteggio', await pg.evaluate("document.getElementById('tp-mini').textContent") == '0/%d' % await pg.evaluate('TROPHIES.length'))
 
         # ---- tutorial
         await pg.evaluate("game.openTraining()")
@@ -76,7 +76,8 @@ async def main():
         await pg.evaluate("game.showScreen('menu')")
         await pg.click('#btn-trophies')
         tp = await pg.evaluate("[game.screen, document.getElementById('tp-count').textContent, document.querySelectorAll('#tp-list .tp-card').length, document.querySelectorAll('#tp-list .tp-card.got').length, !!document.querySelector('#tp-list .tp-card:not(.got) .bar')]")
-        check('schermata Trofei: tutti i trofei, quelli presi evidenziati, barre per quelli a contatore', tp[0] == 'trophies' and tp[2] == 22 and tp[3] >= 14 and tp[1] == '%d di 22' % tp[3] and tp[4], tp)
+        len_t = await pg.evaluate('TROPHIES.length')
+        check('schermata Trofei: tutti i trofei, quelli presi evidenziati, barre per quelli a contatore', tp[0] == 'trophies' and tp[2] == len_t and tp[3] >= 14 and tp[1] == '%d di %d' % (tp[3], len_t) and tp[4], tp)
         got = tp[3]
         await pg.reload()
         await pg.wait_for_function('window.game && game.loaded', timeout=60000, polling=250)

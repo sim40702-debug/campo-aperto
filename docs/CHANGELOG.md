@@ -2,6 +2,19 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.20.0 — 12/10/2026 (stagioni online e partita veloce)
+- **Stagioni della classifica online**: ogni mese è una stagione. In *Classifica online* la scheda **Questo mese**
+  mostra i punti del mese, il giorno in cui finisce e i premi; **Di sempre** la classifica di prima. A fine mese il
+  server dà ai primi tre **1000, 500 e 250 monete** (movimento "Premio della classifica online") e un **distintivo**
+  🥇🥈🥉 che resta vicino al nome, nella classifica e nella propria riga. Punti e livelli di sempre non cambiano.
+- **Partita veloce online** (Gioca online → **Cerca avversario**): niente codici da scambiare, il gioco cerca un altro
+  giocatore che vuole giocare adesso. Chi aspettava da prima apre la stanza e gioca in casa, l'altro entra da solo;
+  squadre a caso, tempi da 3 minuti, e la partita parte appena siete in due. Mentre cerca si vedono i secondi e c'è
+  Annulla. Serve l'account; la partita vale per la classifica online. Nuovo trofeo *Avversario trovato*.
+- **Server**: migrazione 0010 (solo tabelle nuove: `online_season_stats`, `online_badges`, `online_queue`), nuovo
+  indirizzo `POST /api/online/queue`, `GET /api/online/leaderboard?season=current`. Va pubblicato con
+  `npm run deploy` nella cartella cloud (prima il backup del database).
+
 ## 0.19.0 — 12/10/2026 (replay da salvare)
 - **Replay salvati**: a fine partita, in *Rivedi le azioni migliori*, **Salva** mette da parte l'azione che stai
   guardando (gol, pali, parate, occasioni). In **Home → Replay** la rivedi quando vuoi, con cinque telecamere (TV,

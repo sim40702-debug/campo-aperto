@@ -286,6 +286,21 @@ Presenza: aprendo la lista degli amici, e ogni minuto durante una partita (`POST
 l'ultima volta che il gioco si è fatto vivo (`users.last_seen`, `users.presence`): gli amici vedono "online",
 "in partita" o "visto 3 ore fa", e il livello della classifica.
 
+### Stagioni online e partita veloce
+
+Dalla 0.20.0 (migrazione 0010, solo tabelle nuove). Ogni mese (ora UTC, chiave `AAAA-MM`) è una stagione: i punti di
+ogni partita confermata vanno anche in `online_season_stats`. `GET /api/online/leaderboard?season=current` dà la
+classifica del mese (senza parametro, o con `season=all`, quella di sempre come prima). Il giro del server
+(`tick.js` → `payOnlineSeason`) il mese dopo paga i primi tre: 1000, 500 e 250 monete (movimento `ONLINE_PRIZE`,
+riferimento `AAAA-MM:posto`, una volta sola grazie al riferimento unico e al segno `online_season_paid:` in `meta`) e
+scrive il distintivo in `online_badges`. `GET /api/me/online` aggiunge `season` (punti e posto del mese) e `badges`.
+
+Partita veloce: `POST /api/online/queue` con `action` = `join`, `poll`, `room` o `leave` (serve l'accesso). Chi entra
+nella coda e trova qualcuno che aspetta diventa *guest*, chi aspettava *host*: l'host apre la stanza del relay e manda
+il codice (`room`), il guest lo legge con `poll` (`status: 'ready'`) ed entra. Chi non si fa vivo da 15 secondi esce
+dalla coda; una coppia che non entra in partita entro un minuto viene tolta. Se l'avversario esce prima, si torna a
+cercare (`lost: true`).
+
 ### Account nascosti
 
 Un account con `users.hidden = 1` gioca normalmente ma non lo vede nessuno (giocatori, amici, inviti, profilo pubblico,
@@ -332,6 +347,8 @@ Tutti sotto `/api`, JSON. Con `Authorization: Bearer <token>` quando serve l'acc
 | `POST /friendcomps/:codice/report` `{fixture, kind, result}` | sì | risultato della tua partita (score, sim, kickoff, abandon) |
 | `POST /invites` `{username, room}`, `POST /invites/:id/accept\|decline` | sì | invito di un amico in una partita online (valido 15 minuti; gli inviti ricevuti arrivano in `GET /friends` come `games`) |
 | `POST /friendcomps/:codice/room` `{fixture, room}`, `POST /friendcomps/:codice/force` `{fixture}` | sì | stanza online della partita tra amici; simulazione di una partita bloccata (chi l'ha creata) |
+| `POST /online/report`, `GET /online/leaderboard?season=current\|all`, `GET /me/online` | sì / — / sì | risultato di una partita online, classifica (del mese o di sempre), i miei numeri con stagione e distintivi |
+| `POST /online/queue` `{action: join\|poll\|room\|leave, room}` | sì | partita veloce: coda per trovare un avversario |
 
 ## Test
 

@@ -4,6 +4,7 @@ import { randomCode, randomInt31, moveCoins, constraintKind } from './util.js';
 import { buildMarkets, settleSelection, settleBet } from './markets.js';
 import { simulateFixture, teamDb, teamInfo, engineVersion, weatherFor, timeOfDayFor } from './simulate.js';
 import { award, paySeasonPrizes } from './rewards.js';
+import { payOnlineSeason } from './online.js';
 import model from './odds-model.json';
 import { nextLeagueMatch } from './league.js';
 
@@ -130,6 +131,7 @@ export async function runTick(env, t) {
   const created = await ensureFixtures(env, t);
   const settled = await settleDue(env, t);
   const prizes = await paySeasonPrizes(env, t);
+  const onlinePrizes = await payOnlineSeason(env, t);
   await cleanup(env, t);
-  return { t, created, settled, prizes, engine: engineVersion };
+  return { t, created, settled, prizes, onlinePrizes, engine: engineVersion };
 }

@@ -81,6 +81,7 @@ class Game {
     this.pro = new ProCareer(this);
     this.ranking = new OnlineRanking(this);   // classifica online (src/game/31_online_ranking.js)
     this.trophies = new Trophies(this);       // trofei (src/game/33_trophies.js)
+    this.quick = new QuickMatch(this);        // partita veloce online «Cerca avversario» (src/game/35_quick_match.js)
     setTimeout(() => this.trophies.checkAll(), 1500);
     this.comps.career.rosterTeam = (comp, t) => comp.pro ? this.pro.teamFor(comp, t) : this.manager.teamFor(comp, t);
     this.social = new SocialUI(this);
@@ -1552,6 +1553,12 @@ class Game {
     $('online-webonly').hidden = !blocked;
     $('on-create').disabled = blocked || (!lan && !server);
     $('on-join').disabled = blocked;
+    // partita veloce: serve il server online e l'account
+    $('on-quick-card').hidden = blocked;
+    $('on-quick').disabled = !server;
+    $('on-quick-info').textContent = !server ? tr('Per la partita veloce serve il server online: impostalo in Impostazioni → Online.')
+      : !acct ? tr('Per la partita veloce serve l\'account: accedi dalla Home.')
+      : tr('Il gioco cerca un altro giocatore che vuole giocare adesso: niente codici, si comincia appena vi trovate. La partita vale per la classifica online.');
     // con un server: "Crea partita" è via internet (tutti allo stesso indirizzo, il codice sceglie la partita);
     // nell'app desktop resta anche la partita in rete locale
     $('on-create').textContent = server ? 'Crea partita online' : 'Crea partita';
@@ -1612,8 +1619,10 @@ class Game {
   // where: 'server' (via internet, sul server online) oppure 'lan' (app desktop: ospitata su questo computer)
   // opts.friend: partita di una sfida tra amici (squadre, durata e lati fissati dalla competizione)
   // opts.invite: nome di un amico da invitare appena la stanza è pronta (amichevole 1 contro 1 dal pannello Amici)
+  // opts.quick: nome dell'avversario della partita veloce (src/game/35_quick_match.js)
   async createOnline(where, opts) {
     const friend = opts && opts.friend || null;
+    const quick = opts && opts.quick || null;
     const name = this.onlineName();
     const lan = !!window.campoLan && where === 'lan';
     const server = this.onlineServer();
@@ -1641,13 +1650,14 @@ class Game {
         host.lockSides = { [friend.homeUser]: 0, [friend.awayUser]: 1 };
         host.members.get(link.id).side = name in host.lockSides ? host.lockSides[name] : -1;
       }
+      if (quick) this.quick.setupHost(host, link.id, name, quick);
       host.settings.names = [this.settings.teamNames[host.settings.home] || '', this.settings.teamNames[host.settings.away] || ''];
-      this.net = { link: link, host: host, lan: lan, friend: friend };
+      this.net = { link: link, host: host, lan: lan, friend: friend, quick: quick };
       // il codice della stanza va al server: l'amico lo trova nella competizione e entra con un clic
       if (opts && opts.invite && this.social) { this.net.invited = new Set([opts.invite]); this.social.inviteToRoom(opts.invite, link.code); }
       if (friend) this.eco.api.post('/api/friendcomps/' + encodeURIComponent(friend.code) + '/room', { fixture: friend.fixture, room: link.code })
         .catch(e => this.toast('Stanza aperta, ma il server non l\'ha registrata (' + e.message + '): dai al tuo amico il codice ' + link.code, true));
-      host.onChange = () => { if (this.screen === 'lobby') this.renderLobby(); };
+      host.onChange = () => { if (this.screen === 'lobby') this.renderLobby(); if (quick) this.quick.tryStart(); };
       this.bindLinkEvents(link);
       this.busy(null);
       this.mode = 'menu';
@@ -1668,6 +1678,7 @@ class Game {
   // opts: { code, friend } per entrare nella partita di una sfida tra amici senza scrivere il codice
   async joinOnline(opts) {
     const friend = opts && opts.friend || null;
+    const quick = opts && opts.quick || null;
     const name = this.onlineName();
     const code = normalizeCode(opts && opts.code ? opts.code : $('on-code').value);
     this.netLog = []; this.netLastError = '';
@@ -1710,7 +1721,7 @@ class Game {
       if (lan) { this.settings.lanHost = target.ip + (target.port === 8787 ? '' : ':' + target.port); saveSettings(this.settings); }
       const client = new ClientSession(link, this.db, name);
       client.stats = () => ({ fps: this.curFps || 0 });
-      this.net = { link: link, client: client, lan: lan, friend: friend };
+      this.net = { link: link, client: client, lan: lan, friend: friend, quick: quick };
       client.onLobby = () => { if (this.screen === 'lobby') this.renderLobby(); };
       client.onStart = m => {
         // la prima istantanea arriva prima di qualunque lobby: la partita era già in corso
@@ -1871,6 +1882,7 @@ class Game {
 
   leaveOnline(toMenu) {
     const n = this.net;
+    if (n && n.quick && n.host && !n.quickStarted) this.quick.cancel();   // stanza della partita veloce chiusa prima di cominciare
     this.net = null;
     if (n) { if (n.client) n.client.close(); else n.link.leave(); }
     this.stopLan();
@@ -1944,7 +1956,13 @@ class Game {
       $('lb-sub').textContent = fr.compName + ': ' + fr.homeUser + ' gioca con ' + teams[0].name + ', ' + fr.awayUser + ' con ' + teams[1].name + '. ' +
         (isHost ? 'Avvia quando ci siete tutti e due.' : 'La partita la avvia chi ha aperto la stanza.');
     }
-    $('lb-host-opts').hidden = !isHost || !!fr;
+    const quick = this.net.quick;
+    if (quick && !fr) {
+      document.querySelectorAll('[data-side]').forEach(b => { b.disabled = true; });
+      $('lb-sub').textContent = trf('Partita veloce contro {0}: le squadre le ha scelte il caso, chi ha aperto la stanza gioca in casa.', quick) + ' ' +
+        (isHost ? (this.net.quickStarted ? tr('Per la rivincita premi Avvia.') : tr('Si comincia da sola appena entra.')) : tr('Si comincia da sola tra un attimo.'));
+    }
+    $('lb-host-opts').hidden = !isHost || !!fr || (!!quick && !this.net.quickStarted);
     if (fr) $('lb-settings-ro').textContent = 'Squadre, durata (' + (s.halfSeconds / 60) + ' minuti a tempo) e IA ' + ['facile', 'normale', 'difficile'][s.difficulty] + ' fissate dalla competizione. A fine partita il risultato va al server da solo.';
     if (isHost && !fr) {
       ['home', 'away'].forEach((which, i) => {

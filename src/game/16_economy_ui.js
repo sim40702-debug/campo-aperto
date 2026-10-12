@@ -11,7 +11,7 @@ const SLOT_NAMES = { maglia: 'Maglia', pantaloncini: 'Pantaloncini', calzettoni:
 const RARITY_NAMES = { comune: 'Comune', raro: 'Raro', epico: 'Epico', leggendario: 'Leggendario' };
 const TX_NAMES = {
   INITIAL_BONUS: 'Monete di benvenuto', BET_PLACED: 'Scommessa giocata', BET_WON: 'Scommessa vinta', BET_REFUND: 'Scommessa annullata (rimborso)',
-  SHOP_PURCHASE: 'Acquisto nel negozio', DAILY_REWARD: 'Bonus giornaliero', MATCH_REWARD: 'Premio spettatore', ACHIEVEMENT: 'Obiettivo', SEASON_PRIZE: 'Premio di stagione',
+  SHOP_PURCHASE: 'Acquisto nel negozio', DAILY_REWARD: 'Bonus giornaliero', MATCH_REWARD: 'Premio spettatore', ACHIEVEMENT: 'Obiettivo', SEASON_PRIZE: 'Premio di stagione', ONLINE_PRIZE: 'Premio della classifica online',
 };
 const FEED_FAST_MS = 6000, FEED_SLOW_MS = 20000;
 

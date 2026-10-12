@@ -494,6 +494,11 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 #invite-pop { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 0; right: 0; margin: 0 auto; width: fit-content; z-index: 61; display: flex; align-items: center; gap: 12px;
   background: var(--night-3); border-left: 4px solid var(--flood); padding: 10px 12px 10px 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); max-width: calc(100vw - 32px); }
 /* classifica online */
+.qm-card { display: flex; gap: 18px; align-items: center; justify-content: space-between; margin: 8px 0 18px; border-left: 4px solid var(--flood); }
+.qm-card p { margin: 4px 0 0; } .qm-card button { flex: none; }
+.rk-tabs { display: flex; gap: 6px; }
+.rk-season { margin: 10px 0; padding: 10px 14px; background: rgba(255,216,74,0.08); border-left: 3px solid var(--flood); }
+.rk-badge { display: inline-block; margin-left: 4px; font-size: 14px; cursor: default; }
 .rk-me { display: flex; gap: 16px; align-items: center; margin: 14px 0; } .rk-me > div:last-child { flex: 1; min-width: 0; }
 .rk-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .rk-table th, .rk-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid rgba(243,245,238,0.08); }
@@ -631,6 +636,7 @@ input[type=password]:focus, input[type=number]:focus { border-color: var(--flood
 
 @media (max-width: 820px) {
   .teams, .online-grid, .lobby-grid { grid-template-columns: 1fr; }
+  .qm-card { flex-direction: column; align-items: stretch; }
   .opts { grid-template-columns: 1fr; }
   .menu, .panel { background: rgba(12,26,43,0.9); }
   #minimap, .chips { display: none; }
@@ -872,6 +878,11 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <p class="sub">Chi crea la partita fa da host: la simula sul suo computer e decide il risultato. Gli altri entrano con il codice e mandano solo i propri comandi.</p>
     <div id="online-webonly" class="webonly" hidden>Nella versione browser pubblicata il gioco online non è disponibile, perché la pagina non può collegarsi a server esterni. Usa l'app desktop.</div>
     <div class="field" style="max-width:420px"><span>Il tuo nome</span><input type="text" id="on-name" maxlength="16" autocomplete="nickname"></div>
+    <div class="card qm-card" id="on-quick-card">
+      <div><h3>Partita veloce</h3>
+      <p id="on-quick-info">Il gioco cerca un altro giocatore che vuole giocare adesso: niente codici, si comincia appena vi trovate. Serve l'account; la partita vale per la classifica online.</p></div>
+      <button class="primary" id="on-quick">Cerca avversario</button>
+    </div>
     <div class="online-grid">
       <div class="card">
         <h3>Crea partita</h3>
@@ -917,7 +928,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 
 <section id="ranking" class="panel" hidden>
   <div class="sheet wide">
-    <h2>Classifica online</h2>
+    <div class="ecohead"><h2>Classifica online</h2><div class="rk-tabs" role="tablist"><button class="seg on" id="rk-tab-season">Questo mese</button><button class="seg" id="rk-tab-all">Di sempre</button></div></div>
     <div id="rk-body"></div>
     <div class="actions"><button class="ghost" id="rk-back">Indietro</button><button class="ghost" id="rk-refresh">Aggiorna</button></div>
   </div>

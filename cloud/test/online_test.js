@@ -117,6 +117,65 @@ async function main() {
   await POST('/api/_test/clock', { offsetMs: 10 * 60 * 1000 });
   fr = (await GET('/api/friends', B)).body;
   check('dopo 10 minuti senza notizie: non più online, con l\'ultima volta', fr.friends.find(x => x.username === names.A).status === null && fr.friends.find(x => x.username === names.A).lastSeen > 0, fr.friends);
+
+  // ---- 0.20: stagione del mese ----
+  let sl = (await GET('/api/online/leaderboard?season=current')).body;
+  check('classifica della stagione: chiave del mese, fine stagione e premi', sl.which === 'season' && /^\d{4}-\d{2}$/.test(sl.season.key) && sl.season.endsAt > Date.now() && sl.season.prizes[0] === 1000, sl.season);
+  check('stagione: A prima con gli stessi punti di sempre (tutto in questo mese)', sl.top[0] && sl.top[0].username === names.A && sl.top[0].points === 72 && sl.top[0].level === 2 && Array.isArray(sl.top[0].badges), sl.top);
+  check('stagione: nessun dato privato', forbiddenKeys(sl).length === 0, forbiddenKeys(sl));
+  check('senza ?season la classifica è quella di sempre (come prima della 0.20)', (await GET('/api/online/leaderboard')).body.which === 'all');
+  me = (await GET('/api/me/online', A)).body;
+  check('i miei numeri della stagione: 72 punti, primo', me.season && me.season.points === 72 && me.season.rank === 1 && me.badges.length === 0, me.season);
+  // passa al mese dopo: il giro del server paga i primi tre e dà i distintivi
+  const balA = (await GET('/api/me/balance', A)).body.balance;
+  const d0 = new Date(), next = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 1) + 2 * 3600 * 1000;
+  await POST('/api/_test/clock', { offsetMs: next - Date.now() });
+  let tk = (await POST('/api/_test/tick')).body;
+  check('fine stagione: premi pagati ai primi tre', tk.onlinePrizes === 3, tk);
+  check('il primo prende 1000 monete', (await GET('/api/me/balance', A)).body.balance === balA + 1000);
+  const txs = (await GET('/api/me/transactions', A)).body;
+  check('movimento "ONLINE_PRIZE" nell\'estratto conto', JSON.stringify(txs).includes('ONLINE_PRIZE'), txs);
+  tk = (await POST('/api/_test/tick')).body;
+  check('secondo giro: niente pagato due volte', tk.onlinePrizes === 0, tk);
+  me = (await GET('/api/me/online', A)).body;
+  check('distintivo del primo posto per A, stagione nuova vuota', me.badges.length === 1 && me.badges[0].rank === 1 && me.season.points === 0 && me.points === 72, me);
+  sl = (await GET('/api/online/leaderboard?season=current')).body;
+  check('nuova stagione: classifica del mese vuota', sl.top.length === 0, sl);
+  const all = (await GET('/api/online/leaderboard?season=all')).body;
+  check('classifica di sempre: punti intatti e distintivi visibili', all.top[0].points === 72 && all.top[0].badges[0].rank === 1 && all.top.some(r => r.badges.length && r.badges[0].rank === 3), all.top);
+
+  // ---- 0.20: partita veloce (coda per trovare un avversario) ----
+  check('coda solo con l\'accesso (401 senza)', (await POST('/api/online/queue', { action: 'join' })).status === 401);
+  r = await POST('/api/online/queue', { action: 'join' }, A);
+  check('A cerca: in attesa', r.body.status === 'waiting', r.body);
+  r = await POST('/api/online/queue', { action: 'join' }, B);
+  check('B cerca: trova A, B entra (guest)', r.body.status === 'matched' && r.body.role === 'guest' && r.body.opponent === names.A, r.body);
+  r = await POST('/api/online/queue', { action: 'poll' }, A);
+  check('A: trovato B, A apre la stanza (host)', r.body.status === 'matched' && r.body.role === 'host' && r.body.opponent === names.B, r.body);
+  check('la coda non mostra dati privati', forbiddenKeys(r.body).length === 0, r.body);
+  r = await POST('/api/online/queue', { action: 'join' }, C);
+  check('C cerca: A e B sono già una coppia, C aspetta', r.body.status === 'waiting', r.body);
+  check('il codice della stanza lo scrive solo l\'host (409)', (await POST('/api/online/queue', { action: 'room', room: 'ABC234' }, B)).status === 409);
+  check('codice stanza non valido: 400', (await POST('/api/online/queue', { action: 'room', room: 'x' }, A)).status === 400);
+  r = await POST('/api/online/queue', { action: 'poll' }, B);
+  check('B aspetta il codice', r.body.status === 'matched' && !r.body.room, r.body);
+  await POST('/api/online/queue', { action: 'room', room: 'ABC234' }, A);
+  r = await POST('/api/online/queue', { action: 'poll' }, B);
+  check('B legge il codice della stanza', r.body.status === 'ready' && r.body.room === 'ABC234', r.body);
+  await POST('/api/online/queue', { action: 'leave' }, B);
+  await POST('/api/online/queue', { action: 'leave' }, A);
+  check('dopo l\'uscita: fuori dalla coda', (await POST('/api/online/queue', { action: 'poll' }, A)).body.status === 'none');
+  // l'avversario va via prima del codice: si torna a cercare
+  await POST('/api/online/queue', { action: 'join' }, A);
+  r = await POST('/api/online/queue', { action: 'poll' }, C);
+  check('C trovato da A (C aspettava da prima: C è l\'host)', r.body.status === 'matched' && r.body.role === 'host' && r.body.opponent === names.A, r.body);
+  await POST('/api/online/queue', { action: 'leave' }, A);
+  r = await POST('/api/online/queue', { action: 'poll' }, C);
+  check('l\'avversario è uscito: C torna a cercare', r.body.status === 'waiting' && r.body.lost === true, r.body);
+  await POST('/api/_test/clock', { offsetMs: next - Date.now() + 30 * 1000 });
+  r = await POST('/api/online/queue', { action: 'poll' }, B);
+  r = await POST('/api/online/queue', { action: 'poll' }, C);
+  check('chi non si fa vivo da 15 secondi esce dalla coda', r.body.status === 'none', r.body);
   // dati vecchi intatti: la migrazione non tocca gli account
   check('l\'account esiste ancora e accede', (await POST('/api/auth/login', { username: names.C, password: 'password-' + names.C })).status === 200);
 
