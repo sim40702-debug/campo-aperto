@@ -3,7 +3,7 @@
 // modalità: 'menu' (partita dimostrativa), 'offline', 'host', 'client'
 // ============================================================
 const $ = id => document.getElementById(id);
-const SCREENS = ['manager', 'pro', 'ranking', 'trophies', 'menu', 'update', 'training', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
+const SCREENS = ['manager', 'pro', 'ranking', 'trophies', 'replays', 'rview', 'menu', 'update', 'training', 'setup', 'teams', 'online', 'lobby', 'settings', 'help', 'hud', 'pause', 'fulltime', 'account', 'fixtures', 'center', 'bets', 'shop', 'character', 'profile', 'comps', 'comp', 'comp-new'];
 const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 
 // meteo e ora del giorno da scegliere prima della partita (il motore conosce 'clear', 'rain', 'snow' e 'day', 'sunset', 'night')
@@ -103,7 +103,7 @@ class Game {
     this.screen = name;
     if (name !== 'match' && this.commentary) this.commentary.stopVoice();   // fuori dalla partita la voce tace
     for (const id of SCREENS) $(id).hidden = true;
-    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', training: 'training', ranking: 'ranking', trophies: 'trophies', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
+    const panel = { menu: 'menu', setup: 'setup', teams: 'teams', online: 'online', lobby: 'lobby', settings: 'settings', help: 'help', fulltime: 'fulltime', update: 'update', training: 'training', ranking: 'ranking', trophies: 'trophies', replays: 'replays', rview: 'rview', match: 'hud' }[name] || (ECO_SCREENS.includes(name) || COMP_SCREENS.includes(name) ? name : null);
     if (panel) {
       const el = $(panel);
       el.hidden = false;
@@ -212,6 +212,8 @@ class Game {
     $('on-back').onclick = () => this.showScreen('menu');
     $('on-ranking').onclick = () => this.ranking.open('online');
     $('btn-trophies').onclick = () => this.trophies.open();
+    $('btn-replays').onclick = () => this.openReplays();
+    $('rp-back').onclick = () => this.showScreen('menu');
     $('tp-back').onclick = () => this.showScreen('menu');
     $('on-server-edit').onclick = () => this.openSettings('online', 'online');
     // diagnostica di rete: Ctrl+Maiusc+D o la casella nelle impostazioni
@@ -662,7 +664,8 @@ class Game {
       case 'account': case 'fixtures': case 'bets': case 'shop': case 'character': case 'profile': case 'comps': this.showScreen('menu'); break;
       case 'comp': case 'comp-new': case 'manager': case 'pro': this.comps.openDashboard(); break;
       case 'ranking': this.showScreen(this.ranking.back || 'menu'); break;
-      case 'trophies': this.showScreen('menu'); break;
+      case 'trophies': case 'replays': this.showScreen('menu'); break;
+      case 'rview': this.closeReplay(); break;
     }
   }
   // tasti nei menu (la partita non è in corso o è in pausa)
@@ -1032,6 +1035,8 @@ class Game {
       else if (this.mode === 'client' && this.net) { const ev = this.net.client.update(dt); for (const e of ev) this.handleEvent(e); R.syncFromMatch(this.match, dt); }
       else R.syncFromMatch(this.match, dt);
       if (this.hlPlay) this.stepHighlights(dt);   // azioni migliori: sopra la scena della partita
+    } else if (this.screen === 'rview' && this.rv) {
+      this.stepReplayViewer(dt);   // replay salvati (34_replays.js)
     } else if (this.mode === 'host' && this.net && this.net.host && this.net.host.match) {
       // l'host è nelle impostazioni o nei comandi: la partita online non si deve fermare
       this.tickHost(dt, true);

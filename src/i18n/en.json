@@ -1725,6 +1725,22 @@
     "Ora difendi: avvicinati all'avversario e premi {0} per rubargli la palla": "Now defend: get close to the opponent and press {0} to win the ball",
     "Bravo!": "Well done!",
     "Perfetto!": "Perfect!",
-    "Ottimo!": "Great!"
+    "Ottimo!": "Great!",
+    "Questa azione è già salvata": "This move is already saved",
+    "Nessun replay salvato. A fine partita, in «Rivedi le azioni migliori», premi «Salva» sull'azione che ti piace.": "No saved replays. At the end of a match, in \"Watch the best moves\", press \"Save\" on the move you like.",
+    "Replay rovinato: non si può guardare": "Damaged replay: it can't be watched",
+    "Avanti": "Play",
+    "TV": "TV",
+    "Tribuna": "Stand",
+    "Dietro la porta": "Behind the goal",
+    "Segui la palla": "Follow the ball",
+    "Dall'alto": "From above",
+    "Le azioni che hai salvato a fine partita: rivedile con la telecamera che vuoi, anche al rallentatore.": "The moves you saved at the end of matches: watch them again with any camera, even in slow motion.",
+    "Chiudi": "Close",
+    "Hai già {0} replay salvati: eliminane uno dalla schermata Replay": "You already have {0} saved replays: delete one from the Replay screen",
+    "Spazio pieno: elimina qualche replay dalla schermata Replay": "Storage full: delete some replays from the Replay screen",
+    "Replay salvato: lo trovi in Home → Replay": "Replay saved: find it in Home → Replay",
+    "Salva questa azione: la rivedi da Home → Replay": "Save this move: watch it again from Home → Replay",
+    "Posizione nel replay": "Position in the replay"
   }
 }

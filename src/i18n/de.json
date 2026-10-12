@@ -1725,6 +1725,22 @@
     "Ora difendi: avvicinati all'avversario e premi {0} per rubargli la palla": "Jetzt verteidigen: geh zum Gegner und drück {0}, um ihm den Ball abzunehmen",
     "Bravo!": "Gut gemacht!",
     "Perfetto!": "Perfekt!",
-    "Ottimo!": "Super!"
+    "Ottimo!": "Super!",
+    "Questa azione è già salvata": "Diese Aktion ist schon gespeichert",
+    "Nessun replay salvato. A fine partita, in «Rivedi le azioni migliori», premi «Salva» sull'azione che ti piace.": "Keine gespeicherten Replays. Drück am Spielende bei «Beste Aktionen ansehen» auf «Speichern».",
+    "Replay rovinato: non si può guardare": "Beschädigtes Replay: kann nicht angesehen werden",
+    "Avanti": "Weiter",
+    "TV": "TV",
+    "Tribuna": "Tribüne",
+    "Dietro la porta": "Hinter dem Tor",
+    "Segui la palla": "Dem Ball folgen",
+    "Dall'alto": "Von oben",
+    "Le azioni che hai salvato a fine partita: rivedile con la telecamera che vuoi, anche al rallentatore.": "Die Aktionen, die du am Spielende gespeichert hast: schau sie mit jeder Kamera an, auch in Zeitlupe.",
+    "Chiudi": "Schliessen",
+    "Hai già {0} replay salvati: eliminane uno dalla schermata Replay": "Du hast schon {0} Replays gespeichert: lösch eines im Replay-Bildschirm",
+    "Spazio pieno: elimina qualche replay dalla schermata Replay": "Speicher voll: lösch ein paar Replays im Replay-Bildschirm",
+    "Replay salvato: lo trovi in Home → Replay": "Replay gespeichert: du findest es unter Hauptmenü → Replay",
+    "Salva questa azione: la rivedi da Home → Replay": "Diese Aktion speichern: unter Hauptmenü → Replay ansehen",
+    "Posizione nel replay": "Position im Replay"
   }
 }

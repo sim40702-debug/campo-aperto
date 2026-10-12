@@ -93,6 +93,8 @@ Game.prototype.playHighlights = function () {
   $('hl-bar').hidden = false;
   $('hl-next').onclick = () => this.nextHighlight();
   $('hl-exit').onclick = () => this.stopHighlights();
+  // salva l'azione che si sta guardando (34_replays.js)
+  $('hl-save').onclick = () => { const h = this.hlPlay; if (h) this.saveReplayClip(h.clips[h.idx]); };
   this.showHighlightLabel();
 };
 Game.prototype.showHighlightLabel = function () {

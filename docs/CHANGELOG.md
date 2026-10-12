@@ -2,6 +2,12 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.19.0 — 12/10/2026 (replay da salvare)
+- **Replay salvati**: a fine partita, in *Rivedi le azioni migliori*, **Salva** mette da parte l'azione che stai
+  guardando (gol, pali, parate, occasioni). In **Home → Replay** la rivedi quando vuoi, con cinque telecamere (TV,
+  tribuna, dietro la porta, dall'alto, segui la palla), a 0,25×, 0,5× o 1×, con pausa e barra per andare avanti e
+  indietro. Fino a 25 replay sul computer, ognuno pesa circa 60 KB; si eliminano dalla stessa schermata.
+
 ## 0.18.0 — 12/10/2026 (trofei e tutorial)
 - **Trofei** (Home → Trofei): 22 obiettivi che si sbloccano da soli giocando: primo gol, 25 e 100 gol, vittorie,
   porta inviolata, goleada, rimonta da due gol sotto, vittoria ai rigori, a difficoltà Difficile, senza cartellini,
