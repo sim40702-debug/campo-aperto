@@ -28,6 +28,7 @@ const TROPHIES = [
   { id: 'pro_lv10', name: 'Fuoriclasse', text: 'Arriva al livello 10 nella carriera da giocatore' },
   { id: 'pro_goals_20', name: 'Il tuo bomber', text: 'Segna 20 gol con il tuo calciatore', count: ['proGoals', 20] },
   { id: 'online_win', name: 'Vittoria online', text: 'Vinci una partita online' },
+  { id: 'quick_match', name: 'Avversario trovato', text: 'Gioca una partita veloce online con «Cerca avversario»' },
   { id: 'online_10', name: 'Giocatore online', text: 'Gioca 10 partite online', count: ['online', 10] },
 ];
 
