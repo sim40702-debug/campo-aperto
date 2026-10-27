@@ -2,7 +2,7 @@
 // AUDIO — tutto sintetizzato, nessun file esterno
 // ============================================================
 class GameAudio {
-  constructor() { this.ctx = null; this.enabled = true; this.vol = { master: 0.8, sfx: 1, crowd: 0.7, muted: false }; }
+  constructor() { this.ctx = null; this.enabled = true; this.vol = { master: 0.8, sfx: 1, crowd: 0.7, music: 0.6, muted: false }; }
   init() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -36,6 +36,7 @@ class GameAudio {
     this.master.gain.setTargetAtTime(this.vol.muted ? 0 : this.vol.master, t, 0.03);
     this.sfx.gain.setTargetAtTime(this.vol.sfx, t, 0.03);
     this.crowdBus.gain.setTargetAtTime(this.vol.crowd, t, 0.03);
+    if (this.musicBus) this.musicBus.gain.setTargetAtTime(this.vol.music, t, 0.03);   // musica (10_audio_music.js)
   }
   // piccolo "clic" per i pulsanti dell'interfaccia
   ui() {
@@ -211,6 +212,8 @@ class GameAudio {
     ];
     // a Natale (tema acceso) metà delle volte il pubblico canta il ritornello di Jingle Bells (melodia del 1857)
     let song = songs[(which === undefined ? Math.floor(Math.random() * songs.length) : which) % songs.length];
+    // con la musica vera (10_audio_music.js): gli altoparlanti suonano il ritornello e lo stadio lo canta
+    if (this.xmas && this.playJingleBells && (which === 'xmas' || (which === undefined && Math.random() < 0.5))) return this.playJingleBells('stadium');
     if (this.xmas && (which === 'xmas' || (which === undefined && Math.random() < 0.5))) {
       const q = 0.3;
       song = [['E', q], ['E', q], ['E', q * 2], ['E', q], ['E', q], ['E', q * 2], ['E', q], ['G', q], ['C', q * 1.5], ['D', q * 0.5], ['E', q * 4],

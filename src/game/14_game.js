@@ -42,7 +42,7 @@ class Game {
     if (window.campoWindow && this.settings.windowSize && !this.settings.startFullscreen) { const [w, h] = this.settings.windowSize.split('x').map(Number); window.campoWindow.setSize(w, h).catch(() => {}); }
     this.renderer.camMode = this.settings.camera || 0;
     this.audio = new GameAudio();
-    this.audio.setVolumes({ master: this.settings.volMaster, sfx: this.settings.volSfx, crowd: this.settings.volCrowd, muted: this.settings.muted });
+    this.audio.setVolumes({ master: this.settings.volMaster, sfx: this.settings.volSfx, crowd: this.settings.volCrowd, music: this.settings.volMusic, muted: this.settings.muted });
     this.input = new Input(this.settings.keys, this.settings.padKeys);
     this.input.mouseEnabled = this.settings.mouse;
     this.applyPadSettings();
@@ -126,6 +126,7 @@ class Game {
     // nel menu principale il primo pulsante si evidenzia solo se si usa controller o tastiera
     if (first && (name !== 'menu' || this.input.lastDevice === 'pad')) setTimeout(() => first.focus({ preventScroll: true }), 30);
     if (this.eco) this.eco.onShow(name);
+    this.updateMusic();
     if (this.social && name === 'menu') this.social.onHome();
     if (this.trophies && name === 'menu') {
       $('tp-mini').textContent = this.trophies.done() + '/' + this.trophies.total();
@@ -136,6 +137,15 @@ class Game {
         if (!seen) setTimeout(() => { if (this.screen === 'menu') this.toast(tr('Prima volta? Prova il Tutorial in Allenamento')); }, 1200);
       }
     }
+  }
+
+  // musica di Natale (10_audio_music.js): nei menu Jingle Bells di sottofondo, in partita solo gli altoparlanti dello stadio
+  updateMusic() {
+    const a = this.audio;
+    if (!a || !a.ctx || !a.playJingleBells) return;
+    const inGame = this.screen === 'match' || this.screen === 'rview';
+    if (this.xmas && this.xmas.on && !inGame) a.playJingleBells('menu');
+    else if (a.song && (a.song.mode === 'menu' || !inGame)) a.stopJingleBells();
   }
 
   toast(text, isErr) {
@@ -150,7 +160,8 @@ class Game {
   }
 
   bindUI() {
-    const unlockAudio = () => this.audio.init();
+    // il primo clic o tasto accende l'audio (regola del browser) e, a Natale, la musica dei menu
+    const unlockAudio = () => { this.audio.init(); this.updateMusic(); };
     window.addEventListener('pointerdown', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
     // suono di conferma per ogni pulsante
@@ -825,12 +836,6 @@ class Game {
       setLanguage(v);
       this.renderSettings();
     });
-    // generale: tema di Natale (src/game/36_natale.js)
-    this.segmented('st-xmas', [{ label: 'Automatico', value: 'auto' }, { label: 'Sempre', value: 'on' }, { label: 'Spento', value: 'off' }], s.xmas, v => {
-      s.xmas = v; save();
-      this.xmas.apply();
-      this.renderSettings();
-    });
     // grafica
     this.segmented('st-quality', QUALITY_LEVELS.map(q => ({ label: q.label, value: q.id })), s.quality, v => { s.quality = v; this.renderer.setQuality(v); save(); this.renderSettings(); });
     const res = $('st-res');
@@ -876,7 +881,7 @@ class Game {
       el.oninput = () => { s[key] = el.value / 100; $(id + '-out').textContent = el.value + '%'; this.applyAudio(); };
       el.onchange = save;
     };
-    vol('st-vm', 'volMaster'); vol('st-vs', 'volSfx'); vol('st-vc', 'volCrowd');
+    vol('st-vm', 'volMaster'); vol('st-vs', 'volSfx'); vol('st-vc', 'volCrowd'); vol('st-vmu', 'volMusic');
     $('st-mute').checked = s.muted;
     $('st-mute').onchange = () => { s.muted = $('st-mute').checked; this.applyAudio(); save(); };
     // controlli
@@ -919,7 +924,7 @@ class Game {
 
   applyAudio() {
     const s = this.settings;
-    this.audio.setVolumes({ master: s.volMaster, sfx: s.volSfx, crowd: s.volCrowd, muted: s.muted });
+    this.audio.setVolumes({ master: s.volMaster, sfx: s.volSfx, crowd: s.volCrowd, music: s.volMusic, muted: s.muted });
   }
 
   renderKeys() {
@@ -1021,12 +1026,14 @@ class Game {
     // limite fps: salta i fotogrammi in eccesso (la simulazione recupera il tempo al passo dopo)
     const lim = this.settings.fpsLimit;
     if (lim > 0 && t - this.last < 1000 / lim - 1.5) return;
-    const dt = Math.min(0.1, Math.max(0, (t - this.last) / 1000));
+    const real = Math.max(0, (t - this.last) / 1000), dt = Math.min(0.1, real);
     this.last = t;
     this.lastFrameAt = performance.now();
     this.time += dt;
     const R = this.renderer;
-    this.watchPerformance(dt);
+    // gli fps si misurano con il tempo vero (non con dt, che è limitato a 0,1 s): su un computer molto lento la
+    // risoluzione dinamica deve scendere subito, non dopo dieci volte il tempo
+    this.watchPerformance(Math.min(real, 2));
     // controller: lettura una volta per fotogramma, poi navigazione nei menu
     this.input.pollPads(dt);
     if (this.input.padJust.some(Boolean)) this.audio.init();

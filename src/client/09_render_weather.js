@@ -35,14 +35,41 @@ Renderer.prototype.applyEnvironment = function (weather, timeOfDay) {
   this.renderer.toneMappingExposure = sky.exposure;
   for (const g of this.floodGlows || []) g.material.opacity = sky.glow;
   if (this.lampMat) this.lampMat.color = col(sky.lamp);
-  // campo: bagnato (più scuro e un po' lucido) o con un velo di neve (più chiaro)
-  for (const m of [this.pitch && this.pitch.material, this.around && this.around.material]) {
-    if (!m) continue;
+  // campo: bagnato (più scuro) o con la neve. Con la neve il campo resta verde (spalato, appena più freddo) e la
+  // neve sta tutta attorno, fino ai cartelloni, come nelle partite vere d'inverno
+  const snow = this.weather === 'snow';
+  if (this.pitch) {
+    const m = this.pitch.material;
+    m.color = col(this.weather === 'rain' ? '#c9d2cf' : snow ? '#e4ece8' : '#ffffff');
+    m.emissive = col(snow ? '#0b0f12' : '#000000');
+  }
+  if (this.around) {
+    const m = this.around.material;
+    if (!this.aroundMap) this.aroundMap = m.map;
+    m.map = snow ? this.snowAroundTexture() : this.aroundMap;
     m.color = col(this.weather === 'rain' ? '#c9d2cf' : '#ffffff');
-    m.emissive = col(this.weather === 'snow' ? '#363c42' : '#000000');
+    m.emissive = col(snow ? '#101418' : '#000000');
+    m.needsUpdate = true;
   }
   this.setWeatherParticles(this.weather);
   this.applyChristmasLight();   // lucine di Natale più forti la sera (09_render_natale.js)
+};
+
+// erba attorno al campo con la neve: una striscia verde spalata di 3 metri oltre le linee (così porte e bandierine
+// si vedono), poi la neve con i bordi morbidi e qualche mucchietto
+Renderer.prototype.snowAroundTexture = function () {
+  if (this._snowAround) return this._snowAround;
+  const W = 540, H = 384, ppm = W / 135;   // il prato attorno è 135 × 96 metri
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#d3dce3'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 900; i++) { g.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.35)' : 'rgba(150,170,190,0.12)'; g.beginPath(); g.arc(Math.random() * W, Math.random() * H, 1 + Math.random() * 5, 0, Math.PI * 2); g.fill(); }
+  const bw = 111 * ppm, bh = 74 * ppm, x0 = (W - bw) / 2, y0 = (H - bh) / 2;
+  g.filter = 'blur(3px)';
+  g.fillStyle = '#2a7a37'; g.fillRect(x0, y0, bw, bh);
+  g.filter = 'none';
+  const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding;
+  return this._snowAround = t;
 };
 
 // ---------- pioggia (righe che cadono veloci) e neve (fiocchi lenti che ondeggiano) ----------

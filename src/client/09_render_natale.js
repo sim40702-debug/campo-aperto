@@ -30,6 +30,17 @@ Renderer.prototype.setChristmas = function (on) {
   if (!this.ballTexNormal) this.ballTexNormal = bm.map;
   bm.map = on ? this.xmasBallTexture() : this.ballTexNormal;
   bm.needsUpdate = true;
+  // tifosi con il cappello di Babbo Natale (un tifoso su tre), o di nuovo senza
+  if (this.crowdCanvas) {
+    const g = this.crowdCanvas.getContext('2d');
+    g.putImageData(this.crowdPlain, 0, 0);
+    if (on) this.crowdHeads.forEach(([x, y], i) => {
+      if ((i * 7919) % 3) return;
+      g.fillStyle = '#c40c24'; g.beginPath(); g.moveTo(x - 0.5, y + 1); g.lineTo(x + 4.5, y + 1); g.lineTo(x + 3, y - 3); g.fill();
+      g.fillStyle = '#f4f2ec'; g.fillRect(x - 0.5, y + 0.5, 5, 1.2); g.fillRect(x + 2.5, y - 3.5, 1.4, 1.4);
+    });
+    for (const m of this.crowdMeshes) m.material.map.needsUpdate = true;
+  }
   // i calciatori con (o senza) il cappello: si ricostruiscono i modelli della partita in corso
   if (this.match) this.setupMatch(this.match);
   return true;
@@ -38,7 +49,7 @@ Renderer.prototype.setChristmas = function (on) {
 // cappello di Babbo Natale: pezzi da aggiungere alla testa (H = altezza del centro della testa sul collo).
 // La faccia guarda verso +x: il cappello si piega all'indietro e la punta con il pon pon cade dietro.
 Renderer.prototype.xmasHatParts = function (H, seg) {
-  const red = '#a50a22', white = '#f4f2ec';
+  const red = '#8c0618', white = '#f4f2ec';
   const base = [-0.012, H + 0.088];
   const a1 = 0.38, a2 = 1.15, l1 = 0.17, l2 = 0.15;
   const d1 = [-Math.sin(a1), Math.cos(a1)], d2 = [-Math.sin(a2), Math.cos(a2)];

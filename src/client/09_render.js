@@ -3,10 +3,10 @@
 // ============================================================
 // preset grafici: dprCap = massimo rapporto pixel (Ultra = risoluzione nativa, anche 4K)
 const QUALITY_PRESETS = {
-  bassa: { dprCap: 1, shadows: false, shadowSize: 1024, soft: false, pitch: 2048, aniso: 2, particles: 0.4, detail: 0.8, crowd: false },
-  media: { dprCap: 1, shadows: true, shadowSize: 1024, soft: false, pitch: 2048, aniso: 4, particles: 0.7, detail: 1, crowd: true },
-  alta: { dprCap: 1.5, shadows: true, shadowSize: 2048, soft: true, pitch: 4096, aniso: 8, particles: 1, detail: 1.3, crowd: true },
-  ultra: { dprCap: 3, shadows: true, shadowSize: 4096, soft: true, pitch: 4096, aniso: 16, particles: 1, detail: 1.6, crowd: true },
+  bassa: { dprCap: 1, shadows: false, shadowSize: 1024, soft: false, pitch: 2048, aniso: 2, particles: 0.4, detail: 0.8, crowd: false, post: 0 },
+  media: { dprCap: 1, shadows: true, shadowSize: 1024, soft: false, pitch: 2048, aniso: 4, particles: 0.7, detail: 1, crowd: true, post: 0.8 },
+  alta: { dprCap: 1.5, shadows: true, shadowSize: 2048, soft: true, pitch: 4096, aniso: 8, particles: 1, detail: 1.3, crowd: true, post: 1 },
+  ultra: { dprCap: 3, shadows: true, shadowSize: 4096, soft: true, pitch: 4096, aniso: 16, particles: 1, detail: 1.6, crowd: true, post: 1 },
 };
 
 // profili del corpo [raggio, altezza] in metri per un calciatore di 1,80 m (prima della scala per la corporatura)
@@ -116,7 +116,7 @@ class Renderer {
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
     for (let i = 0; i < 14; i++) {
-      g.fillStyle = i % 2 ? '#2f7a3f' : '#35864a';
+      g.fillStyle = i % 2 ? '#236b30' : '#2f8a3e';   // strisce del tosaerba ben visibili, verde pieno
       g.fillRect(i * W / 14, 0, W / 14 + 1, H);
     }
     // trama dell'erba: puntini e fili proporzionati alla risoluzione
@@ -125,6 +125,12 @@ class Renderer {
     for (let i = 0; i < dots; i++) {
       g.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)';
       g.fillRect(Math.random() * W, Math.random() * H, ds, ds);
+    }
+    // luce dei quattro fari: il prato è un po' più chiaro sotto le torri e verso il centro
+    for (const [fx, fz] of [[0.18, 0.12], [0.82, 0.12], [0.18, 0.88], [0.82, 0.88], [0.5, 0.5]]) {
+      const gr = g.createRadialGradient(fx * W, fz * H, 0, fx * W, fz * H, H * 0.55);
+      gr.addColorStop(0, 'rgba(255,255,220,0.07)'); gr.addColorStop(1, 'rgba(255,255,220,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, W, H);
     }
     // segni dell'usura davanti alle porte e al centro
     for (const cx of [0.06, 0.5, 0.94]) {
@@ -186,7 +192,8 @@ class Renderer {
   }
 
   buildPitch() {
-    const pitchMat = new THREE.MeshLambertMaterial({ map: this.pitchTexture() });
+    // il campo si disegna sempre sopra l'erba (o la neve) attorno: niente righe che tremolano da lontano
+    const pitchMat = new THREE.MeshLambertMaterial({ map: this.pitchTexture(), polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
     if (this.Q.detail >= 1) {
       const detail = this.grassDetailTexture();
       pitchMat.onBeforeCompile = sh => {
@@ -206,7 +213,7 @@ class Renderer {
     const t2 = new THREE.CanvasTexture(cv2); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.repeat.set(9, 1);
     t2.encoding = THREE.sRGBEncoding;
     const around = this.around = new THREE.Mesh(new THREE.PlaneGeometry(135, 96), new THREE.MeshLambertMaterial({ map: t2 }));
-    around.rotation.x = -Math.PI / 2; around.position.y = -0.02; around.receiveShadow = true;
+    around.rotation.x = -Math.PI / 2; around.position.y = -0.05; around.receiveShadow = true;
     this.scene.add(around);
     // bandierine
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
@@ -288,6 +295,7 @@ class Renderer {
     const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256;
     const g = cv.getContext('2d');
     g.fillStyle = '#1b2433'; g.fillRect(0, 0, 512, 256);
+    this.crowdHeads = [];
     const shirts = ['#d8d8d8', '#c8202f', '#1e56c8', '#f2c230', '#2d8a4f', '#8a8a8a', '#eeeeee', '#5a3a8a', '#ff8a3d', '#3a3a3a'];
     for (let row = 0; row < 16; row++) {
       g.fillStyle = '#141b27'; g.fillRect(0, row * 16 + 13, 512, 3);
@@ -296,8 +304,11 @@ class Renderer {
         const x = i * 8 + rand() * 2, y = row * 16 + 3;
         g.fillStyle = pick(shirts); g.fillRect(x, y + 4, 6, 7);
         g.fillStyle = pick(['#f1d3b8', '#c68c62', '#6e4630', '#e0b48f']); g.fillRect(x + 1, y, 4, 4);
+        this.crowdHeads.push([x + 1, y]);
       }
     }
+    // tifosi: a Natale molti hanno il cappello rosso (09_render_natale.js ridisegna sopra le teste)
+    this.crowdCanvas = cv; this.crowdPlain = g.getImageData(0, 0, 512, 256);
     const crowdTex = new THREE.CanvasTexture(cv);
     crowdTex.wrapS = crowdTex.wrapT = THREE.RepeatWrapping;
     crowdTex.encoding = THREE.sRGBEncoding;
@@ -509,7 +520,8 @@ class Renderer {
     const kit = [kit0[0], it.pantaloncini ? it.pantaloncini.color : kit0[1], it.calzettoni ? it.calzettoni.color : kit0[2]];
     const trim = kit0[1] === kit0[0] ? '#ffffff' : kit0[1];   // colletto e bordi delle maniche
     const pat = it.maglia || null, acc = it.accessori || null, gloves = it.guanti ? it.guanti.color : (p.isGK ? '#f2f2f2' : null);
-    if (!this.playerMat) this.playerMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    // materiale con i riflessi (le maglie lucidano un po' sotto i fari, come il tessuto tecnico)
+    if (!this.playerMat) this.playerMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.02 });
     const mat = this.playerMat;
     const mesh = (parts, shadow) => { const m = new THREE.Mesh(this.mergeColored(parts), mat); m.castShadow = shadow !== false; return m; };
     const root = new THREE.Group();
@@ -576,13 +588,13 @@ class Renderer {
       // ---- gamba: coscia muscolosa con il bordo dei pantaloncini, ginocchio, polpaccio nel calzettone, scarpa
       const hip = new THREE.Group(); hip.position.set(0, -0.03, side * 0.09 * w); pelvis.add(hip);
       hip.add(mesh([
-        { geo: cyl(0.092, 0.07, 0.45), color: look.skin, pos: [0, -0.225, 0], scale: [1.06, 1, 0.95] },
-        { geo: cyl(0.096, 0.09, 0.15), color: kit[1], pos: [0, -0.05, 0] },
+        { geo: cyl(0.1, 0.074, 0.45), color: look.skin, pos: [0, -0.225, 0], scale: [1.1, 1, 0.97] },   // coscia da atleta
+        { geo: cyl(0.104, 0.096, 0.15), color: kit[1], pos: [0, -0.05, 0] },
       ]));
       const knee = new THREE.Group(); knee.position.y = -0.45; hip.add(knee);
       const shinParts = [
         { geo: new THREE.SphereGeometry(0.064, seg(7), seg(5)), color: look.skin, pos: [0.008, 0, 0] },
-        { geo: cyl(0.068, 0.052, 0.2), color: kit[2], pos: [-0.006, -0.12, 0] },          // polpaccio
+        { geo: cyl(0.075, 0.054, 0.2), color: kit[2], pos: [-0.01, -0.12, 0] },          // polpaccio
         { geo: cyl(0.052, 0.042, 0.2), color: kit[2], pos: [0, -0.3, 0] },
         { geo: cyl(0.07, 0.066, 0.05), color: kit[2], pos: [0, -0.035, 0] },               // risvolto del calzettone
       ];
@@ -603,16 +615,16 @@ class Renderer {
       const sleeve = pat && pat.pattern === 'maniche' ? pat.color : kit[0];
       const longSleeve = p.isGK;
       const upperParts = [
-        { geo: cyl(0.063, 0.058, 0.16), color: sleeve, pos: [0, -0.07, 0] },
-        { geo: cyl(0.06, 0.06, 0.025), color: pat && pat.pattern === 'bordi' ? pat.color : trim, pos: [0, -0.145, 0] },
-        { geo: cyl(0.05, 0.044, longSleeve ? 0.0001 : 0.15), color: look.skin, pos: [0, -0.215, 0] },
+        { geo: cyl(0.07, 0.063, 0.16), color: sleeve, pos: [0, -0.07, 0] },
+        { geo: cyl(0.066, 0.066, 0.025), color: pat && pat.pattern === 'bordi' ? pat.color : trim, pos: [0, -0.145, 0] },
+        { geo: cyl(0.056, 0.047, longSleeve ? 0.0001 : 0.15), color: look.skin, pos: [0, -0.215, 0] },
       ];
       if (longSleeve) upperParts.push({ geo: cyl(0.054, 0.048, 0.16), color: sleeve, pos: [0, -0.21, 0] });
       if (acc && acc.kind === 'capitano' && side === 1) upperParts.push({ geo: cyl(0.066, 0.063, 0.06), color: acc.color, pos: [0, -0.09, 0] });
       sh.add(mesh(upperParts));
       const elbow = new THREE.Group(); elbow.position.y = -0.29; sh.add(elbow);
       const foreParts = [
-        { geo: cyl(0.045, 0.034, 0.25), color: longSleeve ? sleeve : look.skin, pos: [0, -0.125, 0] },
+        { geo: cyl(0.049, 0.035, 0.25), color: longSleeve ? sleeve : look.skin, pos: [0, -0.125, 0] },
         { geo: new THREE.SphereGeometry(gloves ? 0.05 : 0.042, seg(7), seg(5)), color: gloves || look.skin, pos: [0.005, -0.285, 0], scale: [0.75, 1.25, 0.6] },
       ];
       if (acc && acc.kind === 'polsini') foreParts.push({ geo: cyl(0.044, 0.044, 0.05), color: acc.color, pos: [0, -0.215, 0] });
@@ -976,8 +988,9 @@ class Renderer {
     if (match && match.so && match.so.phase !== 'done') { this.shootoutCamera(dt, match, bx, by, bz); return; }
     this._soShot = null;
     if (this.camMode === 0) {
-      want.set(bx * 0.82, 24, bz * 0.3 + 47);
-      look.set(bx * 0.9, 0, bz * 0.55 + 2);
+      // televisiva (0.22): più bassa e più vicina, come nelle partite in TV di oggi
+      want.set(bx * 0.84, 19.5, bz * 0.32 + 41);
+      look.set(bx * 0.9, 0.4, bz * 0.6 + 2);
     } else if (this.camMode === 1) {
       want.set(bx * 0.5, 55, bz * 0.2 + 75);
       look.set(bx * 0.6, 0, bz * 0.3);
@@ -1014,6 +1027,7 @@ class Renderer {
     this.qualityId = id; this.Q = QUALITY_PRESETS[id];
     // bandiere e sciarpe solo con il pubblico animato (qualità media in su)
     if (this.match && old.crowd !== this.Q.crowd) this.setupStadiumLife(this.match);
+    if (!this.Q.post) this.disposePost();
     const r = this.renderer;
     r.shadowMap.enabled = this.Q.shadows;
     r.shadowMap.type = this.Q.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
@@ -1160,5 +1174,9 @@ class Renderer {
     if (me) this.arrow.position.set(me.rx !== undefined ? me.rx : me.x, 2.45 * me.data.look.height / 1.8 + Math.sin(match.realTime * 5) * 0.06, me.rz !== undefined ? me.rz : me.z);
   }
 
-  render() { this.renderer.render(this.scene, this.camera); }
+  // con la rifinitura dell'immagine (bagliore, colore) la scena passa da 09_render_post.js
+  render() {
+    if (this.postEnabled()) this.renderPost();
+    else this.renderer.render(this.scene, this.camera);
+  }
 }

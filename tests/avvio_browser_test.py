@@ -62,8 +62,11 @@ async def main():
 
         # ---- caricamento a passi + dati vecchi
         ctx, pg, errs = await newpage(b, OLD)
+        # le scritte del caricamento si registrano dall'inizio della pagina (con la grafica piena la pagina ci mette un
+        # po' a partire e il primo passo può finire prima che il test cominci a guardare)
+        await pg.add_init_script("""window.__ld = []; (function w() { const el = document.getElementById('ld-text'); if (el) { const t = el.textContent; if (window.__ld[window.__ld.length - 1] !== t) window.__ld.push(t); } if (!el || !document.getElementById('loading').hidden) setTimeout(w, 15); })();""")
         await pg.goto(URL + '?startup=1')
-        seen = await pg.evaluate("""() => new Promise(ok => { const t0 = performance.now(), texts = [], bars = [];
+        seen = await pg.evaluate("""() => new Promise(ok => { const t0 = performance.now(), texts = window.__ld, bars = [];
             const iv = setInterval(() => { const t = document.getElementById('ld-text').textContent, w = document.getElementById('ld-bar').style.width;
               if (texts[texts.length - 1] !== t) texts.push(t); if (bars[bars.length - 1] !== w) bars.push(w);
               if (document.getElementById('loading').hidden) { clearInterval(iv); ok({ texts, bars, ms: performance.now() - t0 }); } }, 30); })""")

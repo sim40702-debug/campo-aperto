@@ -41,7 +41,8 @@ async def main():
         check('i fiocchi cadono', f1 != f2)
         check('scelta ricordata per la prossima partita', await pg.evaluate("game.settings.lastSetup.weather === 'snow' && game.settings.lastSetup.timeOfDay === 'sunset'"))
         await pg.evaluate("game.quitToMenu()")
-        check('menu: di nuovo sera e niente neve', await pg.evaluate("game.renderer.timeOfDay === 'night' && !game.renderer.snowPoints.visible"))
+        # dalla 0.22 il menu è la sera di Natale con la neve (tema di Natale sempre acceso)
+        check('menu: di nuovo sera, con la neve di Natale', await pg.evaluate("game.renderer.timeOfDay === 'night' && game.renderer.snowPoints.visible"))
 
         # ---- fine partita: statistiche, migliore in campo, azioni migliori
         await pg.evaluate("() => { game.setup.side = -1; game.setup.halfSeconds = 120; game.setup.weather = 'rain'; game.setup.timeOfDay = 'day'; game.startMatch(); }")

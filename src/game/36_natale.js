@@ -1,6 +1,6 @@
 // ============================================================
 // NATALE (0.21) — tema di Natale del gioco
-// Impostazioni → Generale → Tema di Natale: Automatico (acceso dal 1° dicembre al 6 gennaio), Sempre, Spento.
+// Dalla 0.22 è il tema del gioco, sempre acceso (nella 0.21 si sceglieva in Impostazioni → Generale).
 // Con il tema acceso:
 // - stadio addobbato, cappelli di Babbo Natale, pallone e cartelloni di Natale, fuochi d'artificio sui gol
 //   (src/client/09_render_natale.js);
@@ -35,11 +35,8 @@ class Christmas {
     this.on = false;
   }
 
-  // acceso o spento secondo l'impostazione e la data
-  wanted() {
-    const mode = this.g.settings.xmas;
-    return mode === 'on' || (mode === 'auto' && isChristmasTime());
-  }
+  // dalla 0.22 il tema di Natale è sempre acceso: è il tema del gioco per queste feste
+  wanted() { return true; }
 
   // accende o spegne tutto il tema (all'avvio e quando cambia l'impostazione)
   apply() {
@@ -54,6 +51,7 @@ class Christmas {
     this.renderTile();
     // nel menu la partita dimostrativa ricomincia con la neve (o senza)
     if (changed && g.mode === 'menu' && g.demo) g.startDemo();
+    if (g.updateMusic) g.updateMusic();
     return changed;
   }
 
