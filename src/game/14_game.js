@@ -1026,12 +1026,14 @@ class Game {
     // limite fps: salta i fotogrammi in eccesso (la simulazione recupera il tempo al passo dopo)
     const lim = this.settings.fpsLimit;
     if (lim > 0 && t - this.last < 1000 / lim - 1.5) return;
-    const dt = Math.min(0.1, Math.max(0, (t - this.last) / 1000));
+    const real = Math.max(0, (t - this.last) / 1000), dt = Math.min(0.1, real);
     this.last = t;
     this.lastFrameAt = performance.now();
     this.time += dt;
     const R = this.renderer;
-    this.watchPerformance(dt);
+    // gli fps si misurano con il tempo vero (non con dt, che è limitato a 0,1 s): su un computer molto lento la
+    // risoluzione dinamica deve scendere subito, non dopo dieci volte il tempo
+    this.watchPerformance(Math.min(real, 2));
     // controller: lettura una volta per fotogramma, poi navigazione nei menu
     this.input.pollPads(dt);
     if (this.input.padJust.some(Boolean)) this.audio.init();

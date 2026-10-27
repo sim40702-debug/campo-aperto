@@ -129,7 +129,10 @@ async def main():
         # schermo intero (API del browser)
         await pg.click('#btn-settings'); await pg.wait_for_timeout(200)
         await pg.click('[data-tab=grafica]'); await pg.wait_for_timeout(200)
-        await pg.click('#st-full'); await pg.wait_for_timeout(600)
+        await pg.click('#st-full')
+        # con il disegno senza scheda grafica la pagina può essere lenta: si aspetta fino a 5 secondi
+        try: await pg.wait_for_function("!!document.fullscreenElement", timeout=5000, polling=100)
+        except Exception: pass
         fs = await pg.evaluate("!!document.fullscreenElement")
         check('schermo intero attivato dal pulsante', fs)
         if fs:

@@ -21,7 +21,9 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
   musica di sottofondo; in partita la suonano gli altoparlanti dello stadio e tutto il pubblico canta il ritornello.
   La voce è in `src/audio/jingle_voce.mp3` (si rifà con `strumenti/voce_jingle/genera.py`) e sta dentro il gioco. Nuovo volume **Musica** in Impostazioni →
   Audio.
-- Solo grafica: il motore della partita non cambia (stessa impronta), il server non va aggiornato.
+- **Risoluzione dinamica più svelta** sui computer lenti: gli fps si misurano con il tempo vero, così la risoluzione
+  scende subito invece di aspettare.
+- Solo grafica e suoni: il motore della partita non cambia (stessa impronta), il server non va aggiornato.
 
 ## 0.21.0 — 27/10/2026 (versione di Natale)
 - **Tema di Natale** (Impostazioni → Generale → **Tema di Natale**): *Automatico* lo accende da solo dal 1° dicembre
