@@ -51,6 +51,7 @@ class Christmas {
     this.renderTile();
     // nel menu la partita dimostrativa ricomincia con la neve (o senza)
     if (changed && g.mode === 'menu' && g.demo) g.startDemo();
+    if (g.updateMusic) g.updateMusic();
     return changed;
   }
 

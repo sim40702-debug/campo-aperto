@@ -12,7 +12,13 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
 - **Neve vera d'inverno**: con la neve il campo resta verde (spalato) e la neve sta tutta attorno, fino ai cartelloni,
   invece di un velo chiaro su tutto. Niente più righe che tremolavano sul campo da lontano.
 - **Giocatori**: maglie che lucidano un po' sotto i fari, gambe e braccia più da atleta.
-- **Tifosi con il cappello di Babbo Natale** sulle tribune.
+- **Spettatori nuovi**: nelle prime file di tutte le tribune ci sono tifosi in 3D (migliaia), con le maglie delle due
+  squadre o la giacca d'inverno, che saltano, alzano le braccia ed esultano sui gol; a Natale uno su tre ha il
+  cappello di Babbo Natale. Dietro, il pubblico disegnato ha anche lui i cappelli.
+- **Jingle Bells vera**: la canzone intera (strofa e ritornello, melodia del 1857) suonata con campanelle, pianoforte,
+  basso, sonagli della slitta e batteria, con l'eco dello stadio. Nei menu è la musica di sottofondo; in partita la
+  suonano gli altoparlanti dello stadio e il pubblico canta il ritornello. Nuovo volume **Musica** in Impostazioni →
+  Audio.
 - Solo grafica: il motore della partita non cambia (stessa impronta), il server non va aggiornato.
 
 ## 0.21.0 — 27/10/2026 (versione di Natale)

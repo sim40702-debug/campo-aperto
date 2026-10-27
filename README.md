@@ -11,7 +11,8 @@ In italiano, inglese, tedesco e francese.
 ### Le novità (0.10 – 0.22)
 
 - **Natale come in TV** (0.22): il tema di Natale è sempre acceso; immagine con bagliore e colori da partita in TV,
-  telecamera più vicina, prato nuovo, neve attorno al campo, tifosi con il cappello di Babbo Natale.
+  telecamera più vicina, prato nuovo, neve attorno al campo, tifosi in 3D che esultano, Jingle Bells suonata davvero
+  nei menu e dagli altoparlanti dello stadio.
 - **Versione di Natale** (0.21): stadio addobbato con alberi e lucine, neve sui tetti, cappelli di Babbo Natale,
   pallone e cartelloni di Natale, fuochi d'artificio sui gol, il pubblico che canta Jingle Bells, la **Partita di
   Natale** nella Home e due trofei nuovi.

@@ -13,6 +13,11 @@ results = []
 def check(name, cond, extra=''):
     results.append(bool(cond)); print(('OK   ' if cond else 'FAIL ') + name + (('  ' + str(extra)) if extra != '' else ''), flush=True)
 
+# foto per controllare a occhio: senza scheda grafica a volte sono lente, e non devono far fallire il test
+async def shot(pg, name):
+    try: await pg.screenshot(path=HERE + '/shots/' + name + '.png', timeout=90000, animations='disabled')
+    except Exception as e: print('foto non riuscita:', name, str(e)[:80], flush=True)
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(args=ARGS)
@@ -22,6 +27,9 @@ async def main():
         await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "media", dynamicRes: false, })); localStorage.setItem("campoAperto.tutorialHint", "1")')
         await pg.goto(URL)
         await pg.wait_for_function('window.game && game.loaded', timeout=90000, polling=250)
+        # il ciclo del gioco si ferma: con il disegno senza scheda grafica e la rifinitura dell'immagine ogni fotogramma
+        # è lento, e le foto della pagina aspetterebbero troppo. Si disegna a mano quando serve.
+        await pg.evaluate("() => { game.loop = () => {}; }")
 
         # ---- date
         d = await pg.evaluate("""() => { const D = (y, m, g) => new Date(y, m - 1, g, 12);
@@ -55,21 +63,23 @@ async def main():
               titleTop: document.querySelector('#menu .title').getBoundingClientRect().top }; }""")
         check('Home: riquadro Partita di Natale con i giorni che mancano', home['shown'] and 'Partita di Natale' in home['text'] and ('Natale' in home['text'].split('Partita di Natale')[1] or 'feste' in home['text']), home)
         check('Home: neve che cade e cappello sul titolo, titolo non tagliato', home['hat'] and home['snow'] == 'xmas-snow' and home['titleTop'] >= 0, home)
-        await pg.screenshot(path=HERE + '/shots/natale_home.png')
+        await pg.evaluate("() => game.renderer.render()")
+        await shot(pg, 'natale_home')
 
         # ---- Partita di Natale
         await pg.evaluate("() => { game.setup.side = -1; document.getElementById('btn-xmas').click(); }")
         m = await pg.evaluate("[game.screen, game.match.weather, game.match.timeOfDay, game.match.xmasMatch, game.match.humanTeam !== undefined ? game.setup.side : null]")
         check('Partita di Natale: si gioca (non si guarda), di sera con la neve', m[0] == 'match' and m[1] == 'snow' and m[2] == 'night' and m[3] is True and m[4] == 0, m)
-        await pg.evaluate("() => { game.loop = () => {}; for (let i = 0; i < 90; i++) game.updateOffline(1/60); }")
-        await pg.screenshot(path=HERE + '/shots/natale_partita.png')
+        await pg.evaluate("() => { for (let i = 0; i < 90; i++) game.updateOffline(1/60); game.renderer.render(); }")
+        await shot(pg, 'natale_partita')
         # gol: fuochi d'artificio e trofeo
         g = await pg.evaluate("""() => { const m = game.match, t = m.teams[0]; m.ball.owner = null; m.ball.lastTouch = t.players[9]; m.goal(t);
             for (let i = 0; i < 100; i++) { game.updateOffline(1/60); game.replayPending = false; game.replay = null; }
             return { sparks: game.renderer.xmasDeco.sparks.length, trophy: game.trophies.has('xmas_goal') }; }""")
         check('gol: fuochi d\'artificio sopra lo stadio', g['sparks'] > 100, g)
         check('trofeo Gol sotto l\'albero', g['trophy'], g)
-        await pg.screenshot(path=HERE + '/shots/natale_gol.png')
+        await pg.evaluate("() => game.renderer.render()")
+        await shot(pg, 'natale_gol')
         w = await pg.evaluate("""() => { const m = game.match; game.trophies.endMatch(m, false); return game.trophies.has('xmas_win'); }""")
         check('vincere la Partita di Natale: trofeo Regalo di Natale', w)
         rem = await pg.evaluate("() => { game.paused = true; document.getElementById('pause-restart').click(); document.getElementById('pause-restart').click(); return [game.match.xmasMatch, game.match.weather]; }")
@@ -80,6 +90,10 @@ async def main():
         check('bagliore e colori da Media in su, in Bassa si disegna direttamente', post[0] and not post[1], post)
         crowd = await pg.evaluate("() => { const d = game.renderer.crowdCanvas.getContext('2d').getImageData(0, 0, 512, 256).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] === 196 && d[i + 1] === 12 && d[i + 2] === 36) n++; return n; }")
         check('tifosi con il cappello di Babbo Natale', crowd > 500, crowd)
+        fans = await pg.evaluate("() => { game.renderer.setupStadiumLife(game.renderer.match); return game.renderer.life.fans || 0; }")
+        check('tifosi in 3D nelle prime file', fans > 2000, fans)
+        song = await pg.evaluate("() => { const f = jingleBellsScore(false), c = jingleBellsScore(true); return [f.beats, c.beats, f.ev.filter(e => e.kind === 'mel').length, typeof game.audio.playJingleBells, !!document.getElementById('st-vmu')]; }")
+        check('Jingle Bells: strofa e ritornello (128 battiti), allo stadio solo il ritornello, volume Musica', song[0] == 128 and song[1] == 64 and song[2] > 80 and song[3] == 'function' and song[4], song)
         check('nessun errore', not errs, errs[:3])
         await b.close()
     print('\nRisultato: %d superati, %d falliti' % (sum(results), len(results) - sum(results)))

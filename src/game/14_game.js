@@ -42,7 +42,7 @@ class Game {
     if (window.campoWindow && this.settings.windowSize && !this.settings.startFullscreen) { const [w, h] = this.settings.windowSize.split('x').map(Number); window.campoWindow.setSize(w, h).catch(() => {}); }
     this.renderer.camMode = this.settings.camera || 0;
     this.audio = new GameAudio();
-    this.audio.setVolumes({ master: this.settings.volMaster, sfx: this.settings.volSfx, crowd: this.settings.volCrowd, muted: this.settings.muted });
+    this.audio.setVolumes({ master: this.settings.volMaster, sfx: this.settings.volSfx, crowd: this.settings.volCrowd, music: this.settings.volMusic, muted: this.settings.muted });
     this.input = new Input(this.settings.keys, this.settings.padKeys);
     this.input.mouseEnabled = this.settings.mouse;
     this.applyPadSettings();
@@ -126,6 +126,7 @@ class Game {
     // nel menu principale il primo pulsante si evidenzia solo se si usa controller o tastiera
     if (first && (name !== 'menu' || this.input.lastDevice === 'pad')) setTimeout(() => first.focus({ preventScroll: true }), 30);
     if (this.eco) this.eco.onShow(name);
+    this.updateMusic();
     if (this.social && name === 'menu') this.social.onHome();
     if (this.trophies && name === 'menu') {
       $('tp-mini').textContent = this.trophies.done() + '/' + this.trophies.total();
@@ -136,6 +137,15 @@ class Game {
         if (!seen) setTimeout(() => { if (this.screen === 'menu') this.toast(tr('Prima volta? Prova il Tutorial in Allenamento')); }, 1200);
       }
     }
+  }
+
+  // musica di Natale (10_audio_music.js): nei menu Jingle Bells di sottofondo, in partita solo gli altoparlanti dello stadio
+  updateMusic() {
+    const a = this.audio;
+    if (!a || !a.ctx || !a.playJingleBells) return;
+    const inGame = this.screen === 'match' || this.screen === 'rview';
+    if (this.xmas && this.xmas.on && !inGame) a.playJingleBells('menu');
+    else if (a.song && (a.song.mode === 'menu' || !inGame)) a.stopJingleBells();
   }
 
   toast(text, isErr) {
@@ -150,7 +160,8 @@ class Game {
   }
 
   bindUI() {
-    const unlockAudio = () => this.audio.init();
+    // il primo clic o tasto accende l'audio (regola del browser) e, a Natale, la musica dei menu
+    const unlockAudio = () => { this.audio.init(); this.updateMusic(); };
     window.addEventListener('pointerdown', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
     // suono di conferma per ogni pulsante
@@ -870,7 +881,7 @@ class Game {
       el.oninput = () => { s[key] = el.value / 100; $(id + '-out').textContent = el.value + '%'; this.applyAudio(); };
       el.onchange = save;
     };
-    vol('st-vm', 'volMaster'); vol('st-vs', 'volSfx'); vol('st-vc', 'volCrowd');
+    vol('st-vm', 'volMaster'); vol('st-vs', 'volSfx'); vol('st-vc', 'volCrowd'); vol('st-vmu', 'volMusic');
     $('st-mute').checked = s.muted;
     $('st-mute').onchange = () => { s.muted = $('st-mute').checked; this.applyAudio(); save(); };
     // controlli
@@ -913,7 +924,7 @@ class Game {
 
   applyAudio() {
     const s = this.settings;
-    this.audio.setVolumes({ master: s.volMaster, sfx: s.volSfx, crowd: s.volCrowd, muted: s.muted });
+    this.audio.setVolumes({ master: s.volMaster, sfx: s.volSfx, crowd: s.volCrowd, music: s.volMusic, muted: s.muted });
   }
 
   renderKeys() {

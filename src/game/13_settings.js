@@ -16,7 +16,7 @@ function defaultSettings() {
     dynamicRes: true,         // abbassa la risoluzione da sola se gli fps scendono
     fpsLimit: 0,              // 0 = sincronizzato con lo schermo
     showFps: false,
-    volMaster: 0.8, volSfx: 1, volCrowd: 0.7, muted: false,
+    volMaster: 0.8, volSfx: 1, volCrowd: 0.7, volMusic: 0.6, muted: false,
     keys: JSON.parse(JSON.stringify(DEFAULT_KEYS)),
     mouse: true,
     padKeys: JSON.parse(JSON.stringify(DEFAULT_PAD)),
