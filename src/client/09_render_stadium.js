@@ -77,7 +77,8 @@ Renderer.prototype.setupStadiumLife = function (match) {
   const n = this.Q.crowd ? FLASHES : 25;
   const pos = new Float32Array(n * 3);
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const fm = new THREE.PointsMaterial({ color: 0xffffff, size: 3.2, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending });
+  // lampo tondo e sfumato (senza texture i punti sarebbero quadrati bianchi)
+  const fm = new THREE.PointsMaterial({ color: 0xffffff, size: 3.2, map: this.glowTexture(), sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending });
   const pts = new THREE.Points(fg, fm);
   pts.frustumCulled = false; pts.visible = false;
   life.flashPts = pts; life.flashPos = pos; life.flashN = n;

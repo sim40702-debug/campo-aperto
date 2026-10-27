@@ -16,6 +16,8 @@ Game.prototype.pingServer = async function () {
   const wait = new Promise(ok => setTimeout(() => ok('timeout'), STARTUP_TIMEOUT_MS));
   try {
     const r = await Promise.race([api.get('/api/status'), wait]);
+    // versione e motore del server: servono a spiegare perché una partita del server non si può guardare in 3D
+    if (r && r !== 'timeout') this.serverStatus = r;
     return r !== 'timeout' && !!r;
   } catch (e) { return false; }
 };

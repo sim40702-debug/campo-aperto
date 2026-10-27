@@ -82,6 +82,8 @@ class Game {
     this.ranking = new OnlineRanking(this);   // classifica online (src/game/31_online_ranking.js)
     this.trophies = new Trophies(this);       // trofei (src/game/33_trophies.js)
     this.quick = new QuickMatch(this);        // partita veloce online «Cerca avversario» (src/game/35_quick_match.js)
+    this.xmas = new Christmas(this);          // tema di Natale (src/game/36_natale.js)
+    this.xmas.apply();
     setTimeout(() => this.trophies.checkAll(), 1500);
     this.comps.career.rosterTeam = (comp, t) => comp.pro ? this.pro.teamFor(comp, t) : this.manager.teamFor(comp, t);
     this.social = new SocialUI(this);
@@ -159,6 +161,7 @@ class Game {
     $('btn-quick').onclick = () => { this.setup.side = this.setup.side === -1 ? 0 : this.setup.side; this.showScreen('setup'); };
     $('btn-watch').onclick = () => this.eco.open('fixtures');
     $('btn-online').onclick = () => this.showScreen('online');
+    $('btn-xmas').onclick = () => this.xmas.start();
     $('btn-training').onclick = () => this.openTraining();
     $('tr-back').onclick = () => this.showScreen('menu');
     $('btn-settings').onclick = () => this.openSettings('generale', 'menu');
@@ -192,9 +195,9 @@ class Game {
     $('pause-settings').onclick = () => { $('pause').hidden = true; this.openSettings('generale', 'pause'); };
     $('pause-help').onclick = () => { $('pause').hidden = true; this.openHelp('pause'); };
     // ricominciare o uscire fanno perdere la partita: serve una conferma (secondo clic)
-    $('pause-restart').onclick = () => this.confirmClick($('pause-restart'), 'Sicuro? Ricomincia', () => { this.togglePause(false); this.startMatch(); });
+    $('pause-restart').onclick = () => this.confirmClick($('pause-restart'), 'Sicuro? Ricomincia', () => { this.togglePause(false); this.startMatch(this.match && this.match.xmasMatch); });
     $('pause-quit').onclick = () => this.confirmClick($('pause-quit'), 'Sicuro? Esci', () => this.quitToMenu());
-    $('ft-rematch').onclick = () => { if (this.mode === 'host') this.net.host.backToLobby(); else this.startMatch(); };
+    $('ft-rematch').onclick = () => { if (this.mode === 'host') this.net.host.backToLobby(); else this.startMatch(this.match && this.match.xmasMatch); };
     $('ft-setup').onclick = () => { this.quitToMenu(); this.showScreen('setup'); };
     $('ft-menu').onclick = () => this.quitToMenu();
     $('ft-comp').onclick = () => {
@@ -354,8 +357,11 @@ class Game {
 
   startDemo() {
     const a = randInt(0, 7); let b = randInt(0, 7); if (b === a) b = (a + 1) % 8;
-    this.demo = new Match(this.db[a], this.db[b], { humanTeam: -1, halfSeconds: 900 });
+    // a Natale il menu è una sera con la neve
+    const xmas = this.xmas && this.xmas.on ? { weather: 'snow', timeOfDay: 'night' } : {};
+    this.demo = new Match(this.db[a], this.db[b], Object.assign({ humanTeam: -1, halfSeconds: 900 }, xmas));
     this.renderer.localId = null; this.renderer.names = null;
+    this.renderer.menuDemo = true;
     this.renderer.setupMatch(this.demo);
   }
 
@@ -363,6 +369,7 @@ class Game {
   prepareMatchView(m, localId, names) {
     this.match = m;
     this.renderer.localId = localId; this.renderer.names = names || null;
+    this.renderer.menuDemo = false;
     this.renderer.setupMatch(m);
     this.replay = null; this.replayPending = null; this.paused = false;
     this.demo = null; this.acc = 0;
@@ -409,12 +416,14 @@ class Game {
     m.showBanner(comp.name + ' · ' + C.roundLabel(comp, C.currentRound(comp)), 3);
   }
 
-  startMatch() {
+  // xmas: Partita di Natale (src/game/36_natale.js), sempre di sera con la neve
+  startMatch(xmas) {
     this.compMatch = null;
     const s = this.setup;
+    if (xmas && s.side === -1) s.side = 0;   // la Partita di Natale si gioca, non si guarda
     const home = this.teamForMatch(s.home, s.side === 0), away = this.teamForMatch(s.away, s.side === 1);
     const opts = { humanTeam: s.side, difficulty: s.difficulty, halfSeconds: s.halfSeconds, subs: true, injuries: true,
-      weather: pickWeather(s.weather), timeOfDay: pickTimeOfDay(s.timeOfDay) };
+      weather: xmas ? 'snow' : pickWeather(s.weather), timeOfDay: xmas ? 'night' : pickTimeOfDay(s.timeOfDay) };
     // con "Supplementari e rigori" o "Subito i rigori" la partita è a eliminazione diretta (08_shootout.js)
     const m = s.onDraw === 'extra' || s.onDraw === 'pens'
       ? new KnockoutMatch(home, away, Object.assign(opts, { knockout: { extraTime: s.onDraw === 'extra', penalties: true } }))
@@ -424,8 +433,10 @@ class Game {
       weather: s.weather, timeOfDay: s.timeOfDay, onDraw: s.onDraw };
     saveSettings(this.settings);
     this.mode = 'offline';
+    m.xmasMatch = !!xmas;
     this.prepareMatchView(m, 'local', null);
     $('netind').hidden = true;
+    if (xmas) m.showBanner(tr('Partita di Natale'), 3);
   }
 
   // guarda una partita del server (vedi 17_fixture_watch.js)
@@ -812,6 +823,12 @@ class Game {
     this.segmented('st-lang', LANGUAGES.map(l => ({ label: l.label, value: l.id, noTranslate: true })), s.lang, v => {
       s.lang = v; save();
       setLanguage(v);
+      this.renderSettings();
+    });
+    // generale: tema di Natale (src/game/36_natale.js)
+    this.segmented('st-xmas', [{ label: 'Automatico', value: 'auto' }, { label: 'Sempre', value: 'on' }, { label: 'Spento', value: 'off' }], s.xmas, v => {
+      s.xmas = v; save();
+      this.xmas.apply();
       this.renderSettings();
     });
     // grafica
@@ -1263,6 +1280,8 @@ class Game {
         R.netBulge(Math.sign(e.x || 1), e.y || 1, e.z || 0, e.power || 15);
         R.shake = 0.6;
         R.cameraFlashes(2.8);   // flash dei fotografi (09_render_stadium.js)
+        // a Natale: fuochi d'artificio sopra lo stadio e campanelli della slitta (09_render_natale.js, 10_audio.js)
+        if (R.xmasDeco) { this.audio.fireworks(R.christmasGoal(Math.sign(e.x || 1))); this.audio.sleighBells(0.3, 2.6); }
         this.rumble(450, 1, 0.7);
         break;
       }

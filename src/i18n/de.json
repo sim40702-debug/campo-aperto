@@ -862,7 +862,9 @@
     "Fedelissimo": "Treuester Fan",
     "Ritira il bonus giornaliero 7 giorni di fila": "Hole den Tagesbonus 7 Tage in Folge ab",
     "Compra": "Kaufen",
-    "Saldo insufficiente": "Guthaben reicht nicht"
+    "Saldo insufficiente": "Guthaben reicht nicht",
+    "Il server di Campo Aperto non è ancora aggiornato (versione {0}, il gioco è la {1}): questa partita si potrà guardare in 3D quando il server sarà aggiornato. Cronaca, risultato e scommesse funzionano già.": "Der Server von Campo Aperto ist noch nicht aktualisiert (Version {0}, das Spiel ist {1}): Dieses Spiel kannst du in 3D ansehen, sobald der Server aktualisiert ist. Spielbericht, Ergebnis und Wetten funktionieren schon.",
+    "Questa partita è stata calcolata con un motore più nuovo del tuo gioco: aggiorna il gioco per guardarla in 3D. Cronaca, risultato e scommesse funzionano già.": "Dieses Spiel wurde mit einer neueren Engine als deinem Spiel berechnet: Aktualisiere das Spiel, um es in 3D anzusehen. Spielbericht, Ergebnis und Wetten funktionieren schon."
   },
   "competizioni": {
     "Coppa": "Pokal",
@@ -1768,5 +1770,25 @@
     "Avversario trovato": "Gegner gefunden",
     "Gioca una partita veloce online con «Cerca avversario»": "Spiel ein schnelles Online-Spiel mit «Gegner suchen»",
     "Premio della classifica online": "Preis der Online-Rangliste"
+  },
+  "natale": {
+    "Tema di Natale": "Weihnachtsdesign",
+    "Automatico": "Automatisch",
+    "Sempre": "Immer",
+    "Spento": "Aus",
+    "Stadio addobbato con alberi e luci, cappelli di Babbo Natale, neve nel menu, fuochi d'artificio sui gol e il pubblico che canta. Con Automatico si accende da solo dal 1° dicembre al 6 gennaio.": "Geschmücktes Stadion mit Bäumen und Lichtern, Weihnachtsmützen, Schnee im Menü, Feuerwerk bei Toren und singendes Publikum. Mit Automatisch schaltet es sich vom 1. Dezember bis 6. Januar von selbst ein.",
+    "Partita di Natale": "Weihnachtsspiel",
+    "Sotto la neve, con le luci accese e i cappelli di Babbo Natale": "Im Schnee, mit Lichtern und Weihnachtsmützen",
+    "Mancano {0} giorni a Natale": "Noch {0} Tage bis Weihnachten",
+    "Domani è Natale!": "Morgen ist Weihnachten!",
+    "Buon Natale!": "Frohe Weihnachten!",
+    "Buone feste!": "Schöne Feiertage!",
+    "Gol sotto l'albero": "Tor unterm Baum",
+    "Segna un gol con il tema di Natale acceso": "Schiesse ein Tor mit eingeschaltetem Weihnachtsdesign",
+    "Regalo di Natale": "Weihnachtsgeschenk",
+    "Vinci la Partita di Natale": "Gewinne das Weihnachtsspiel",
+    "Un regalo sotto l'albero da {0}!": "Ein Geschenk unterm Baum von {0}!",
+    "{0} scarta il regalo: gol!": "{0} packt das Geschenk aus: Tor!",
+    "Che regalo di Natale, {0}!": "Was für ein Weihnachtsgeschenk, {0}!"
   }
 }

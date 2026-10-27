@@ -862,7 +862,9 @@
     "Fedelissimo": "Loyal fan",
     "Ritira il bonus giornaliero 7 giorni di fila": "Collect the daily bonus 7 days in a row",
     "Compra": "Buy",
-    "Saldo insufficiente": "Not enough balance"
+    "Saldo insufficiente": "Not enough balance",
+    "Il server di Campo Aperto non è ancora aggiornato (versione {0}, il gioco è la {1}): questa partita si potrà guardare in 3D quando il server sarà aggiornato. Cronaca, risultato e scommesse funzionano già.": "The Campo Aperto server hasn't been updated yet (version {0}, the game is {1}): you'll be able to watch this match in 3D once the server is updated. Commentary, result and bets already work.",
+    "Questa partita è stata calcolata con un motore più nuovo del tuo gioco: aggiorna il gioco per guardarla in 3D. Cronaca, risultato e scommesse funzionano già.": "This match was calculated with a newer engine than your game: update the game to watch it in 3D. Commentary, result and bets already work."
   },
   "competizioni": {
     "Coppa": "Cup",
@@ -1768,5 +1770,25 @@
     "Avversario trovato": "Opponent found",
     "Gioca una partita veloce online con «Cerca avversario»": "Play an online quick match with \"Find opponent\"",
     "Premio della classifica online": "Online ranking prize"
+  },
+  "natale": {
+    "Tema di Natale": "Christmas theme",
+    "Automatico": "Automatic",
+    "Sempre": "Always",
+    "Spento": "Off",
+    "Stadio addobbato con alberi e luci, cappelli di Babbo Natale, neve nel menu, fuochi d'artificio sui gol e il pubblico che canta. Con Automatico si accende da solo dal 1° dicembre al 6 gennaio.": "Stadium decorated with trees and lights, Santa hats, snow in the menu, fireworks after goals and the crowd singing. With Automatic it switches on by itself from 1 December to 6 January.",
+    "Partita di Natale": "Christmas match",
+    "Sotto la neve, con le luci accese e i cappelli di Babbo Natale": "In the snow, with the lights on and Santa hats",
+    "Mancano {0} giorni a Natale": "{0} days to Christmas",
+    "Domani è Natale!": "Christmas is tomorrow!",
+    "Buon Natale!": "Merry Christmas!",
+    "Buone feste!": "Happy holidays!",
+    "Gol sotto l'albero": "Goal under the tree",
+    "Segna un gol con il tema di Natale acceso": "Score a goal with the Christmas theme on",
+    "Regalo di Natale": "Christmas present",
+    "Vinci la Partita di Natale": "Win the Christmas match",
+    "Un regalo sotto l'albero da {0}!": "A present under the tree from {0}!",
+    "{0} scarta il regalo: gol!": "{0} unwraps the present: goal!",
+    "Che regalo di Natale, {0}!": "What a Christmas present, {0}!"
   }
 }

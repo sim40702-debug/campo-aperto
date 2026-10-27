@@ -42,6 +42,7 @@ Renderer.prototype.applyEnvironment = function (weather, timeOfDay) {
     m.emissive = col(this.weather === 'snow' ? '#363c42' : '#000000');
   }
   this.setWeatherParticles(this.weather);
+  this.applyChristmasLight();   // lucine di Natale più forti la sera (09_render_natale.js)
 };
 
 // ---------- pioggia (righe che cadono veloci) e neve (fiocchi lenti che ondeggiano) ----------

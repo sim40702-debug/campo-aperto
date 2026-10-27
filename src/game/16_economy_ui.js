@@ -425,9 +425,18 @@ class Economy {
     }
     const canWatch = t >= f.kickoffAt && f.seed !== undefined;
     const sameEngine = f.engine === ENGINE_ID;
-    $('mc-watch').disabled = !canWatch || !sameEngine;
+    // con un motore diverso il pulsante resta cliccabile e spiega perché non si può guardare in 3D (prima era solo grigio)
+    $('mc-watch').disabled = !canWatch;
+    $('mc-watch').classList.toggle('off', !sameEngine);
     $('mc-watch').textContent = f.phase === 'FINISHED' ? 'Guarda dall\'inizio' : 'Guarda partita';
-    $('mc-watch').title = !sameEngine ? 'Questa partita è stata calcolata con un altro motore (' + f.engine + ', il tuo gioco ha ' + ENGINE_ID + '): aggiorna il gioco per guardarla in 3D. Cronaca e risultato restano qui.' : !canWatch ? 'Si può guardare dal calcio d\'inizio' : '';
+    $('mc-watch').title = !sameEngine ? this.engineText(f) : !canWatch ? 'Si può guardare dal calcio d\'inizio' : '';
+    // versione del server non ancora letta (es. avvio senza controllo): la si chiede una volta
+    if (!sameEngine && !this.g.serverStatus && !this.statusAsked) {
+      this.statusAsked = true;
+      this.api.get('/api/status').then(r => { this.g.serverStatus = r; this.renderCenterState(); }).catch(() => {});
+    }
+    $('mc-engine').hidden = sameEngine;
+    if (!sameEngine) $('mc-engine').textContent = this.engineText(f);
   }
   renderMarkets() {
     const f = this.fx;
@@ -775,10 +784,23 @@ class Economy {
   }
 
   // ---------- guardare una partita del server ----------
+  // partita del server calcolata con un altro motore: di chi è la versione vecchia, il server o il gioco?
+  serverBehind() {
+    const st = this.g.serverStatus;
+    if (!st || !st.game) return false;
+    const n = v => String(v).split('.').map(x => Number(x) || 0);
+    const a = n(st.game), b = n(GAME_VERSION);
+    for (let i = 0; i < 3; i++) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) < (b[i] || 0);
+    return false;
+  }
+  engineText(f) {
+    if (this.serverBehind()) return trf('Il server di Campo Aperto non è ancora aggiornato (versione {0}, il gioco è la {1}): questa partita si potrà guardare in 3D quando il server sarà aggiornato. Cronaca, risultato e scommesse funzionano già.', this.g.serverStatus.game, GAME_VERSION);
+    return tr('Questa partita è stata calcolata con un motore più nuovo del tuo gioco: aggiorna il gioco per guardarla in 3D. Cronaca, risultato e scommesse funzionano già.');
+  }
   watch() {
     const f = this.fx;
     if (!f || f.seed === undefined) return;
-    if (f.engine !== ENGINE_ID) { this.g.toast('Partita calcolata con un altro motore: aggiorna il gioco per guardarla in 3D', true); return; }
+    if (f.engine !== ENGINE_ID) { this.g.toast(this.engineText(f), true); return; }
     this.g.startFixtureWatch(f);
   }
   async claimWatchReward() {

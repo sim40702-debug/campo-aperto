@@ -28,9 +28,11 @@ const COMMENTARY = {
   PEN_SCORED: ['{0} non sbaglia!', 'Rigore trasformato da {0}!'],
   PEN_MISSED: ['{0} sbaglia!', 'Niente da fare per {0}!'],
   SHOOTOUT_END: ['Finisce ai rigori!', 'La serie dei rigori è finita!'],
+  // tema di Natale (src/game/36_natale.js): ogni tanto un gol diventa un regalo
+  XMAS_GOAL: ['Un regalo sotto l\'albero da {0}!', '{0} scarta il regalo: gol!', 'Che regalo di Natale, {0}!'],
 };
 // importanza: una frase più importante sostituisce subito quella in corso, una meno importante aspetta
-const COMMENTARY_RANK = { SHOOTOUT: 8, PEN_SCORED: 9, PEN_MISSED: 9, SHOOTOUT_END: 9, GOAL: 9, OWN_GOAL: 9, RED_CARD: 8, PENALTY: 8, FULL_TIME: 8, HALF_TIME: 7, YELLOW_CARD: 6, SAVE: 6, POST: 6,
+const COMMENTARY_RANK = { SHOOTOUT: 8, PEN_SCORED: 9, PEN_MISSED: 9, SHOOTOUT_END: 9, GOAL: 9, XMAS_GOAL: 9, OWN_GOAL: 9, RED_CARD: 8, PENALTY: 8, FULL_TIME: 8, HALF_TIME: 7, YELLOW_CARD: 6, SAVE: 6, POST: 6,
   MISS: 5, KICK_OFF: 4, SHOT: 4, OFFSIDE: 3, FOUL: 3, ADVANTAGE: 3, CORNER: 2 };
 
 class Commentary {
@@ -107,7 +109,7 @@ class Commentary {
     const r = e.r, who = r.player && r.player.name ? r.player.name : '';
     const teamName = r.team >= 0 && match && match.teams[r.team] ? match.teams[r.team].name : '';
     switch (r.type) {
-      case 'GOAL': this.lastShot = null; this.say(r.reason === 'Autogol' ? 'OWN_GOAL' : 'GOAL', who || teamName, now); break;
+      case 'GOAL': this.lastShot = null; this.say(r.reason === 'Autogol' ? 'OWN_GOAL' : this.xmas && Math.random() < 0.5 ? 'XMAS_GOAL' : 'GOAL', who || teamName, now); break;
       case 'SHOT': this.lastShot = { at: now }; this.say('SHOT', who, now); break;
       case 'SHOT_ON_TARGET': this.lastShot = null; break;
       case 'FOUL': this.say('FOUL', who, now); break;
