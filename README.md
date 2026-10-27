@@ -8,12 +8,13 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.21)
+### Le novità (0.10 – 0.22)
 
+- **Natale come in TV** (0.22): il tema di Natale è sempre acceso; immagine con bagliore e colori da partita in TV,
+  telecamera più vicina, prato nuovo, neve attorno al campo, tifosi con il cappello di Babbo Natale.
 - **Versione di Natale** (0.21): stadio addobbato con alberi e lucine, neve sui tetti, cappelli di Babbo Natale,
   pallone e cartelloni di Natale, fuochi d'artificio sui gol, il pubblico che canta Jingle Bells, la **Partita di
-  Natale** nella Home e due trofei nuovi. Si accende da solo dal 1° dicembre al 6 gennaio (o subito: Impostazioni →
-  Generale → Tema di Natale → Sempre).
+  Natale** nella Home e due trofei nuovi.
 
 - **Stagioni mensili** della classifica online con premi e distintivi ai primi tre, e **partita veloce online**
   con «Cerca avversario»: il gioco trova da solo un avversario (0.20).

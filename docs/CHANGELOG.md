@@ -2,6 +2,19 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.22.0 — 27/10/2026 (Natale come in TV)
+- **Il tema di Natale è sempre acceso**: è il tema del gioco per queste feste (niente più scelta nelle impostazioni).
+- **Immagine come nelle partite in TV** (qualità Media, Alta e Ultra): bagliore attorno a fari, lucine, stelle e
+  fuochi d'artificio, colori più pieni e contrastati, vignettatura leggera; i bordi restano lisci (antialiasing).
+  In Bassa si disegna come prima.
+- **Telecamera televisiva** più bassa e più vicina: i giocatori si vedono più grandi, come nelle partite di oggi.
+- **Prato nuovo**: verde pieno con le strisce del tosaerba ben visibili e la luce dei fari sul campo.
+- **Neve vera d'inverno**: con la neve il campo resta verde (spalato) e la neve sta tutta attorno, fino ai cartelloni,
+  invece di un velo chiaro su tutto. Niente più righe che tremolavano sul campo da lontano.
+- **Giocatori**: maglie che lucidano un po' sotto i fari, gambe e braccia più da atleta.
+- **Tifosi con il cappello di Babbo Natale** sulle tribune.
+- Solo grafica: il motore della partita non cambia (stessa impronta), il server non va aggiornato.
+
 ## 0.21.0 — 27/10/2026 (versione di Natale)
 - **Tema di Natale** (Impostazioni → Generale → **Tema di Natale**): *Automatico* lo accende da solo dal 1° dicembre
   al 6 gennaio, *Sempre* subito, *Spento* mai. Con il tema acceso:

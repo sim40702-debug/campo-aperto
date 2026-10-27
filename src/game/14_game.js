@@ -825,12 +825,6 @@ class Game {
       setLanguage(v);
       this.renderSettings();
     });
-    // generale: tema di Natale (src/game/36_natale.js)
-    this.segmented('st-xmas', [{ label: 'Automatico', value: 'auto' }, { label: 'Sempre', value: 'on' }, { label: 'Spento', value: 'off' }], s.xmas, v => {
-      s.xmas = v; save();
-      this.xmas.apply();
-      this.renderSettings();
-    });
     // grafica
     this.segmented('st-quality', QUALITY_LEVELS.map(q => ({ label: q.label, value: q.id })), s.quality, v => { s.quality = v; this.renderer.setQuality(v); save(); this.renderSettings(); });
     const res = $('st-res');

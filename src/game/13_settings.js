@@ -36,7 +36,6 @@ function defaultSettings() {
     commentary: true,         // telecronaca a scritte durante la partita
     commentaryVoice: true,    // la telecronaca si sente anche a voce (sintesi vocale del computer)
     controlsUpdatedAt: 0,     // ultima modifica dei comandi (per scegliere tra computer e account la più recente)
-    xmas: 'auto',             // tema di Natale: 'auto' (dal 1° dicembre al 6 gennaio), 'on' sempre, 'off' mai (src/game/36_natale.js)
   };
 }
 function loadSettings() {
@@ -80,7 +79,6 @@ function loadSettings() {
   s.teamNames = tn;
   s.deadzone = clamp(Number(s.deadzone) || 0.22, 0.1, 0.4);
   if (!PAD_NAMES[s.padLayout]) s.padLayout = 'xbox';
-  if (!['auto', 'on', 'off'].includes(s.xmas)) s.xmas = 'auto';
   return s;
 }
 // chi vuole sapere quando le impostazioni cambiano (es. i comandi da salvare anche sull'account)
