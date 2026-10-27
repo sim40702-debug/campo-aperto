@@ -568,6 +568,8 @@ class Renderer {
     else hair([1.03, 1.15, 0.97], 1.4, 0.01);
     if (look.beard) headParts.push({ geo: new THREE.SphereGeometry(0.098, 10, 6, 0, Math.PI * 2, 1.75, 1.25), color: look.hair, pos: [0.018, H - 0.012, 0], scale: [1.02, 1.12, 0.95] });
     if (acc && acc.kind === 'fascia') headParts.push({ geo: cyl(0.118, 0.118, 0.032, 12), color: acc.color, pos: [-0.005, H + 0.06, 0], scale: [1.02, 1, 0.95] });
+    // tema di Natale: cappello di Babbo Natale (09_render_natale.js)
+    if (this.xmas) for (const hp of this.xmasHatParts(H, seg)) headParts.push(hp);
     const head = mesh(headParts); neck.add(head);
     const legs = [], arms = [];
     for (const side of [-1, 1]) {
@@ -924,6 +926,7 @@ class Renderer {
     this.updateOfficials(match, dt, bx, bz);
     this.updateCamera(dt, bx, by, bz, mine && mine.player, match);
     this.updateWeather(dt);
+    this.updateChristmas(dt, this.menuDemo);   // lucine e fuochi d'artificio (09_render_natale.js)
   }
 
   animateCrowd(dt) {
@@ -963,6 +966,7 @@ class Renderer {
     this.camTarget.lerp(new THREE.Vector3(frame[0], frame[1] * 0.5 + 0.5, frame[2]), Math.min(1, dt * 5));
     this.camera.lookAt(this.camTarget);
     this.updateWeather(dt);
+    this.updateChristmas(dt, false);
   }
 
   updateCamera(dt, bx, by, bz, controlled, match) {

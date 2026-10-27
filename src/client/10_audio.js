@@ -200,7 +200,7 @@ class GameAudio {
   chant(which) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime + 0.05;
-    const N = { C: 196, D: 220, E: 247, G: 294, A: 330 };   // note basse, come un coro di stadio
+    const N = { C: 196, D: 220, E: 247, F: 262, G: 294, A: 330 };   // note basse, come un coro di stadio
     const songs = [
       // "o-o-o, o-o-o-o" su due note
       [['E', 0.45], ['E', 0.45], ['E', 0.9], ['D', 0.45], ['E', 0.45], ['G', 0.45], ['E', 0.9]],
@@ -209,7 +209,14 @@ class GameAudio {
       // tre colpi e un grido
       [['C', 0.35], ['C', 0.35], ['C', 0.7], ['E', 0.35], ['G', 1.2]],
     ];
-    const song = songs[(which === undefined ? Math.floor(Math.random() * songs.length) : which) % songs.length];
+    // a Natale (tema acceso) metà delle volte il pubblico canta il ritornello di Jingle Bells (melodia del 1857)
+    let song = songs[(which === undefined ? Math.floor(Math.random() * songs.length) : which) % songs.length];
+    if (this.xmas && (which === 'xmas' || (which === undefined && Math.random() < 0.5))) {
+      const q = 0.3;
+      song = [['E', q], ['E', q], ['E', q * 2], ['E', q], ['E', q], ['E', q * 2], ['E', q], ['G', q], ['C', q * 1.5], ['D', q * 0.5], ['E', q * 4],
+        ['F', q], ['F', q], ['F', q * 1.5], ['F', q * 0.5], ['F', q], ['E', q], ['E', q], ['E', q * 0.5], ['E', q * 0.5], ['E', q], ['D', q], ['D', q], ['E', q], ['D', q * 2], ['G', q * 2]];
+      this.sleighBells(0, song.reduce((a, x) => a + x[1], 0), 0.5);
+    }
     const notes = song.map(x => [N[x[0]], x[1]]);
     const v = this.voices(t, notes, { n: 18, vowel: which === 1 ? 'e' : 'o', vol: 0, glide: 0.04 });
     // ogni nota è "cantata": la voce sale all'inizio e cala un po' alla fine
@@ -245,6 +252,46 @@ class GameAudio {
     if (this.chantWait > 0 || !calm) return;
     const len = this.chant();
     this.chantWait = (len || 5) + 25 + Math.random() * 35;
+  }
+  // campanelli della slitta (tema di Natale): tanti piccoli colpi metallici a ritmo, per secs secondi
+  sleighBells(delay, secs, amount) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t0 = ctx.currentTime + (delay || 0), vol = 0.05 * (amount || 1);
+    const hits = Math.round(secs * 8);
+    for (let i = 0; i < hits; i++) {
+      // due colpi per battito, come quando si scuote la sonagliera
+      for (const off of [0, 0.06]) {
+        const t = t0 + i * 0.125 + off + Math.random() * 0.012;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * (off ? 0.6 : 1) * (1 - i / hits * 0.4), t + 0.003); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.13);
+        g.connect(this.sfx);
+        // suono di campanella: frequenze non armoniche, che vibrano un po'
+        for (const f of [2637, 3951, 5274, 6640]) {
+          const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * (0.985 + Math.random() * 0.03);
+          o.connect(g); o.start(t); o.stop(t + 0.15);
+        }
+      }
+    }
+  }
+  // botti dei fuochi d'artificio: times = secondi tra quanto scoppia ogni razzo
+  fireworks(times) {
+    if (!this.ctx || !times) return;
+    const ctx = this.ctx;
+    for (const d of times) {
+      const t = ctx.currentTime + d;
+      // botto sordo e lontano, poi lo scoppiettio delle scintille
+      const src = ctx.createBufferSource(); src.buffer = this.noise;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 380;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+      src.connect(f); f.connect(g); g.connect(this.sfx); src.start(t, Math.random()); src.stop(t + 0.8);
+      for (let k = 0; k < 14; k++) {
+        const tt = t + 0.15 + Math.random() * 0.9;
+        const c = ctx.createBufferSource(); c.buffer = this.noise;
+        const cf = ctx.createBiquadFilter(); cf.type = 'highpass'; cf.frequency.value = 2500;
+        const cg = ctx.createGain(); cg.gain.setValueAtTime(0.03, tt); cg.gain.exponentialRampToValueAtTime(0.0005, tt + 0.03);
+        c.connect(cf); cf.connect(cg); cg.connect(this.sfx); c.start(tt, Math.random()); c.stop(tt + 0.04);
+      }
+    }
   }
   // battito del cuore (rigori): "tu-tum" ogni 0,8 secondi finché on è vero
   heartbeat(dt, on) {

@@ -125,6 +125,35 @@ input[type=range] { width: 100%; accent-color: var(--flood); }
 .sop-row i.now { border-color: var(--flood); animation: so-blink 0.8s ease-in-out infinite alternate; }
 @keyframes so-blink { from { opacity: 1; } to { opacity: 0.35; } }
 
+/* ---------- tema di Natale (src/game/36_natale.js) ---------- */
+/* neve che cade nel menu (dietro le scritte, il menu fisso fa da contesto): tre strati di fiocchi disegnati con i gradienti, nessuna immagine */
+body.xmas .menu::before { content: ''; position: absolute; inset: -40px 0 0 0; pointer-events: none; z-index: -1; opacity: 0.85;
+  background-image: radial-gradient(2.6px 2.6px at 20px 30px, #fff 50%, transparent 52%), radial-gradient(2px 2px at 90px 120px, #fff 50%, transparent 52%),
+    radial-gradient(3px 3px at 160px 60px, rgba(255,255,255,0.9) 50%, transparent 52%), radial-gradient(1.8px 1.8px at 230px 180px, #fff 50%, transparent 52%),
+    radial-gradient(2.4px 2.4px at 60px 210px, rgba(255,255,255,0.8) 50%, transparent 52%), radial-gradient(1.6px 1.6px at 200px 260px, #fff 50%, transparent 52%);
+  background-size: 260px 280px; animation: xmas-snow 14s linear infinite; }
+body.xmas .menu::after { content: ''; position: absolute; inset: -40px 0 0 0; pointer-events: none; z-index: -1; opacity: 0.55;
+  background-image: radial-gradient(1.6px 1.6px at 40px 50px, #fff 50%, transparent 52%), radial-gradient(1.3px 1.3px at 130px 140px, #fff 50%, transparent 52%),
+    radial-gradient(1.5px 1.5px at 75px 95px, #fff 50%, transparent 52%);
+  background-size: 170px 180px; animation: xmas-snow2 22s linear infinite; }
+@keyframes xmas-snow { from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; } to { background-position: 30px 280px, -20px 280px, 15px 280px, -30px 280px, 25px 280px, 0 280px; } }
+@keyframes xmas-snow2 { from { background-position: 0 0, 0 0, 0 0; } to { background-position: -25px 180px, 20px 180px, 10px 180px; } }
+@media (prefers-reduced-motion: reduce) { body.xmas .menu::before, body.xmas .menu::after { animation: none; } }
+/* cappello di Babbo Natale sulla C del titolo */
+body.xmas .title span:first-child { position: relative; }
+body.xmas .title span:first-child::before { content: ''; position: absolute; left: -0.16em; top: -0.42em; width: 0.62em; height: 0.52em; transform: rotate(-16deg); pointer-events: none;
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 54'%3E%3Cpath d='M6 40C10 22 22 6 40 4c9-1 16 5 18 14l-6 4c-2-6-6-9-11-8-8 2-13 14-15 26z' fill='%23d0102e'/%3E%3Cpath d='M40 4c9-1 16 5 18 14l-6 4c-2-6-6-9-11-8z' fill='%23a50c24'/%3E%3Crect x='2' y='38' width='36' height='11' rx='5.5' fill='%23f4f2ec'/%3E%3Ccircle cx='55' cy='22' r='6.5' fill='%23f4f2ec'/%3E%3C/svg%3E"); }
+/* centro partita: partita del server con un altro motore (pulsante attenuato, spiegazione sotto) */
+#mc-watch.off { opacity: 0.6; }
+.mc-engine { max-width: 70ch; background: var(--night-2); border-left: 4px solid #ff9a3c; padding: 8px 12px; margin: -4px 0 14px; line-height: 1.45; }
+/* il menu si centra senza tagliare il titolo quando non c'è abbastanza spazio */
+body.xmas .menu-col { justify-content: safe center; }
+/* riquadro della Partita di Natale: rosso, con un bordo dorato */
+.home-tile.xmas-tile { background: linear-gradient(100deg, rgba(150,14,32,0.94), rgba(92,10,24,0.9)); border-left-color: #ffd84a; }
+.home-tile.xmas-tile:hover, .home-tile.xmas-tile:focus-visible { background: linear-gradient(100deg, rgba(178,20,40,0.97), rgba(110,12,28,0.95)); }
+.home-tile.xmas-tile small { color: #ffe1b0; }
+.home-tile.xmas-tile svg { stroke: #ffd84a; }
+
 /* ---------- home ---------- */
 .menu-col { display: flex; flex-direction: column; min-height: 100%; justify-content: center; padding-top: max(3vh, 84px); width: 100%; min-width: 0; }
 .menu .title { font-size: clamp(40px, min(7vw, 10vh), 92px); margin-bottom: clamp(14px, 3vh, 30px); }
@@ -758,6 +787,8 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <button class="home-tile home-train" id="btn-training"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9.5L12 4l8 5.5V20"/><path d="M8 20v-6h8v6"/><circle cx="12" cy="9.5" r="1.6" class="f"/></svg><b>Allenamento</b><small>Tiri, punizioni, rigori</small></button>
     </div>
     <div class="home-tiles" role="list">
+      <!-- tema di Natale (src/game/36_natale.js): si vede solo quando è acceso -->
+      <button class="home-tile wide xmas-tile" id="btn-xmas" role="listitem" title="Sotto la neve, con le luci accese e i cappelli di Babbo Natale" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2L8.8 5.5l2.2-.3z" class="f"/><path d="M12 9l-4.5 5.2h2.4L6 19h12l-3.9-4.8h2.4z"/><path d="M11 19v2h2v-2"/></svg><b>Partita di Natale</b><small><span id="xmas-count"></span></small></button>
       <button class="home-tile wide comp-tile" id="btn-comps" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 3.6M17 6h2.5a2.5 2.5 0 0 1-2.6 3.6"/><path d="M12 13v3.5M8.5 20h7l-.8-3.5H9.3z"/></svg><b>Competizioni</b><small>Campionato, torneo e coppe: calendario, classifica, tabellone</small></button>
       <button class="home-tile wide" id="btn-watch" data-eco="fixtures" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12.5" rx="1.5"/><path d="M8 21h8M12 17.5V21"/><path d="M10 9l5 2.3-5 2.3z" class="f"/></svg><b>Guarda partita</b><small>Partite del server, cronaca e scommesse dei giocatori</small></button>
       <button class="home-tile" id="btn-online" role="listitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M2.5 19c.6-3.6 2.8-5.5 5.5-5.5s4.9 1.9 5.5 5.5M13.6 14.6c.9-.7 1.8-1 2.9-1 2.3 0 4 1.6 4.6 4.9"/></svg><b>Multiplayer</b><small>Online o in rete locale</small></button>
@@ -991,6 +1022,8 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
     <div data-pane="generale" class="opts">
       <span class="lbl">Lingua</span><div class="segs" id="st-lang"></div>
+      <span class="lbl">Tema di Natale</span><div class="segs" id="st-xmas"></div>
+      <span></span><p class="small" style="margin:0">Stadio addobbato con alberi e luci, cappelli di Babbo Natale, neve nel menu, fuochi d'artificio sui gol e il pubblico che canta. Con Automatico si accende da solo dal 1° dicembre al 6 gennaio.</p>
       <span class="lbl">Telecronaca</span><div class="segs" id="st-commentary"></div>
       <span></span><p class="small" style="margin:0">Frasi brevi durante la partita (gol, parate, falli, cartellini). La voce usa la sintesi vocale del computer, nella lingua del gioco.</p>
       <span class="lbl" id="st-updlbl" hidden>Aggiornamenti</span><div class="segs upd-row" id="st-updrow" hidden><button class="seg" id="st-upd">Controlla ora</button><span class="small" id="st-updinfo"></span></div>
@@ -1162,6 +1195,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
       <div class="small" id="mc-weather"></div>
       <button class="primary" id="mc-watch">Guarda partita</button>
     </div>
+    <p class="small mc-engine" id="mc-engine" hidden></p>
     <div class="ecomsg" id="mc-msg" hidden></div>
     <div class="mc-grid">
       <div>

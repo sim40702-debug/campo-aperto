@@ -8,7 +8,12 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.20)
+### Le novità (0.10 – 0.21)
+
+- **Versione di Natale** (0.21): stadio addobbato con alberi e lucine, neve sui tetti, cappelli di Babbo Natale,
+  pallone e cartelloni di Natale, fuochi d'artificio sui gol, il pubblico che canta Jingle Bells, la **Partita di
+  Natale** nella Home e due trofei nuovi. Si accende da solo dal 1° dicembre al 6 gennaio (o subito: Impostazioni →
+  Generale → Tema di Natale → Sempre).
 
 - **Stagioni mensili** della classifica online con premi e distintivi ai primi tre, e **partita veloce online**
   con «Cerca avversario»: il gioco trova da solo un avversario (0.20).
@@ -475,6 +480,7 @@ python3 tests/replay_browser_test.py     # salva un'azione, schermata Replay, te
 python3 tests/trofei_browser_test.py     # tutorial giocato da un bot, trofei, schermata Trofei
 python3 tests/grafica_browser_test.py    # tuffi del portiere, palla in mano, uscite, esultanze dopo il gol
 python3 tests/avvio_browser_test.py      # caricamento a passi, aggiornamento che salta versioni, dati vecchi, ripristino
+python3 tests/natale_browser_test.py     # tema di Natale: date, Home, stadio addobbato, cappelli, Partita di Natale, fuochi, trofei
 ```
 
 Per provare la vera app desktop:

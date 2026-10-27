@@ -30,6 +30,9 @@ const TROPHIES = [
   { id: 'online_win', name: 'Vittoria online', text: 'Vinci una partita online' },
   { id: 'quick_match', name: 'Avversario trovato', text: 'Gioca una partita veloce online con «Cerca avversario»' },
   { id: 'online_10', name: 'Giocatore online', text: 'Gioca 10 partite online', count: ['online', 10] },
+  // tema di Natale (src/game/36_natale.js)
+  { id: 'xmas_goal', name: 'Gol sotto l\'albero', text: 'Segna un gol con il tema di Natale acceso' },
+  { id: 'xmas_win', name: 'Regalo di Natale', text: 'Vinci la Partita di Natale' },
 ];
 
 class Trophies {
@@ -101,6 +104,7 @@ class Trophies {
         const d = Math.hypot(k.player.x - mine.oppGoalX(), k.player.z);
         if (d > 21) this.unlock('long_shot');
       }
+      if (e.team === c.team && this.g.xmas && this.g.xmas.on) this.unlock('xmas_goal');
     }
     if (e.type === 'post') {
       const k = m.lastKick;
@@ -123,6 +127,7 @@ class Trophies {
     if (mine.score - opp.score >= 4) this.unlock('thrash');
     if (c.minDiff <= -2) this.unlock('comeback');
     if (pens) this.unlock('pens');
+    if (m.xmasMatch) this.unlock('xmas_win');
     if (m.difficulty === 2 && !online) this.unlock('hard');
     if (!(mine.stats.yellow || 0) && !(mine.stats.red || 0)) this.unlock('fair');
   }

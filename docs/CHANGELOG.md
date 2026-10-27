@@ -2,6 +2,28 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.21.0 — 27/10/2026 (versione di Natale)
+- **Tema di Natale** (Impostazioni → Generale → **Tema di Natale**): *Automatico* lo accende da solo dal 1° dicembre
+  al 6 gennaio, *Sempre* subito, *Spento* mai. Con il tema acceso:
+  - **stadio addobbato**: sette alberi di Natale (agli angoli e davanti alla tribuna che si vede in partita) con
+    palline, lucine colorate che brillano e la stella in cima; festoni di luci davanti alle tribune e sotto i tetti,
+    neve sopra i tetti; cartelloni con Buon Natale in quattro lingue; pallone natalizio;
+  - **cappello di Babbo Natale** in testa a tutti: calciatori, portieri, arbitro e barellieri;
+  - **fuochi d'artificio** dietro la porta dopo ogni gol, con i botti, e ogni tanto anche nel menu;
+  - il pubblico canta **Jingle Bells** con i **campanelli della slitta**, che suonano anche sui gol;
+  - la telecronaca ha qualche frase di Natale sui gol;
+  - nella **Home** cade la neve, il titolo ha il cappello e c'è la **Partita di Natale**: un clic e si gioca con le
+    squadre della Nuova partita, di sera sotto la neve. Sul riquadro, quanti giorni mancano a Natale.
+  - due **trofei** nuovi: *Gol sotto l'albero* e *Regalo di Natale* (vinci la Partita di Natale).
+- **Guarda partita** nel centro partita non è più un pulsante grigio senza spiegazione: quando la partita del server è
+  stata calcolata con un altro motore, sotto c'è scritto perché e cosa fare (di solito: il server non è ancora
+  aggiornato). Cronaca, risultato e scommesse funzionano comunque.
+- I flash dei fotografi sono lampi tondi e sfumati invece di quadrati bianchi.
+- Solo grafica, suoni e menu: il motore della partita non cambia (stessa impronta), il server non va aggiornato per
+  questa versione. **Attenzione**: il server delle scommesse non si aggiorna da solo finché nel repository mancano i
+  segreti `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` (vedi docs/ECONOMIA.md); senza, va pubblicato a mano con
+  `npm run deploy` nella cartella cloud (prima il backup del database).
+
 ## 0.20.0 — 12/10/2026 (stagioni online e partita veloce)
 - **Stagioni della classifica online**: ogni mese è una stagione. In *Classifica online* la scheda **Questo mese**
   mostra i punti del mese, il giorno in cui finisce e i premi; **Di sempre** la classifica di prima. A fine mese il
