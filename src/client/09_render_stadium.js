@@ -94,7 +94,8 @@ Renderer.prototype.setupStadiumLife = function (match) {
 const FAN_SPACING = 0.62;
 const FAN_WINTER = ['#2b2f38', '#3a3f4a', '#5a2a2a', '#2a3a55', '#1f1f22', '#4a4038', '#6b6f76', '#7a1f2b', '#22423a'];
 Renderer.prototype.buildFans = function (life, kits, rnd) {
-  const rows = this.Q.detail >= 1.3 ? 9 : 6;
+  // file di tifosi in 3D: più file con la grafica più alta (Media 4, Alta 6, Ultra 8)
+  const rows = this.Q.detail >= 1.6 ? 8 : this.Q.detail >= 1.3 ? 6 : 4;
   // geometria di un tifoso (in piedi sul gradino, guarda verso +z prima della rotazione)
   const box = (w, h, d, y) => new THREE.BoxGeometry(w, h, d).translate(0, y, 0);
   const merge = (geos, armFlags) => {
@@ -116,7 +117,7 @@ Renderer.prototype.buildFans = function (life, kits, rnd) {
   };
   // busto un po' a botte (giacca), spalle, due braccia (alzate: si piegano giù nello shader quando il pubblico è calmo)
   const bodyGeo = merge([box(0.42, 0.55, 0.26, 0.6), box(0.48, 0.14, 0.28, 0.85), box(0.11, 0.48, 0.11, 1.12).translate(-0.2, 0, 0), box(0.11, 0.48, 0.11, 1.12).translate(0.2, 0, 0)], [0, 0, 1, 1]);
-  const headGeo = merge([new THREE.SphereGeometry(0.115, 8, 6).scale(1, 1.12, 1).translate(0, 1.06, 0)]);
+  const headGeo = merge([new THREE.SphereGeometry(0.115, 7, 5).scale(1, 1.12, 1).translate(0, 1.06, 0)]);
   const hatGeo = merge([new THREE.CylinderGeometry(0.122, 0.122, 0.06, 8).translate(0, 1.16, 0), new THREE.ConeGeometry(0.1, 0.24, 8).translate(0, 1.3, -0.02)]);
   // posti: le prime file di ogni tribuna
   const seats = [];
