@@ -93,6 +93,8 @@ async def main():
         fans = await pg.evaluate("() => { game.renderer.setupStadiumLife(game.renderer.match); return game.renderer.life.fans || 0; }")
         check('tifosi in 3D nelle prime file', fans > 2000, fans)
         song = await pg.evaluate("() => { const f = jingleBellsScore(false), c = jingleBellsScore(true); return [f.beats, c.beats, f.ev.filter(e => e.kind === 'mel').length, typeof game.audio.playJingleBells, !!document.getElementById('st-vmu')]; }")
+        voice = await pg.evaluate("() => { game.audio.init(); return game.audio.loadVoice().then(b => b ? Math.round(b.duration) : 0); }")
+        check('voce che canta le parole: dentro il gioco e leggibile (circa un minuto)', 55 <= voice <= 65, voice)
         check('Jingle Bells: strofa e ritornello (128 battiti), allo stadio solo il ritornello, volume Musica', song[0] == 128 and song[1] == 64 and song[2] > 80 and song[3] == 'function' and song[4], song)
         check('nessun errore', not errs, errs[:3])
         await b.close()

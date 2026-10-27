@@ -57,7 +57,12 @@ const files = gameFiles(/^\d\d_.*\.js$/);
 // "campoApiUrl" in package.json; il giocatore può sempre cambiarlo nelle impostazioni
 const apiUrl = String(process.env.CAMPO_API_URL || pkg.campoApiUrl || '').trim();
 if (apiUrl && !/^https?:\/\/[^\s"'<>]+$/i.test(apiUrl)) { console.error('CAMPO_API_URL non valido: ' + apiUrl); process.exit(1); }
-let code = 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = ' + JSON.stringify(target) + ';\nvar DEFAULT_API_URL = ' + JSON.stringify(apiUrl) + ';\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
+// voce che canta Jingle Bells (src/audio/jingle_voce.mp3, fatta con strumenti/voce_jingle/genera.py): dentro la pagina
+// come testo base64, così funziona anche offline e nell'app desktop senza file in più
+const voiceFile = path.join(srcDir, 'audio', 'jingle_voce.mp3');
+const voiceB64 = fs.existsSync(voiceFile) ? fs.readFileSync(voiceFile).toString('base64') : '';
+let code = 'var JINGLE_VOICE_B64 = ' + JSON.stringify(voiceB64) + ';\n';
+code += 'var GAME_VERSION = ' + JSON.stringify(version) + ';\nvar BUILD_TARGET = ' + JSON.stringify(target) + ';\nvar DEFAULT_API_URL = ' + JSON.stringify(apiUrl) + ';\nvar ENGINE_ID = ' + JSON.stringify(engineId) + ';\n';
 // regole condivise con il server prima del codice del gioco (sono funzioni pure: il gioco le usa già in fase di caricamento)
 code += '// ---- cloud/src/betlogic.js ----\n' + betLogicModule();
 code += '// ---- cloud/src/complogic.js ----\n' + sharedModule('complogic.js', 'CompLogic');

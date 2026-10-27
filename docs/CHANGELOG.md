@@ -16,9 +16,10 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
   squadre o la giacca d'inverno, che saltano, alzano le braccia ed esultano sui gol; a Natale uno su tre ha il
   cappello di Babbo Natale. Dietro, il pubblico disegnato ha anche lui i cappelli.
 - **Jingle Bells vera**: la canzone intera (strofa e ritornello, melodia del 1857) suonata con campanelle, pianoforte,
-  basso, sonagli della slitta e batteria, con l'eco dello stadio, e **cantata**: un coro canta le parole sillaba per
-  sillaba («jin-gle bells, jin-gle bells…»). Nei menu è la musica di sottofondo con il coro; in partita la suonano gli
-  altoparlanti dello stadio e tutto il pubblico canta il ritornello. Nuovo volume **Musica** in Impostazioni →
+  basso, sonagli della slitta e batteria, con l'eco dello stadio, e **cantata con le parole**: una voce (sintetica,
+  intonata sulle note, con il coro) canta «Dashing through the snow…» e «Jingle bells, jingle bells…». Nei menu è la
+  musica di sottofondo; in partita la suonano gli altoparlanti dello stadio e tutto il pubblico canta il ritornello.
+  La voce è in `src/audio/jingle_voce.mp3` (si rifà con `strumenti/voce_jingle/genera.py`) e sta dentro il gioco. Nuovo volume **Musica** in Impostazioni →
   Audio.
 - Solo grafica: il motore della partita non cambia (stessa impronta), il server non va aggiornato.
 

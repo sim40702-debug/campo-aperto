@@ -112,10 +112,21 @@ GameAudio.prototype.playJingleBells = function (mode) {
   // il pubblico canta il ritornello insieme agli altoparlanti
   if (stadium) this.crowdSing(song.start, score, spb);
   // nei menu canta un coro (poche voci, pulite) tutta la canzone, a ogni giro
+  // la voce che canta le parole (src/audio/jingle_voce.mp3): nei menu tutta la canzone, allo stadio il ritornello.
+  // Se la voce non c'è (o non si può leggere) canta il coro sintetico.
   const sing = () => {
-    if (stadium) return;
-    this.choir('verse', song.start, spb, { n: 6, vol: 0.16, dest: out });
-    this.choir('chorus', song.start + score.chorusAt * spb, spb, { n: 6, vol: 0.16, dest: out });
+    const at = song.start, from = stadium ? JB_VERSE.reduce((a, x) => a + x[1], 0) * spb : 0;
+    this.loadVoice().then(buf => {
+      if (this.song !== song) return;
+      if (!buf) { if (!stadium) { this.choir('verse', at, spb, { n: 6, vol: 0.16, dest: out }); this.choir('chorus', at + score.chorusAt * spb, spb, { n: 6, vol: 0.16, dest: out }); } return; }
+      const now = ctx.currentTime, late = Math.max(0, now + 0.05 - at);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const g = ctx.createGain(); g.gain.value = stadium ? 1.6 : 1.3;
+      src.connect(g); g.connect(out);
+      src.start(at + late, from + late);
+      if (stadium) src.stop(at + score.beats * spb + 1.5);
+      song.voices = (song.voices || []).concat([src]);
+    });
   };
   sing();
   const tick = () => {
@@ -139,11 +150,24 @@ GameAudio.prototype.playJingleBells = function (mode) {
   return score.beats * spb;
 };
 
+// la voce cantata, letta una volta sola dalla pagina (base64 -> suono)
+GameAudio.prototype.loadVoice = function () {
+  if (this._voice) return this._voice;
+  if (typeof JINGLE_VOICE_B64 === 'undefined' || !JINGLE_VOICE_B64) return (this._voice = Promise.resolve(null));
+  const bin = atob(JINGLE_VOICE_B64), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  this._voice = new Promise(ok => {
+    try { this.ctx.decodeAudioData(u8.buffer, b => ok(b), () => ok(null)); } catch (e) { ok(null); }
+  });
+  return this._voice;
+};
+
 GameAudio.prototype.stopJingleBells = function () {
   const s = this.song;
   if (!s) return;
   this.song = null;
   clearInterval(s.timer);
+  for (const v of s.voices || []) { try { v.stop(this.ctx.currentTime + 0.6); } catch (e) { /* già finita */ } }
   const t = this.ctx.currentTime;
   s.out.gain.cancelScheduledValues(t);
   s.out.gain.setValueAtTime(s.out.gain.value, t);
@@ -284,6 +308,6 @@ GameAudio.prototype.consonant = function (c, t, vol, dest) {
 // lo stadio canta il ritornello insieme agli altoparlanti: tante voci, un'ottava sotto (voci da stadio)
 GameAudio.prototype.crowdSing = function (start, score, spb) {
   const t0 = start + score.chorusAt * spb;
-  this.choir('chorus', t0, spb, { n: 16, vol: 0.2, octave: -12, dest: this.crowdBus });
-  this.choir('chorus', t0, spb, { n: 8, vol: 0.09, octave: 0, dest: this.crowdBus });   // e chi canta più acuto
+  this.choir('chorus', t0, spb, { n: 16, vol: 0.1, octave: -12, dest: this.crowdBus });
+  this.choir('chorus', t0, spb, { n: 8, vol: 0.05, octave: 0, dest: this.crowdBus });   // e chi canta più acuto
 };
