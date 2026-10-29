@@ -7,6 +7,8 @@
 #   diviso raggio).
 # - calciatori: materiale con opacità per pezzo e pieghe della stoffa, volti con occhi, tacchetti; i piedi non
 #   attraversano il pallone; frenata con la gamba avanti.
+# - campo, telecamera, effetti: linee del campo come geometria nitida (non più nella texture), telecamera televisiva
+#   che anticipa il pallone e si avvicina davanti alle porte, piccolo effetto sul palo.
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -130,6 +132,24 @@ async def main():
         check('calciatori: il pallone dentro la scarpa viene spostato fuori', pl['pushed'] > 0.02, pl)
         check('calciatori: frenata forte con la gamba avanti', pl['brake'] > 0.3 and pl['hip'] > 0.35, pl)
         await pg.screenshot(path=HERE + '/shots/024_calciatori.png')
+
+        # ---- SPRINT 5: campo, telecamera, effetti
+        await pg.evaluate("() => { game.quitToMenu(); game.setup.side = 0; game.startMatch(); for (let i = 0; i < 300; i++) game.updateOffline(1/60); }")
+        f5 = await pg.evaluate("""() => { const R = game.renderer, m = game.match, out = {};
+            out.lines = !!R.fieldLines && R.fieldLines.geometry.attributes.position.count > 1000 && R.fieldLines.visible;
+            // il pallone corre verso destra: la telecamera guarda più avanti del pallone
+            m.state = 'PLAY'; m.ball.owner = null; m.ball.x = -10; m.ball.z = 0; m.ball.y = 0.11; m.ball.vy = 0;
+            for (let i = 0; i < 60; i++) { m.ball.vx = 18; m.ball.vz = 0; R.syncFromMatch(m, 1/60); }
+            out.lead = R._tv.lx; out.lookAhead = R.camTarget.x - m.ball.x * 0.9;
+            // vicino alla porta: più bassa e più vicina
+            m.ball.vx = 0; m.ball.x = 0; for (let i = 0; i < 300; i++) R.syncFromMatch(m, 1/60); const y0 = R.camera.position.y, z0 = R.camera.position.z;
+            m.ball.x = 46; for (let i = 0; i < 400; i++) R.syncFromMatch(m, 1/60); out.dy = R.camera.position.y - y0; out.dz = R.camera.position.z - z0;
+            R.onPost(); out.shake = R.shake;
+            return out; }""")
+        check('campo: linee del campo come geometria nitida', f5['lines'], f5)
+        check('telecamera: anticipa il pallone che corre (guarda più avanti)', f5['lead'] > 3 and f5['lookAhead'] > 2, f5)
+        check('telecamera: davanti alla porta si abbassa e si avvicina', f5['dy'] < -1.5 and f5['dz'] < -2.5, f5)
+        check('effetti: piccolo scossone sul palo (discreto)', 0 < f5['shake'] <= 0.2, f5)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

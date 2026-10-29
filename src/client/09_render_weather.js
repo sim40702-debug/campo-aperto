@@ -43,6 +43,8 @@ Renderer.prototype.applyEnvironment = function (weather, timeOfDay) {
     m.color = col(this.weather === 'rain' ? '#c9d2cf' : snow ? '#e4ece8' : '#ffffff');
     m.emissive = col(snow ? '#0b0f12' : '#000000');
   }
+  // linee del campo (09_render_field.js): sotto la pioggia un po' più scure come l'erba bagnata
+  if (this.fieldLines) this.fieldLines.material.color = col(this.weather === 'rain' ? '#cfd4cf' : '#f4f6ef');
   if (this.around) {
     const m = this.around.material;
     if (!this.aroundMap) this.aroundMap = m.map;

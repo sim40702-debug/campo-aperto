@@ -38,7 +38,7 @@ class Renderer {
     this.camTarget = new THREE.Vector3();
     this.crowdPhase = 0; this.crowdExcite = 0;
     this.buildLights();
-    this.buildPitch();
+    this.buildPitch(); this.buildFieldLines();
     this.buildGoals();
     this.buildStadium();
     this.buildBall(); this.buildBallExtras();
@@ -110,9 +110,8 @@ class Renderer {
   // texture del campo disegnata su canvas: strisce, linee, aree
   // texture del campo: la risoluzione dipende dalla qualità (fino a 4096 px, ~39 px per metro)
   pitchTexture() {
-    const C = CONFIG;
     const maxTex = this.renderer.capabilities.maxTextureSize || 4096;
-    const W = Math.min(this.Q.pitch, maxTex), H = Math.round(W * 68 / 105), ppm = W / 105;
+    const W = Math.min(this.Q.pitch, maxTex), H = Math.round(W * 68 / 105);
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
     for (let i = 0; i < 14; i++) {
@@ -138,31 +137,7 @@ class Renderer {
       gr.addColorStop(0, 'rgba(70,60,30,0.16)'); gr.addColorStop(1, 'rgba(70,60,30,0)');
       g.fillStyle = gr; g.fillRect(0, 0, W, H);
     }
-    g.strokeStyle = 'rgba(245,248,240,0.95)'; g.lineWidth = 0.12 * ppm;
-    const X = x => (x + 52.5) * ppm, Z = z => (z + 34) * ppm;
-    g.strokeRect(X(-52.5), Z(-34), 105 * ppm, 68 * ppm);
-    g.beginPath(); g.moveTo(X(0), Z(-34)); g.lineTo(X(0), Z(34)); g.stroke();
-    g.beginPath(); g.arc(X(0), Z(0), C.CENTER_R * ppm, 0, Math.PI * 2); g.stroke();
-    g.fillStyle = 'rgba(245,248,240,0.95)';
-    g.beginPath(); g.arc(X(0), Z(0), 0.25 * ppm, 0, Math.PI * 2); g.fill();
-    for (const s of [-1, 1]) {
-      const gx = s * 52.5;
-      const bx = s > 0 ? X(gx - C.BOX_DEPTH) : X(gx);
-      g.strokeRect(bx, Z(-C.BOX_HALF_W), C.BOX_DEPTH * ppm, C.BOX_HALF_W * 2 * ppm);
-      const sbx = s > 0 ? X(gx - C.SMALL_BOX_DEPTH) : X(gx);
-      g.strokeRect(sbx, Z(-C.SMALL_BOX_HALF_W), C.SMALL_BOX_DEPTH * ppm, C.SMALL_BOX_HALF_W * 2 * ppm);
-      const px = gx - s * C.PENALTY_SPOT;
-      g.beginPath(); g.arc(X(px), Z(0), 0.22 * ppm, 0, Math.PI * 2); g.fill();
-      // lunetta dell'area
-      const a = Math.acos((C.BOX_DEPTH - C.PENALTY_SPOT) / C.CENTER_R);
-      g.beginPath();
-      if (s > 0) g.arc(X(px), Z(0), C.CENTER_R * ppm, Math.PI - a, Math.PI + a);
-      else g.arc(X(px), Z(0), C.CENTER_R * ppm, -a, a);
-      g.stroke();
-      for (const t of [-1, 1]) {
-        g.beginPath(); g.arc(X(gx), Z(t * 34), 1 * ppm, 0, Math.PI * 2); g.stroke();
-      }
-    }
+    // le linee del campo non sono più nella texture: sono geometria vera (09_render_field.js)
     const tex = new THREE.CanvasTexture(cv);
     tex.anisotropy = Math.min(this.Q.aniso, this.renderer.capabilities.getMaxAnisotropy());
     tex.encoding = THREE.sRGBEncoding;
@@ -199,7 +174,9 @@ class Renderer {
       pitchMat.onBeforeCompile = sh => {
         sh.uniforms.grassDetail = { value: detail };
         sh.fragmentShader = 'uniform sampler2D grassDetail;\n' + sh.fragmentShader.replace('#include <map_fragment>',
-          '#include <map_fragment>\n  float gd = texture2D(grassDetail, vUv * vec2(84.0, 54.4)).r;\n  diffuseColor.rgb *= 0.84 + gd * 0.32;');
+          '#include <map_fragment>\n  float gd = texture2D(grassDetail, vUv * vec2(84.0, 54.4)).r;\n  diffuseColor.rgb *= 0.84 + gd * 0.32;' +
+          // macchie larghe di erba più chiara e più scura (prato vero, non un colore uniforme), stessa trama vista da lontano
+          '\n  float gm = texture2D(grassDetail, vUv * vec2(3.1, 2.0) + vec2(0.37, 0.11)).r;\n  diffuseColor.rgb *= 0.9 + gm * 0.2;');
       };
     }
     const pitch = this.pitch = new THREE.Mesh(new THREE.PlaneGeometry(105, 68), pitchMat);
@@ -986,9 +963,9 @@ class Renderer {
     // punizioni, rigori e allenamento: telecamera dietro al pallone, la porta sempre tutta in vista (09_render_setpiece.js)
     if (match && this.camMode !== 2 && this.setPieceCamera(dt, match, bx, by, bz)) return;
     if (this.camMode === 0) {
-      // televisiva (0.22): più bassa e più vicina, come nelle partite in TV di oggi
-      want.set(bx * 0.84, 19.5, bz * 0.32 + 41);
-      look.set(bx * 0.9, 0.4, bz * 0.6 + 2);
+      // televisiva (0.22): più bassa e più vicina, come nelle partite in TV di oggi; dalla 0.24 anticipa l'azione e si
+      // avvicina davanti alle porte (09_render_field.js)
+      this.tvCamera(dt, bx, bz, match, want, look);
     } else if (this.camMode === 1) {
       want.set(bx * 0.5, 55, bz * 0.2 + 75);
       look.set(bx * 0.6, 0, bz * 0.3);

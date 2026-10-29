@@ -1356,7 +1356,7 @@ class Game {
         if (e.r && e.r.type === 'SUB' && m && e.r.player) { const p = m.allSlots()[e.r.player.id]; if (p) R.refreshPlayer(p); }
         break;
       case 'whistle': this.audio.whistle(e.kind === 'END' ? 3 : e.kind === 'HALF' ? 2 : 1); break;
-      case 'post': this.audio.post(); this.rumble(160, 0.3, 0.8); if (m && this.mode !== 'client') m.showBanner('Palo!', 1.2); else if (m) m.banner = { text: 'Palo!', t: 1.2 }; break;
+      case 'post': this.audio.post(); this.rumble(160, 0.3, 0.8); R.onPost(); if (m && this.mode !== 'client') m.showBanner('Palo!', 1.2); else if (m) m.banner = { text: 'Palo!', t: 1.2 }; break;
       case 'save': this.audio.roar(false); this.audio.ooh(0.1); R.onSave(); break;
       case 'goal': {
         this.audio.roar(true);

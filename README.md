@@ -8,8 +8,13 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.23)
+### Le novità (0.10 – 0.24)
 
+- **Nuova generazione** (0.24): **portiere** con tempo di reazione, lettura della traiettoria, passi laterali e
+  tuffi veri nel motore (spinta, volo, atterraggio, si rialza); **rete 3D** che si gonfia dove arriva il pallone e
+  ondeggia, rete elastica anche nella fisica; **pallone** originale a pannelli con cuciture e rilievo che gira
+  davvero; **calciatori** con occhi, colletto, cuciture, tacchetti e frenata; **linee del campo** nitide e
+  **telecamera** che anticipa l'azione.
 - **Dopo il gol come in TV** (0.23): esultanza, stacco, replay e subito il calcio d'inizio; **tutta la porta in
   vista** in punizioni, rigori e allenamento; **portiere** con passi laterali, saltello prima del tiro, parate
   centrali e rilancio con le mani.

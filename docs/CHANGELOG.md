@@ -2,6 +2,39 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.0 — 29/10/2026 (nuova generazione: portiere, rete, pallone, calciatori, campo)
+Fatta con Scrum in 5 sprint (piano e review in `docs/SCRUM_0.24.md`).
+- **Portiere vero, nel motore** (non solo nel disegno). Vede il tiro e reagisce dopo un tempo che dipende dalla sua
+  bravura (0,25-0,45 s); calcola dove il pallone attraversa la sua linea guardando velocità, altezza e direzione, con
+  un piccolo errore di lettura che si corregge mentre il pallone arriva. Si sposta con passi laterali che accelerano e
+  frenano piano; se a piedi non ci arriva si **tuffa** all'ultimo momento utile: spinta, volo verso il pallone,
+  atterraggio e mezzo secondo a terra prima di rialzarsi. Tocca il pallone solo se è davvero alla portata delle
+  mani. Parate **alte, basse, centrali, ravvicinate e con deviazione** (sopra la traversa o di lato, con la
+  punta delle dita); a volte il pallone gli scivola sotto. Reattivo ma non imbattibile: i tiri centrali li prende
+  quasi sempre, quelli angolati e ravvicinati a volte entrano (3,3 gol a partita tra computer, prima 3,8).
+  Il disegno segue il motore con pose fuse in modo morbido, corpo che si inclina verso l'altezza del pallone in volo
+  e una vera fase per rialzarsi.
+- **Rete 3D dinamica**. Tante maglie agganciate a pali, traversa e telaio dietro: il pallone spinge la rete nel punto
+  preciso dove arriva (fondo, lati, tetto, anche da fuori), la deformazione si propaga come un'onda, oscilla e torna
+  a riposo. Anche nella **fisica** la rete ora è elastica: cede fino a 55 cm e frena il pallone invece di fermarlo di
+  colpo, non lo rilancia indietro, e da fuori (esterno della rete, tetto, dietro) non si attraversa più.
+  Pali e traversa in metallo verniciato lucido con le ombre, telaio dietro in metallo.
+- **Pallone premium originale** (nessun marchio o scritta): 6 pannelli a elica, fasce blu notte e oro lungo le
+  cuciture (a Natale rosso, verde e oro), cuciture in rilievo e micro-trama a esagoni, vernice lucida. **Rotazione
+  vera**: gira attorno all'asse giusto con la velocità giusta, in volo mantiene l'effetto del tiro. Stessa
+  dimensione e stesse collisioni.
+- **Calciatori**: occhi con iride e pupilla, bocca, colletto a polo, orli e cuciture della maglia e dei pantaloncini,
+  parastinchi, scarpe con lacci e tacchetti; pelle, stoffa, capelli e scarpe riflettono la luce in modo diverso e la
+  stoffa ha le pieghe. Nuova frenata con la gamba avanti, braccio che si apre in curva, il pallone non entra più
+  nelle scarpe.
+- **Campo**: linee vere (non più disegnate nella texture), nitide da vicino e da lontano; prato con macchie di
+  colore naturali.
+- **Telecamera televisiva** più cinematografica: guarda un po' avanti dove va il pallone e davanti alle porte si
+  abbassa e si avvicina, sempre con movimenti morbidi.
+- **Effetti discreti**: piccolo sbuffo e scossone sul palo, zolle d'erba quando il portiere atterra dopo un tuffo.
+- **Server**: il motore delle partite è cambiato (portiere e rete): il server va aggiornato (`cd cloud && npm run
+  deploy`, dopo il backup del database) e le quote sono ricalcolate con il nuovo motore.
+
 ## 0.23.2 — 29/10/2026 (allenamento più svelto)
 - **Allenamento: dopo il tiro si passa subito al prossimo tentativo**. Nei tiri in porta, nelle punizioni, nei rigori
   e nel dribbling, dopo un tiro sbagliato il tentativo finisce quando il pallone esce, si ferma, torna indietro o al

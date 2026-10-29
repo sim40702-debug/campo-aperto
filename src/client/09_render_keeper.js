@@ -242,4 +242,9 @@ Renderer.prototype.poseKeeperRaw = function (pm, p, m, dt, bx, by, bz) {
 };
 
 // parata (evento 'save' dal gioco): il portiere vicino al pallone respinge con i pugni se non l'ha presa
-Renderer.prototype.onSave = function () { this.saveAt = performance.now(); };
+Renderer.prototype.onSave = function () {
+  this.saveAt = performance.now();
+  // parata in tuffo: un po' d'erba che salta dove atterra il portiere (effetto discreto, 0.24)
+  const pm = this.playerMeshes.find(q => q.player.isGK && q.player.anim.dive > 0);
+  if (pm) this.burst('grass', pm.root.position.x, pm.root.position.z, { amount: 0.6 });
+};
