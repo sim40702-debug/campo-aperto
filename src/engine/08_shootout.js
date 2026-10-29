@@ -100,7 +100,7 @@ class KnockoutMatch extends Match {
   }
   toCenter(p, side, i) {
     p.x = (side === 0 ? -1.3 : 1.3); p.z = -9 + i * 1.6; p.vx = 0; p.vz = 0;
-    p.facing = 0; p.anim.kick = 0; p.anim.dive = 0; p.anim.tackle = 0; p.stunned = 0;
+    p.facing = 0; p.gkAi = null; p.anim.kick = 0; p.anim.dive = 0; p.anim.tackle = 0; p.stunned = 0;
   }
   // prepara il prossimo rigore: in campo restano solo il tiratore e il portiere avversario, tutti verso la stessa porta
   nextKick() {

@@ -71,7 +71,7 @@ class TutorialMatch extends TrainingMatch {
     tu.t = 0; tu.sprinted = false; tu.target = null;
     this.lastKick = null; this.offside = null; this.advantage = null; this.pendingPass = null;
     b.inNet = false; b.netHit = null;
-    for (const x of this.allSlots()) { x.stunned = 0; x.anim.dive = 0; x.anim.tackle = 0; x.anim.fall = 0; x.kickCooldown = 0; }
+    for (const x of this.allSlots()) { x.stunned = 0; x.gkAi = null; x.anim.dive = 0; x.anim.tackle = 0; x.anim.fall = 0; x.kickCooldown = 0; }
     const gk = opp.roster[0];
     gk.x = opp.ownGoalX() - opp.dir * 0.6; gk.z = 0; gk.vx = gk.vz = 0;
     const place = (q, x, z) => { q.x = x; q.z = z; q.vx = 0; q.vz = 0; q.facing = 0; };

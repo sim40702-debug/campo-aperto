@@ -184,6 +184,7 @@ class Match {
     this.ball.reset(0, 0);
     this.offside = null; this.pendingPass = null;
     for (const p of this.allPlayers()) {
+      p.gkAi = null;   // il portiere riparte in piedi (niente tuffi a metà)
       const pos = kickoffPosition(p, team);
       p.x = pos.x; p.z = pos.z; p.vx = 0; p.vz = 0;
       p.facing = p.team.dir > 0 ? 0 : Math.PI;
@@ -232,6 +233,7 @@ class Match {
   startSetPiece() {
     const sp = this.pendingSetPiece;
     this.setState('SETPIECE');
+    for (const t of this.teams) if (t.gk) { t.gk.gkAi = null; t.gk.anim.dive = 0; }   // i portieri ripartono in piedi
     this.possessionTeam = sp.team;
     this.ball.reset(sp.x, sp.z);
     if (sp.type === 'THROW_IN') this.ball.y = 2.0;
@@ -577,10 +579,12 @@ class Match {
       if (p.kickCooldown > 0 || p.stunned > 0) continue;
       const dh = dist2(p.x, p.z, b.x, b.z);
       const gkHands = p.isGK && inBoxOf(p.team, p.x, p.z);
-      const reach = gkHands ? (p.anim.dive > 0 ? 1.9 : CONFIG.GK_CONTROL_DIST) : CONFIG.CONTROL_DIST;
-      if (dh > reach) continue;
+      // portiere in area: arriva dove arrivano davvero le sue mani (in piedi, in volo, a terra: gkReach, 07_ai.js)
+      const gq = gkHands ? gkReach(p, b) : 0;
+      if (gkHands && gq <= 0) continue;
+      if (!gkHands && dh > CONFIG.CONTROL_DIST) continue;
       let type = null;
-      if (gkHands && b.y < 2.55) type = 'gk';
+      if (gkHands) { type = 'gk'; p.gkQuality = gq; }
       else if (b.y < 1.6) type = 'foot';
       else if (b.y < 2.6 && dh < 1.0) type = 'head';
       if (type && dh < bestD) { bestD = dh; best = p; bestType = type; }
@@ -632,40 +636,64 @@ class Match {
     this.emit('touch', {});
   }
 
+  // il pallone è arrivato nelle mani del portiere (gkReach): presa, respinta o deviazione con la punta delle dita.
+  // Dipende da dove lo tocca (quality: comodo o al limite), da quanto arriva forte e dalla bravura del portiere.
+  // Se non ci arrivava le mani non lo toccano proprio (checkBallContact): il gol nasce dalla traiettoria.
   goalkeeperSave(gk, rel) {
     const b = this.ball;
     const fast = rel > 14;
+    const q = gk.gkQuality || 0.5;
     const lastShot = this.lastKick && this.lastKick.kind === 'shot' && this.lastKick.player.team !== gk.team;
-    // probabilità di parata: tiri forti e angolati battono più spesso il portiere (più gol, 0.3.2)
-    // (velocità d'arrivo: con la resistenza dell'aria un tiro da 30 m/s arriva in porta a circa 24 m/s da 18 metri)
-    let chance = 0.44 + gk.attr.gk / 250 - Math.max(0, rel - 14) / 26;
-    if (gk.data.ability === 'Para-rigori' && lastShot) chance += 0.08;
-    if (!this.isHuman(gk.team)) chance += (this.difficulty - 1) * 0.05;
-    if (!lastShot && !fast) chance = 1;  // palla lenta: presa sicura
     if (!this.onTouch(gk, true)) return;
     b.lastTouch = gk;
-    if (rand() < chance) {
-      if (lastShot) {
-        gk.team.opponent().stats.onTarget++;
-        gk.stats.saves = (gk.stats.saves || 0) + 1;
-        this.matchEvent('SHOT_ON_TARGET', { player: this.lastKick.player, reason: 'Parata', consequence: 'SAVE' });
-        this.emit('save', {}); this.showBanner('Parata!', 1.2);
-      }
-      if (!fast || rand() < 0.35) {
-        b.owner = gk; b.vx = 0; b.vy = 0; b.vz = 0;
-        this.possessionTeam = gk.team;
-        gk.holdTime = 0;
-        this.giveControl(gk);
-      } else {
-        // respinta
-        const out = gk.team.dir;
-        b.vx = out * randRange(4, 9); b.vz = (rand() < 0.5 ? -1 : 1) * randRange(3, 9); b.vy = randRange(1, 4);
-        gk.kickCooldown = 0.6;
-      }
-    } else {
-      gk.kickCooldown = 0.6; // non ci arriva: la palla prosegue
-      b.vx *= 0.85; b.vz *= 0.85;
+    // palla lenta che non è un tiro: presa sicura
+    if (!lastShot && !fast) { this.gkCatch(gk); return; }
+    let hold = clamp(q * 0.85 + gk.attr.gk / 320 - Math.max(0, rel - 11) / 20, 0.03, 0.9);
+    if (gk.data.ability === 'Para-rigori' && lastShot) hold += 0.06;
+    if (!this.isHuman(gk.team)) hold += (this.difficulty - 1) * 0.05;
+    // palla velocissima toccata male: a volte scappa di mano e prosegue (errore del portiere)
+    const slip = clamp((rel - 22) / 30 - q * 0.3 + (80 - gk.attr.gk) / 200, 0, 0.35);
+    const r = rand();
+    if (r < slip) {
+      gk.kickCooldown = 0.6;
+      b.vx *= 0.7; b.vz *= 0.7; b.vy *= 0.6;
+      return;
     }
+    if (lastShot) {
+      gk.team.opponent().stats.onTarget++;
+      gk.stats.saves = (gk.stats.saves || 0) + 1;
+      this.matchEvent('SHOT_ON_TARGET', { player: this.lastKick.player, reason: 'Parata', consequence: 'SAVE' });
+      this.emit('save', {}); this.showBanner('Parata!', 1.2);
+    }
+    if (rand() < hold) { this.gkCatch(gk); return; }
+    gk.kickCooldown = 0.6;
+    const out = gk.team.dir, sideZ = Math.sign(b.z || (rand() < 0.5 ? -1 : 1));
+    if (q > 0.35) {
+      // respinta con le mani: in avanti e di lato, lontano dal centro della porta
+      b.vx = out * randRange(4, 9); b.vz = sideZ * randRange(3, 8); b.vy = randRange(1, 4);
+    } else {
+      // deviazione con la punta delle dita: il pallone tiene parte della velocità e cambia strada. La spinta delle
+      // dita ha un limite: se c'è spazio e tempo il pallone esce fuori dal palo (o sopra la traversa), altrimenti
+      // entra lo stesso
+      const k = randRange(0.5, 0.7);
+      b.vx *= k; b.vy *= k; b.vz *= k;
+      const gx = gk.team.ownGoalX(), toLine = Math.abs(gx - b.x) / Math.max(1, Math.abs(b.vx));
+      const push = randRange(3, 6.5);
+      if (b.y > 1.7) {
+        b.vy += push;   // sopra la traversa
+      } else {
+        const needZ = (CONFIG.GOAL_HALF_W + 0.3 - Math.abs(b.z)) / Math.max(0.05, toLine);
+        b.vz += sideZ * Math.min(push, Math.max(needZ, 0) + 0.5) * (needZ < push ? 1 : 0.6);
+      }
+    }
+    b.spin = 0; b.topspin = 0;
+  }
+  gkCatch(gk) {
+    const b = this.ball;
+    b.owner = gk; b.vx = 0; b.vy = 0; b.vz = 0;
+    this.possessionTeam = gk.team;
+    gk.holdTime = 0;
+    this.giveControl(gk);
   }
 
   // ---------- REGOLE: gol e palla fuori ----------
@@ -1177,9 +1205,8 @@ class Match {
     // se la squadra del portiere ha un umano che tiene una direzione, il tuffo lo sceglie lui
     const hd = this.humans.find(h => h.team === gk.team.index && h.input && Math.abs(h.input.mz) > 0.3);
     if (hd) guess = Math.sign(hd.input.mz);
-    gk.anim.dive = 0.9; gk.anim.diveDir = guess * gk.team.dir;
-    gk.vz = guess * 4.2;
-    gk.commitTimer = 0.9; // resta sulla scelta fatta
+    // tuffo vero (07_ai.js): spinta, volo verso l'angolo scelto, atterraggio; fino alla fine resta sulla scelta fatta
+    gkStartDive(gk, guess, guess * 2.8, 0.8, 0.5);
   }
 
   // urti tra giocatori: nessuna compenetrazione; chi ha più massa sposta di più l'altro e le velocità

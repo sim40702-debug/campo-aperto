@@ -76,7 +76,7 @@ Renderer.prototype.cutCamera = function () { this._cut = true; };
 Renderer.prototype.resetPoses = function () {
   for (const pm of this.playerMeshes) {
     pm.prevSp = undefined; pm.cel = null; pm.dv = null; pm.punch = 0; pm.catchHigh = 0; pm.smother = 0;
-    pm.back = 0; pm.side = 0; pm.ready = 0; pm.release = null; pm.setHop = 0; pm.setK = 0; pm.block = 0; pm.held = false;
+    pm.back = 0; pm.side = 0; pm.ready = 0; pm.release = null; pm.setHop = 0; pm.setK = 0; pm.block = 0; pm.held = false; pm._gkPrev = null;
   }
   this.celeb = null;
 };
