@@ -53,15 +53,17 @@ async def main():
         # ---- arbitro e cartellino
         await pg.evaluate("() => { game.setup.side = -1; game.setup.onDraw = 'draw'; game.startMatch(); }")
         ref = await pg.evaluate("""() => { const m = game.match, R = game.renderer, o = R.officials;
-            for (let i = 0; i < 120; i++) game.updateOffline(1/60);
+            // niente replay dei gol durante questa prova (nel replay l'arbitro non c'è e la partita è ferma)
+            const step = () => { game.updateOffline(1/60); game.replayPending = false; };
+            for (let i = 0; i < 120; i++) step();
             const start = [o.x, o.z];
-            for (let i = 0; i < 600; i++) game.updateOffline(1/60);
+            for (let i = 0; i < 600; i++) step();
             const moved = Math.hypot(o.x - start[0], o.z - start[1]);
             const inField = Math.abs(o.x) < CONFIG.HALF_L && Math.abs(o.z) < CONFIG.HALF_W;
             const p = m.teams[1].players[5];
             game.handleEvent({ type: 'ref', r: { type: 'YELLOW_CARD', player: { id: m.allSlots().indexOf(p), name: p.data.name, team: 1 }, minute: 10, x: p.x, z: p.z } });
             let up = 0, icon = false;
-            for (let i = 0; i < 240; i++) { game.updateOffline(1/60); if (o.card.visible) up = Math.max(up, o.ref.arms[1].sh.rotation.x); if (o.icons.length) icon = true; }
+            for (let i = 0; i < 240; i++) { step(); if (o.card.visible) up = Math.max(up, o.ref.arms[1].sh.rotation.x); if (o.icons.length) icon = true; }
             return [moved, inField, up, icon, o.ref.root.visible, o.tasks.length]; }""")
         check('arbitro in campo: segue il gioco senza uscire dal campo', ref[0] > 2 and ref[1] and ref[4], ref)
         check('cartellino: l\'arbitro alza il braccio con il cartellino, e sopra il giocatore compare il cartellino', ref[2] > 2.5 and ref[3] and ref[5] == 0, ref)
