@@ -202,3 +202,21 @@ versione, in ordine di priorità del PO:
 - **Non fatto in questo sprint**: il rifacimento completo dei menu (fase 10): i menu attuali funzionano e sono già
   coerenti; si può fare in uno sprint dedicato.
 - **Prove**: `novita024_browser_test.py` 42/42, `npm test`, browser, controls, feel, novita, natale, grafica.
+
+### Sprint 0.24.9 — Animazioni, prestazioni, test: fatto
+- **Animazioni** (`09_render_kicks.js`): stop del pallone (gamba o petto) quando cambia chi ha il pallone, intensità
+  secondo la velocità di arrivo; frenata, cambi di direzione, salto, tiri, contrasti, esultanze c'erano già.
+- **Prestazioni** (stesso browser di prova, 240 fotogrammi, partita tra computer): qualità bassa 3,1 → 4,6 ms per
+  fotogramma (0.23.2 → 0.24.9); qualità alta +11% (in questo browser senza scheda grafica la qualità alta è lenta
+  anche nella 0.23.2). Simulazione 0,7 → 0,8 ms.
+- **Giro completo dei test nel browser** (30/10/2026):
+  - superati: browser 31/31, avvio 17/17, classifica 9/9, controls 27/27, feel 10/10, grafica 19/19, natale 21/21,
+    novita015 24/24, novita023 21/21, novita024 43/43, novita 31/31, replay 15/15, social 31/31, trofei 12/12,
+    updates 32/32, competitions 26/26 (da solo);
+  - competitions eseguito subito dopo classifica: a volte (2 volte su 4) dopo il ricaricamento della pagina il
+    browser di prova riparte con l'archivio vuoto. Nessun codice del gioco cancella quei dati (verificato: prima del
+    ricaricamento il campionato è salvato); è un problema dell'ambiente di prova, da tenere d'occhio;
+  - economy: il saldo è scritto "1000" invece di "1.000" (il browser di prova formatta i numeri italiani senza
+    separatore per le migliaia) e il controllo "Quota cambiata" dipende dai tempi del server locale;
+  - online e partita veloce: la pagina non si apre in tempo in questo ambiente (succede uguale con la 0.23.2).
+- **Prove dello sprint**: `novita024_browser_test.py` 43/43 (stop del pallone), `npm test`.

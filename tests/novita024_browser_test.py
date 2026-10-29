@@ -22,6 +22,7 @@
 #   senza esultanza, replay, flash, fuochi e boato, pubblico basso; in partita "Palo!" e "Traversa!" e tutto come prima.
 # - 0.24.8: presentazione della partita (telecamera che vola, scheda delle squadre, si salta con un tasto, mai in
 #   allenamento), panchine con riserve e allenatori, tunnel.
+# - 0.24.9: stop del pallone: chi riceve lo ammortizza (gamba o petto).
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -312,6 +313,15 @@ async def main():
         check('presentazione: scheda con le squadre e telecamera che vola sopra lo stadio, la partita aspetta', it['started'] and it['card'] and 'contro' in it['text'] and it['camMoved'] and it['camHigh'] and it['clockStill'], it)
         check('presentazione: si salta con un tasto; in allenamento non c\'è', it['skipped'] and not it['trainingIntro'], it)
         check('stadio: panchine con riserve e allenatori in partita (vuote in allenamento), tunnel', it['subs'] == 2 and it['trainingSubs'] == 0 and it['tunnel'], it)
+
+        # ---- 0.24.9: stop del pallone
+        ft = await pg.evaluate("""() => { game.quitToMenu(); game.setup.side = -1; game.startMatch(); for (let i = 0; i < 200; i++) game.updateOffline(1/60);
+            const m = game.match, R = game.renderer, t = m.teams[0], [a, c] = t.players.filter(p => !p.isGK).slice(4, 6);
+            m.state = 'PLAY'; for (const q of m.allPlayers()) if (q !== a && q !== c && !q.isGK) { q.x = -30; q.z = -25; } a.x = 0; a.z = 25; c.x = 14; c.z = 25; c.vx = c.vz = 0; m.ball.owner = null; m.ball.x = 2; m.ball.z = 25; m.ball.y = 0.11; m.ball.vx = 16; m.ball.vy = 0; m.ball.vz = 0; m.ball.lastTouch = a;
+            const pm = R.playerMeshes.find(q => q.player === c); let ctrl = false, hip = 0, owner = false;
+            for (let i = 0; i < 90; i++) { game.updateOffline(1/60); if (m.ball.owner === c) owner = true; if (pm.ctrl) { ctrl = true; hip = Math.max(hip, pm.legs[1].hip.rotation.z); } }
+            return { owner: owner, ctrl: ctrl, hip: hip }; }""")
+        check('stop del pallone: chi riceve ammortizza il pallone con la gamba', ft['owner'] and ft['ctrl'] and ft['hip'] > 0.2, ft)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

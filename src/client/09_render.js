@@ -864,6 +864,7 @@ class Renderer {
     let charges = null;
     for (const h of (match.humans || [])) if (h.player && h.shootCharge > 0) (charges || (charges = new Map())).set(h.player, h.shootCharge);
     let ns = 0;
+    this.watchFirstTouch(match, by);   // stop del pallone (09_render_kicks.js)
     for (const pm of this.playerMeshes) {
       const p = pm.player;
       pm.root.visible = !p.gone;
@@ -883,6 +884,7 @@ class Renderer {
       if (p.isGK && !cel) this.poseKeeper(pm, p, match, dt, bx, by, bz);
       // gesto del calcio, rovesciata, tuffo di testa (09_render_kicks.js)
       if (!cel) this.poseKick(pm, p, dt);
+      if (!cel && !p.anim.kick) this.poseFirstTouch(pm, dt);
       if (cel) this.poseCelebration(pm, cel);
       // a terra dopo un fallo duro, poi zoppica (09_render_referee.js)
       if (pm.hurtT > 0 || pm.limpT > 0 || pm.hurtAmt > 0.01) this.poseHurt(pm, dt, p.speed(), ph);
