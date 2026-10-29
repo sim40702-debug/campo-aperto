@@ -1118,13 +1118,27 @@ class Game {
   // resta in attesa del passo successivo invece di andare perso.
   gameInput(useBuffer) {
     const inp = this.input.read();
-    const m = this.match;
-    if (this.renderer.camMode === 2 && m) {
-      const h = m.humanById(this.renderer.localId);
-      const dir = h ? m.teams[h.team].dir : 1;
-      const sx = inp.mx, sz = inp.mz;
-      inp.mx = -dir * sz; inp.mz = dir * sx;
-      if (inp.switchDir) { const a = inp.switchDir; inp.switchDir = [-dir * a[1], dir * a[0]]; }
+    const m = this.match, R = this.renderer;
+    // comandi che seguono la telecamera: quando la telecamera sta dietro al calciatore (impostazione "Dietro al
+    // giocatore", punizioni e rigori, allenamento: 09_render_setpiece.js) su = avanti, giù = indietro, sinistra e
+    // destra come sullo schermo. Con la telecamera televisiva su resta "verso l'alto dello schermo".
+    const spc = R._spc && R._spc.mode;
+    let fx = 0, fz = 0;
+    if (m && R.camMode === 2) {
+      const h = m.humanById(R.localId);
+      fx = h ? m.teams[h.team].dir : 1;
+    } else if (m && (spc === 'set' || spc === 'after' || spc === 'train')) {
+      const cf = R.camTarget.clone().sub(R.camera.position);
+      // punizioni e rigori: avanti è dritto verso la porta (così il mirino va su e giù, a destra e a sinistra
+      // senza scivolare di lato); in allenamento si segue la telecamera
+      if (spc === 'train') { const l = Math.hypot(cf.x, cf.z) || 1; fx = cf.x / l; fz = cf.z / l; }
+      else fx = Math.sign(cf.x) || 1;
+    }
+    if (fx || fz) {
+      // schermo -> campo: (sx, sz) con sz = -1 per "su"; avanti = (fx, fz), destra = (-fz, fx)
+      const rot = (sx, sz) => [sx * -fz - sz * fx, sx * fx - sz * fz];
+      [inp.mx, inp.mz] = rot(inp.mx, inp.mz);
+      if (inp.switchDir) inp.switchDir = rot(inp.switchDir[0], inp.switchDir[1]);
     }
     if (!useBuffer) return inp;
     const buf = this.pressBuf || (this.pressBuf = { pressed: {}, switchDir: null });

@@ -2,6 +2,13 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.23.1 — 29/10/2026 (comandi con la telecamera dietro)
+- **I comandi seguono la telecamera quando sta dietro al tuo calciatore**: in allenamento (tiri, punizioni, rigori,
+  dribbling) e su punizioni e rigori **W (o la levetta in su) va avanti verso la porta**, S indietro, A e D a
+  sinistra e a destra come sullo schermo; sulle punizioni W e S alzano e abbassano il mirino, A e D lo spostano di
+  lato. Prima su restava "verso l'alto dello schermo televisivo", che da dietro voleva dire di lato. Con la telecamera
+  televisiva non cambia niente; con "Dietro al giocatore" era già così.
+
 ## 0.23.0 — 29/10/2026 (dopo il gol come in TV, punizioni, portiere)
 - **Dopo il gol non si "bugga" più niente**. Prima il replay partiva a metà esultanza, poi l'esultanza ripartiva con
   i giocatori che saltavano di posto, e al calcio d'inizio tutti si teletrasportavano mentre la telecamera volava
