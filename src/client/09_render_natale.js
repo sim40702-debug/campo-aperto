@@ -329,20 +329,4 @@ Renderer.prototype.xmasBoardCanvas = function () {
   return this._xmasBoards = cv;
 };
 
-Renderer.prototype.xmasBallTexture = function () {
-  if (this._xmasBall) return this._xmasBall;
-  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256;
-  const g = cv.getContext('2d');
-  g.fillStyle = '#f7f7f2'; g.fillRect(0, 0, 512, 256);
-  // spicchi rossi e verdi al posto di quelli neri, con una stellina dorata in mezzo
-  for (let i = 0; i < 8; i++) for (let j = 0; j < 4; j++) if ((i + j) % 2 === 0) {
-    const x = i * 64 + 32, y = j * 64 + 32;
-    g.fillStyle = (i + j) % 4 === 0 ? '#c8102e' : '#1d7a3e';
-    g.beginPath(); g.arc(x, y, 21, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#ffd84a'; g.beginPath();
-    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 3.5 : 8; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
-    g.fill();
-  }
-  const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding;
-  return this._xmasBall = t;
-};
+// pallone di Natale: 09_render_ball.js (stesso disegno del pallone normale, colori di Natale)

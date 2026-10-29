@@ -38,10 +38,10 @@ class Renderer {
     this.camTarget = new THREE.Vector3();
     this.crowdPhase = 0; this.crowdExcite = 0;
     this.buildLights();
-    this.buildPitch();
+    this.buildPitch(); this.buildFieldLines();
     this.buildGoals();
     this.buildStadium();
-    this.buildBall();
+    this.buildBall(); this.buildBallExtras();
     this.buildFx();
     this.buildWeather();    // pioggia e neve (src/client/09_render_weather.js)
     this.playerMeshes = [];
@@ -110,9 +110,8 @@ class Renderer {
   // texture del campo disegnata su canvas: strisce, linee, aree
   // texture del campo: la risoluzione dipende dalla qualità (fino a 4096 px, ~39 px per metro)
   pitchTexture() {
-    const C = CONFIG;
     const maxTex = this.renderer.capabilities.maxTextureSize || 4096;
-    const W = Math.min(this.Q.pitch, maxTex), H = Math.round(W * 68 / 105), ppm = W / 105;
+    const W = Math.min(this.Q.pitch, maxTex), H = Math.round(W * 68 / 105);
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
     for (let i = 0; i < 14; i++) {
@@ -138,31 +137,7 @@ class Renderer {
       gr.addColorStop(0, 'rgba(70,60,30,0.16)'); gr.addColorStop(1, 'rgba(70,60,30,0)');
       g.fillStyle = gr; g.fillRect(0, 0, W, H);
     }
-    g.strokeStyle = 'rgba(245,248,240,0.95)'; g.lineWidth = 0.12 * ppm;
-    const X = x => (x + 52.5) * ppm, Z = z => (z + 34) * ppm;
-    g.strokeRect(X(-52.5), Z(-34), 105 * ppm, 68 * ppm);
-    g.beginPath(); g.moveTo(X(0), Z(-34)); g.lineTo(X(0), Z(34)); g.stroke();
-    g.beginPath(); g.arc(X(0), Z(0), C.CENTER_R * ppm, 0, Math.PI * 2); g.stroke();
-    g.fillStyle = 'rgba(245,248,240,0.95)';
-    g.beginPath(); g.arc(X(0), Z(0), 0.25 * ppm, 0, Math.PI * 2); g.fill();
-    for (const s of [-1, 1]) {
-      const gx = s * 52.5;
-      const bx = s > 0 ? X(gx - C.BOX_DEPTH) : X(gx);
-      g.strokeRect(bx, Z(-C.BOX_HALF_W), C.BOX_DEPTH * ppm, C.BOX_HALF_W * 2 * ppm);
-      const sbx = s > 0 ? X(gx - C.SMALL_BOX_DEPTH) : X(gx);
-      g.strokeRect(sbx, Z(-C.SMALL_BOX_HALF_W), C.SMALL_BOX_DEPTH * ppm, C.SMALL_BOX_HALF_W * 2 * ppm);
-      const px = gx - s * C.PENALTY_SPOT;
-      g.beginPath(); g.arc(X(px), Z(0), 0.22 * ppm, 0, Math.PI * 2); g.fill();
-      // lunetta dell'area
-      const a = Math.acos((C.BOX_DEPTH - C.PENALTY_SPOT) / C.CENTER_R);
-      g.beginPath();
-      if (s > 0) g.arc(X(px), Z(0), C.CENTER_R * ppm, Math.PI - a, Math.PI + a);
-      else g.arc(X(px), Z(0), C.CENTER_R * ppm, -a, a);
-      g.stroke();
-      for (const t of [-1, 1]) {
-        g.beginPath(); g.arc(X(gx), Z(t * 34), 1 * ppm, 0, Math.PI * 2); g.stroke();
-      }
-    }
+    // le linee del campo non sono più nella texture: sono geometria vera (09_render_field.js)
     const tex = new THREE.CanvasTexture(cv);
     tex.anisotropy = Math.min(this.Q.aniso, this.renderer.capabilities.getMaxAnisotropy());
     tex.encoding = THREE.sRGBEncoding;
@@ -199,7 +174,9 @@ class Renderer {
       pitchMat.onBeforeCompile = sh => {
         sh.uniforms.grassDetail = { value: detail };
         sh.fragmentShader = 'uniform sampler2D grassDetail;\n' + sh.fragmentShader.replace('#include <map_fragment>',
-          '#include <map_fragment>\n  float gd = texture2D(grassDetail, vUv * vec2(84.0, 54.4)).r;\n  diffuseColor.rgb *= 0.84 + gd * 0.32;');
+          '#include <map_fragment>\n  float gd = texture2D(grassDetail, vUv * vec2(84.0, 54.4)).r;\n  diffuseColor.rgb *= 0.84 + gd * 0.32;' +
+          // macchie larghe di erba più chiara e più scura (prato vero, non un colore uniforme), stessa trama vista da lontano
+          '\n  float gm = texture2D(grassDetail, vUv * vec2(3.1, 2.0) + vec2(0.37, 0.11)).r;\n  diffuseColor.rgb *= 0.9 + gm * 0.2;');
       };
     }
     const pitch = this.pitch = new THREE.Mesh(new THREE.PlaneGeometry(105, 68), pitchMat);
@@ -224,71 +201,7 @@ class Renderer {
     }
   }
 
-  buildGoals() {
-    const C = CONFIG;
-    const postMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.35 });
-    const netMat = new THREE.LineBasicMaterial({ color: '#e8eef5', transparent: true, opacity: 0.42 });
-    for (const s of [-1, 1]) {
-      const g = new THREE.Group();
-      const gx = s * C.HALF_L;
-      for (const pz of [-C.GOAL_HALF_W, C.GOAL_HALF_W]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(C.POST_R, C.POST_R, C.GOAL_H, 10), postMat);
-        post.position.set(gx, C.GOAL_H / 2, pz); post.castShadow = true; g.add(post);
-      }
-      const bar = new THREE.Mesh(new THREE.CylinderGeometry(C.POST_R, C.POST_R, C.GOAL_HALF_W * 2 + 0.12, 10), postMat);
-      bar.rotation.x = Math.PI / 2; bar.position.set(gx, C.GOAL_H, 0); bar.castShadow = true; g.add(bar);
-      // rete: griglia di linee su retro, lati e tetto
-      const pts = [];
-      const bx = gx + s * C.GOAL_DEPTH, step = 0.25;
-      for (let z = -C.GOAL_HALF_W; z <= C.GOAL_HALF_W + 0.01; z += step) {
-        pts.push(bx, 0, z, bx, C.GOAL_H * 0.85, z);
-        pts.push(gx, C.GOAL_H, z, bx, C.GOAL_H * 0.85, z);
-      }
-      for (let y = 0; y <= C.GOAL_H * 0.85 + 0.01; y += step) pts.push(bx, y, -C.GOAL_HALF_W, bx, y, C.GOAL_HALF_W);
-      for (let t = 0; t <= 1.001; t += step / C.GOAL_DEPTH) {
-        const x = gx + s * C.GOAL_DEPTH * t, y = C.GOAL_H - C.GOAL_H * 0.15 * t;
-        pts.push(x, C.GOAL_H - C.GOAL_H * 0.15 * t, -C.GOAL_HALF_W, x, C.GOAL_H - C.GOAL_H * 0.15 * t, C.GOAL_HALF_W);
-        for (const pz of [-C.GOAL_HALF_W, C.GOAL_HALF_W]) pts.push(x, 0, pz, x, y, pz);
-      }
-      for (const pz of [-C.GOAL_HALF_W, C.GOAL_HALF_W]) for (let y = 0; y <= C.GOAL_H; y += step) {
-        const k = y / C.GOAL_H;
-        pts.push(gx, y, pz, bx, y * (0.85 + 0.15 * (1 - k)) / 1, pz);
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-      geo.attributes.position.setUsage(THREE.DynamicDrawUsage);
-      g.add(new THREE.LineSegments(geo, netMat));
-      this.scene.add(g);
-      this.nets = this.nets || [];
-      this.nets.push({ side: s, gx: gx, geo: geo, base: Float32Array.from(pts), hit: null });
-    }
-  }
-
-  // il pallone entra in rete: la rete si gonfia attorno al punto colpito e torna indietro oscillando
-  netBulge(side, y, z, power) {
-    const net = this.nets && this.nets.find(n => n.side === side);
-    if (!net) return;
-    net.hit = { y: clamp(y, 0.1, CONFIG.GOAL_H), z: clamp(z, -CONFIG.GOAL_HALF_W, CONFIG.GOAL_HALF_W), amp: clamp(power / 22, 0.25, 1) * 0.5, t: 0 };
-  }
-  updateNets(dt) {
-    if (!this.nets) return;
-    for (const n of this.nets) {
-      if (!n.hit) continue;
-      const h = n.hit, pos = n.geo.attributes.position.array, base = n.base;
-      h.t += dt;
-      const done = h.t > 2;
-      const disp = done ? 0 : h.amp * Math.exp(-2.6 * h.t) * Math.cos(11 * h.t);
-      for (let i = 0; i < pos.length; i += 3) {
-        const depth = (base[i] - n.gx) * n.side / CONFIG.GOAL_DEPTH;   // 0 sulla linea di porta (fissa), 1 in fondo
-        const dy = base[i + 1] - h.y, dz = base[i + 2] - h.z;
-        const w = Math.exp(-(dy * dy + dz * dz) / 0.9) * clamp(depth, 0, 1);
-        pos[i] = base[i] + n.side * disp * w;
-        pos[i + 1] = base[i + 1] - Math.abs(disp) * w * 0.15;
-      }
-      n.geo.attributes.position.needsUpdate = true;
-      if (done) n.hit = null;
-    }
-  }
+  // porte e reti: 09_render_net.js
 
   // tribune con pubblico procedurale, tetti, cartelloni e torri faro
   buildStadium() {
@@ -396,21 +309,8 @@ class Renderer {
     return this._glow = new THREE.CanvasTexture(cv);
   }
 
-  buildBall() {
-    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256;
-    const g = cv.getContext('2d');
-    g.fillStyle = '#f7f7f2'; g.fillRect(0, 0, 512, 256);
-    g.fillStyle = '#1a1a1a';
-    for (let i = 0; i < 8; i++) for (let j = 0; j < 4; j++) if ((i + j) % 2 === 0) {
-      g.beginPath(); g.arc(i * 64 + 32, j * 64 + 32, 20, 0, Math.PI * 2); g.fill();
-    }
-    const tex = new THREE.CanvasTexture(cv);
-    this.ballMesh = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.BALL_R * 1.6, 28, 20), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.45 }));
-    this.ballMesh.castShadow = true;
-    this.scene.add(this.ballMesh);
-    // indicatore del giocatore controllato
-    const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 3), new THREE.MeshBasicMaterial({ color: '#ffd84a' }));
-    arrow.rotation.x = Math.PI; this.arrow = arrow; this.scene.add(arrow);
+  // pallone: 09_render_ball.js
+  buildBallExtras() {
     // ombra morbida del pallone: piccola e scura a terra, più larga e chiara quando sale
     this.ballShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshBasicMaterial({ map: this.softShadowTexture(), color: '#000000', transparent: true, opacity: 0.55, depthWrite: false }));
     this.ballShadow.rotation.x = -Math.PI / 2; this.ballShadow.position.y = 0.02;
@@ -478,14 +378,16 @@ class Renderer {
       o.updateMatrix();
       g.applyMatrix4(o.matrix);
       total += g.attributes.position.count;
-      return { g, c: new THREE.Color(pt.color) };
+      return { g, c: new THREE.Color(pt.color), rough: pt.rough === undefined ? 0.62 : pt.rough, fabric: pt.fabric ? 1 : 0 };
     });
+    // oltre al colore ogni vertice porta quanto è opaco (aRough) e se è stoffa (aFabric): 09_render_players.js
     const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3), col = new Float32Array(total * 3);
+    const rough = new Float32Array(total), fab = new Float32Array(total);
     let k = 0;
     for (const f of flat) {
       const P = f.g.attributes.position.array, N = f.g.attributes.normal.array, n = f.g.attributes.position.count;
       pos.set(P, k * 3); nor.set(N, k * 3);
-      for (let i = 0; i < n; i++) { col[(k + i) * 3] = f.c.r; col[(k + i) * 3 + 1] = f.c.g; col[(k + i) * 3 + 2] = f.c.b; }
+      for (let i = 0; i < n; i++) { col[(k + i) * 3] = f.c.r; col[(k + i) * 3 + 1] = f.c.g; col[(k + i) * 3 + 2] = f.c.b; rough[k + i] = f.rough; fab[k + i] = f.fabric; }
       k += n;
       f.g.dispose();
     }
@@ -494,6 +396,8 @@ class Renderer {
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.setAttribute('aRough', new THREE.BufferAttribute(rough, 1));
+    geo.setAttribute('aFabric', new THREE.BufferAttribute(fab, 1));
     geo.computeBoundingSphere();
     return geo;
   }
@@ -520,9 +424,9 @@ class Renderer {
     const kit = [kit0[0], it.pantaloncini ? it.pantaloncini.color : kit0[1], it.calzettoni ? it.calzettoni.color : kit0[2]];
     const trim = kit0[1] === kit0[0] ? '#ffffff' : kit0[1];   // colletto e bordi delle maniche
     const pat = it.maglia || null, acc = it.accessori || null, gloves = it.guanti ? it.guanti.color : (p.isGK ? '#f2f2f2' : null);
-    // materiale con i riflessi (le maglie lucidano un po' sotto i fari, come il tessuto tecnico)
-    if (!this.playerMat) this.playerMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.02 });
-    const mat = this.playerMat;
+    const collar = pat && (pat.pattern === 'colletto' || pat.pattern === 'bordi') ? pat.color : trim;
+    // materiale unico con opacità diversa per pelle, stoffa, capelli e scarpe, e pieghe nella stoffa (09_render_players.js)
+    const mat = this.playerMaterial(), RO = PART_ROUGH;
     const mesh = (parts, shadow) => { const m = new THREE.Mesh(this.mergeColored(parts), mat); m.castShadow = shadow !== false; return m; };
     const root = new THREE.Group();
     const body = new THREE.Group(); root.add(body);
@@ -533,16 +437,24 @@ class Renderer {
     const HIP = 0.92, WAIST = 0.98, NECK = 1.5, HY = 1.665;
     // ---- bacino: pantaloncini (profilo spostato al perno dell'anca)
     const pelvis = new THREE.Group(); pelvis.position.y = HIP; body.add(pelvis);
-    pelvis.add(mesh([{ geo: this.lathe(SHORTS_PROFILE, w, seg(14)), color: kit[1], pos: [0, -HIP, 0], scale: [0.8, 1, 1.2] }]));
+    pelvis.add(mesh([{ geo: this.lathe(SHORTS_PROFILE, w, seg(14)), color: kit[1], fabric: true, pos: [0, -HIP, 0], scale: [0.8, 1, 1.2] },
+      ...this.profileSeams(SHORTS_PROFILE, w, 1.2, -HIP, shadeColor(kit[1], 0.72), 0.15)]));
     // ---- busto con perno in vita
     const chest = new THREE.Group(); chest.position.y = WAIST; body.add(chest);
     const torsoParts = [
       // spalle larghe circa 46 cm, busto meno profondo che largo (proporzioni da atleta, non da manichino)
-      { geo: this.lathe(TORSO_PROFILE, w, seg(16)), color: kit[0], pos: [0, -WAIST, 0], scale: [0.7, 1, 1.18] },
-      { geo: new THREE.SphereGeometry(0.07, seg(9), seg(7)), color: kit[0], pos: [0, 1.435 - WAIST, 0.222 * w], scale: [1, 0.86, 1] },
-      { geo: new THREE.SphereGeometry(0.07, seg(9), seg(7)), color: kit[0], pos: [0, 1.435 - WAIST, -0.222 * w], scale: [1, 0.86, 1] },
-      // colletto
-      { geo: cyl(0.068, 0.086, 0.04, 12), color: pat && (pat.pattern === 'colletto' || pat.pattern === 'bordi') ? pat.color : trim, pos: [0, 1.515 - WAIST, 0] },
+      { geo: this.lathe(TORSO_PROFILE, w, seg(16)), color: kit[0], fabric: true, pos: [0, -WAIST, 0], scale: [0.7, 1, 1.18] },
+      { geo: new THREE.SphereGeometry(0.07, seg(9), seg(7)), color: kit[0], fabric: true, pos: [0, 1.435 - WAIST, 0.222 * w], scale: [1, 0.86, 1] },
+      { geo: new THREE.SphereGeometry(0.07, seg(9), seg(7)), color: kit[0], fabric: true, pos: [0, 1.435 - WAIST, -0.222 * w], scale: [1, 0.86, 1] },
+      // colletto a polo: fascia attorno al collo e due punte sul davanti, con la piccola apertura scura
+      { geo: cyl(0.068, 0.086, 0.04, 12), color: collar, pos: [0, 1.515 - WAIST, 0] },
+      { geo: new THREE.BoxGeometry(0.05, 0.004, 0.034), color: collar, pos: [0.085, 1.5 - WAIST, 0.022], rot: [0.25, 0.5, -0.55] },
+      { geo: new THREE.BoxGeometry(0.05, 0.004, 0.034), color: collar, pos: [0.085, 1.5 - WAIST, -0.022], rot: [-0.25, -0.5, -0.55] },
+      { geo: new THREE.BoxGeometry(0.006, 0.07, 0.012), color: shadeColor(kit[0], 0.55), pos: [0.142 * w * 0.7 + 0.03, 1.47 - WAIST, 0], rot: [0, 0, -0.35] },
+      // orlo in fondo alla maglia: una fascia appena più scura
+      { geo: cyl(0.159 * w, 0.157 * w, 0.025, 14), color: shadeColor(kit[0], 0.82), fabric: true, pos: [0, 0.95 - WAIST, 0], scale: [0.7, 1, 1.18] },
+      // cuciture sui fianchi
+      ...this.profileSeams(TORSO_PROFILE, w, 1.18, -WAIST, shadeColor(kit[0], 0.7), 0.15),
     ];
     if (pat) {
       const fx = 0.148 * w;   // superficie davanti (+x) e dietro (-x) del busto
@@ -560,19 +472,30 @@ class Renderer {
     const neck = new THREE.Group(); neck.position.y = NECK - WAIST; chest.add(neck);
     const H = HY - NECK;
     const headParts = [
-      { geo: cyl(0.054, 0.062, 0.12, 9), color: look.skin, pos: [0, 0.045, 0] },
-      { geo: new THREE.SphereGeometry(0.112, seg(14), seg(12)), color: look.skin, pos: [0, H, 0], scale: [1.02, 1.16, 0.94] },
-      { geo: new THREE.SphereGeometry(0.07, seg(8), seg(6)), color: look.skin, pos: [0.045, H - 0.075, 0], scale: [1, 0.75, 1.1] },
-      { geo: new THREE.SphereGeometry(0.025, 6, 5), color: skinDark, pos: [-0.005, H, 0.103], scale: [0.7, 1.2, 0.6] },
-      { geo: new THREE.SphereGeometry(0.025, 6, 5), color: skinDark, pos: [-0.005, H, -0.103], scale: [0.7, 1.2, 0.6] },
-      { geo: new THREE.ConeGeometry(0.018, 0.045, 5), color: skinDark, pos: [0.115, H - 0.012, 0], rot: [0, 0, -Math.PI / 2] },
-      { geo: new THREE.SphereGeometry(0.011, 5, 4), color: '#1b1410', pos: [0.104, H + 0.018, 0.036] },
-      { geo: new THREE.SphereGeometry(0.011, 5, 4), color: '#1b1410', pos: [0.104, H + 0.018, -0.036] },
+      { geo: cyl(0.054, 0.062, 0.12, 9), color: look.skin, rough: RO.skin, pos: [0, 0.045, 0] },
+      { geo: new THREE.SphereGeometry(0.112, seg(14), seg(12)), color: look.skin, rough: RO.skin, pos: [0, H, 0], scale: [1.02, 1.16, 0.94] },
+      { geo: new THREE.SphereGeometry(0.07, seg(8), seg(6)), color: look.skin, rough: RO.skin, pos: [0.045, H - 0.075, 0], scale: [1, 0.75, 1.1] },
+      // zigomi appena accennati
+      { geo: new THREE.SphereGeometry(0.022, 6, 5), color: look.skin, rough: RO.skin, pos: [0.085, H - 0.015, 0.05], scale: [0.7, 0.8, 1] },
+      { geo: new THREE.SphereGeometry(0.022, 6, 5), color: look.skin, rough: RO.skin, pos: [0.085, H - 0.015, -0.05], scale: [0.7, 0.8, 1] },
+      { geo: new THREE.SphereGeometry(0.025, 6, 5), color: skinDark, rough: RO.skin, pos: [-0.005, H, 0.103], scale: [0.7, 1.2, 0.6] },
+      { geo: new THREE.SphereGeometry(0.025, 6, 5), color: skinDark, rough: RO.skin, pos: [-0.005, H, -0.103], scale: [0.7, 1.2, 0.6] },
+      { geo: new THREE.ConeGeometry(0.018, 0.045, 5), color: skinDark, rough: RO.skin, pos: [0.115, H - 0.012, 0], rot: [0, 0, -Math.PI / 2] },
+      // occhi: bianco dell'occhio, iride colorata e pupilla
+      { geo: new THREE.SphereGeometry(0.017, 8, 6), color: '#f1ece4', rough: RO.eye, pos: [0.101, H + 0.018, 0.036], scale: [0.6, 0.7, 1] },
+      { geo: new THREE.SphereGeometry(0.017, 8, 6), color: '#f1ece4', rough: RO.eye, pos: [0.101, H + 0.018, -0.036], scale: [0.6, 0.7, 1] },
+      { geo: new THREE.SphereGeometry(0.0085, 6, 4), color: look.eyes || '#4a3424', rough: RO.eye, pos: [0.1095, H + 0.018, 0.036], scale: [0.5, 1, 1] },
+      { geo: new THREE.SphereGeometry(0.0085, 6, 4), color: look.eyes || '#4a3424', rough: RO.eye, pos: [0.1095, H + 0.018, -0.036], scale: [0.5, 1, 1] },
+      { geo: new THREE.SphereGeometry(0.004, 4, 3), color: '#0c0a08', rough: RO.eye, pos: [0.1135, H + 0.018, 0.036] },
+      { geo: new THREE.SphereGeometry(0.004, 4, 3), color: '#0c0a08', rough: RO.eye, pos: [0.1135, H + 0.018, -0.036] },
       // sopracciglia
-      { geo: new THREE.BoxGeometry(0.012, 0.01, 0.036), color: look.hair, pos: [0.108, H + 0.043, 0.036], rot: [0.15, 0, 0] },
-      { geo: new THREE.BoxGeometry(0.012, 0.01, 0.036), color: look.hair, pos: [0.108, H + 0.043, -0.036], rot: [-0.15, 0, 0] },
+      { geo: new THREE.BoxGeometry(0.012, 0.01, 0.036), color: look.hair, rough: RO.hair, pos: [0.108, H + 0.043, 0.036], rot: [0.15, 0, 0] },
+      { geo: new THREE.BoxGeometry(0.012, 0.01, 0.036), color: look.hair, rough: RO.hair, pos: [0.108, H + 0.043, -0.036], rot: [-0.15, 0, 0] },
+      // bocca: labbra un po' più scure della pelle
+      { geo: new THREE.BoxGeometry(0.01, 0.009, 0.042), color: shadeColor(look.skin, 0.66), rough: RO.skin, pos: [0.111, H - 0.058, 0] },
+      { geo: new THREE.BoxGeometry(0.008, 0.006, 0.034), color: shadeColor(look.skin, 0.75), rough: RO.skin, pos: [0.11, H - 0.066, 0] },
     ];
-    const hair = (scale, thetaLen, dy) => headParts.push({ geo: new THREE.SphereGeometry(0.118, seg(12), seg(8), 0, Math.PI * 2, 0, thetaLen), color: look.hair, pos: [-0.008, H + (dy || 0.012), 0], rot: [0, 0, 0.32], scale: scale });
+    const hair = (scale, thetaLen, dy) => headParts.push({ geo: new THREE.SphereGeometry(0.118, seg(12), seg(8), 0, Math.PI * 2, 0, thetaLen), color: look.hair, rough: RO.hair, pos: [-0.008, H + (dy || 0.012), 0], rot: [0, 0, 0.32], scale: scale });
     if (look.hairStyle === 'ricci') hair([1.12, 1.2, 1.06], 1.55, 0.024);
     else if (look.hairStyle === 'cresta') { hair([1.0, 1.05, 0.96], 1.1, 0.0); headParts.push({ geo: new THREE.BoxGeometry(0.17, 0.06, 0.05), color: look.hair, pos: [0.0, H + 0.13, 0], rot: [0, 0, 0.15] }); }
     else if (look.hairStyle === 'medi') hair([1.06, 1.16, 1.0], 1.95, 0.0);
@@ -588,13 +511,15 @@ class Renderer {
       // ---- gamba: coscia muscolosa con il bordo dei pantaloncini, ginocchio, polpaccio nel calzettone, scarpa
       const hip = new THREE.Group(); hip.position.set(0, -0.03, side * 0.09 * w); pelvis.add(hip);
       hip.add(mesh([
-        { geo: cyl(0.1, 0.074, 0.45), color: look.skin, pos: [0, -0.225, 0], scale: [1.1, 1, 0.97] },   // coscia da atleta
-        { geo: cyl(0.104, 0.096, 0.15), color: kit[1], pos: [0, -0.05, 0] },
+        { geo: cyl(0.1, 0.074, 0.45), color: look.skin, rough: RO.skin, pos: [0, -0.225, 0], scale: [1.1, 1, 0.97] },   // coscia da atleta
+        { geo: cyl(0.104, 0.096, 0.15), color: kit[1], fabric: true, pos: [0, -0.05, 0] },
+        { geo: cyl(0.0975, 0.0975, 0.014), color: shadeColor(kit[1], 0.75), pos: [0, -0.118, 0] },   // orlo dei pantaloncini
       ]));
       const knee = new THREE.Group(); knee.position.y = -0.45; hip.add(knee);
       const shinParts = [
-        { geo: new THREE.SphereGeometry(0.064, seg(7), seg(5)), color: look.skin, pos: [0.008, 0, 0] },
+        { geo: new THREE.SphereGeometry(0.064, seg(7), seg(5)), color: look.skin, rough: RO.skin, pos: [0.008, 0, 0] },
         { geo: cyl(0.075, 0.054, 0.2), color: kit[2], pos: [-0.01, -0.12, 0] },          // polpaccio
+        { geo: new THREE.SphereGeometry(0.05, seg(7), seg(5)), color: kit[2], pos: [0.03, -0.17, 0], scale: [0.55, 1.6, 0.9] },   // parastinchi sotto il calzettone
         { geo: cyl(0.052, 0.042, 0.2), color: kit[2], pos: [0, -0.3, 0] },
         { geo: cyl(0.07, 0.066, 0.05), color: kit[2], pos: [0, -0.035, 0] },               // risvolto del calzettone
       ];
@@ -604,10 +529,14 @@ class Renderer {
       const ankle = new THREE.Group(); ankle.position.y = -0.4; knee.add(ankle);
       ankle.add(mesh([
         // scarpa: tomaia, punta arrotondata, tallone e suola
-        { geo: new THREE.BoxGeometry(0.19, 0.07, 0.088), color: look.boots, pos: [0.045, -0.01, 0] },
-        { geo: new THREE.SphereGeometry(0.047, seg(7), seg(5)), color: look.boots, pos: [0.14, -0.018, 0], scale: [1.2, 0.68, 0.94] },
-        { geo: new THREE.SphereGeometry(0.044, seg(6), seg(4)), color: look.boots, pos: [-0.045, -0.005, 0], scale: [0.8, 0.85, 0.95] },
-        { geo: new THREE.BoxGeometry(0.24, 0.016, 0.09), color: '#141414', pos: [0.055, -0.052, 0] },
+        { geo: new THREE.BoxGeometry(0.19, 0.07, 0.088), color: look.boots, rough: RO.boot, pos: [0.045, -0.01, 0] },
+        { geo: new THREE.SphereGeometry(0.047, seg(7), seg(5)), color: look.boots, rough: RO.boot, pos: [0.14, -0.018, 0], scale: [1.2, 0.68, 0.94] },
+        { geo: new THREE.SphereGeometry(0.044, seg(6), seg(4)), color: look.boots, rough: RO.boot, pos: [-0.045, -0.005, 0], scale: [0.8, 0.85, 0.95] },
+        // zona dei lacci (più chiara) e suola con i tacchetti
+        { geo: new THREE.BoxGeometry(0.1, 0.006, 0.042), color: shadeColor(look.boots, 1.35), rough: RO.sole, pos: [0.06, 0.027, 0] },
+        { geo: new THREE.BoxGeometry(0.24, 0.016, 0.09), color: '#1c1c1c', rough: RO.sole, pos: [0.055, -0.052, 0] },
+        ...(D >= 1 ? [[0.15, 0.025], [0.15, -0.025], [0.09, 0.03], [0.09, -0.03], [-0.03, 0.025], [-0.03, -0.025]].map(([sx, sz]) =>
+          ({ geo: cyl(0.009, 0.006, 0.014, 6), color: '#d8d8d8', rough: 0.35, pos: [sx, -0.066, sz] })) : []),
       ]));
       legs.push({ hip, knee, ankle });
       // ---- braccio: manica (con bordo), pelle fino al gomito; avambraccio e mano (o guanto)
@@ -615,17 +544,17 @@ class Renderer {
       const sleeve = pat && pat.pattern === 'maniche' ? pat.color : kit[0];
       const longSleeve = p.isGK;
       const upperParts = [
-        { geo: cyl(0.07, 0.063, 0.16), color: sleeve, pos: [0, -0.07, 0] },
+        { geo: cyl(0.07, 0.063, 0.16), color: sleeve, fabric: true, pos: [0, -0.07, 0] },
         { geo: cyl(0.066, 0.066, 0.025), color: pat && pat.pattern === 'bordi' ? pat.color : trim, pos: [0, -0.145, 0] },
-        { geo: cyl(0.056, 0.047, longSleeve ? 0.0001 : 0.15), color: look.skin, pos: [0, -0.215, 0] },
+        { geo: cyl(0.056, 0.047, longSleeve ? 0.0001 : 0.15), color: look.skin, rough: RO.skin, pos: [0, -0.215, 0] },
       ];
       if (longSleeve) upperParts.push({ geo: cyl(0.054, 0.048, 0.16), color: sleeve, pos: [0, -0.21, 0] });
       if (acc && acc.kind === 'capitano' && side === 1) upperParts.push({ geo: cyl(0.066, 0.063, 0.06), color: acc.color, pos: [0, -0.09, 0] });
       sh.add(mesh(upperParts));
       const elbow = new THREE.Group(); elbow.position.y = -0.29; sh.add(elbow);
       const foreParts = [
-        { geo: cyl(0.049, 0.035, 0.25), color: longSleeve ? sleeve : look.skin, pos: [0, -0.125, 0] },
-        { geo: new THREE.SphereGeometry(gloves ? 0.05 : 0.042, seg(7), seg(5)), color: gloves || look.skin, pos: [0.005, -0.285, 0], scale: [0.75, 1.25, 0.6] },
+        { geo: cyl(0.049, 0.035, 0.25), color: longSleeve ? sleeve : look.skin, rough: longSleeve ? RO.kit : RO.skin, fabric: longSleeve, pos: [0, -0.125, 0] },
+        { geo: new THREE.SphereGeometry(gloves ? 0.05 : 0.042, seg(7), seg(5)), color: gloves || look.skin, rough: gloves ? RO.glove : RO.skin, pos: [0.005, -0.285, 0], scale: [0.75, 1.25, 0.6] },
       ];
       if (acc && acc.kind === 'polsini') foreParts.push({ geo: cyl(0.044, 0.044, 0.05), color: acc.color, pos: [0, -0.215, 0] });
       elbow.add(mesh(foreParts));
@@ -723,6 +652,9 @@ class Renderer {
     pm.lean += (clamp(acc * 0.022, -0.16, 0.2) - pm.lean) * k1;
     pm.bank += (clamp(turn * speed * 0.01, -0.22, 0.22) - pm.bank) * k1;
     pm.crouch += (clamp(-acc * 0.012, 0, 0.12) - pm.crouch) * Math.min(1, dt * 10);
+    // frenata forte (0.24): quanto sta frenando, per la posa con la gamba avanti che "pianta" il piede
+    pm.brake = (pm.brake || 0) + (clamp((-acc - 6) / 14, 0, 1) * clamp(pm.prevSpeedMax / 4, 0, 1) - (pm.brake || 0)) * Math.min(1, dt * 9);
+    pm.prevSpeedMax = Math.max(speed, (pm.prevSpeedMax || 0) - dt * 6);
     const amt = Math.min(speed / 7, 1), sprint = clamp((speed - 5.5) / 2.5, 0, 1);
     const s = Math.sin(phase), c = Math.cos(phase);
     body.position.set(0, 0, 0); body.rotation.set(0, 0, 0);
@@ -747,6 +679,17 @@ class Renderer {
     chest.rotation.z = -(gait.lean + pm.lean + cr * 0.4);
     pelvis.rotation.z = -(gait.tilt + pm.lean * 0.3);
     body.position.y = gait.bodyY - cr * 0.35;
+    // frenata: la gamba che è davanti si allunga e pianta il piede, l'altra si piega, braccia larghe per l'equilibrio
+    if (pm.brake > 0.03) {
+      const b = pm.brake, front = L0.hip.rotation.z > L1.hip.rotation.z ? L0 : L1, rear = front === L0 ? L1 : L0;
+      front.hip.rotation.z = front.hip.rotation.z * (1 - b) + 0.55 * b; front.knee.rotation.z = front.knee.rotation.z * (1 - b) - 0.12 * b;
+      if (front.ankle) front.ankle.rotation.z = front.ankle.rotation.z * (1 - b) + 0.35 * b;
+      rear.hip.rotation.z = rear.hip.rotation.z * (1 - b) - 0.05 * b; rear.knee.rotation.z = rear.knee.rotation.z * (1 - b) - 0.9 * b;
+      A0.sh.rotation.x -= 0.35 * b; A1.sh.rotation.x += 0.35 * b;
+      body.position.y -= 0.06 * b;
+    }
+    // in curva il braccio esterno si apre un poco per l'equilibrio
+    if (Math.abs(pm.bank) > 0.04) { const o = pm.bank > 0 ? A1 : A0; o.sh.rotation.x += (pm.bank > 0 ? 1 : -1) * Math.abs(pm.bank) * 1.2; }
     // passi laterali (0.23): chi si sposta di lato guardando da un'altra parte (il portiere sulla linea che segue la
     // palla, il difensore che temporeggia) non corre di traverso: apre e chiude le gambe, busto basso e braccia larghe
     let side = 0;
@@ -908,11 +851,8 @@ class Renderer {
     const bx = mix(b.px, b.x, 3), by = mix(b.py, b.y, 3), bz = mix(b.pz, b.z, 3);
     b.rx = bx; b.ry = by; b.rz = bz;
     this.ballMesh.position.set(bx, by + 0.07, bz);
-    const sp = len(b.vx, b.vz);
-    if (sp > 0.05) {
-      this.ballMesh.rotation.z -= b.vx * dt / 0.18;
-      this.ballMesh.rotation.x += b.vz * dt / 0.18;
-    }
+    // rotazione vera del pallone (09_render_ball.js); al piede o in mano gira con il giocatore che lo porta
+    this.spinBall(dt, b.vx, b.vz, by <= CONFIG.BALL_R + 0.03 && Math.abs(b.vy || 0) < 0.6, b.spin, b.topspin);
     this.placeBallShadow(bx, by, bz);
     // scia sui tiri potenti: qualche particella dietro al pallone
     const sp3 = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
@@ -948,6 +888,7 @@ class Renderer {
       const lying = p.anim.fall > 0 || p.anim.tackle > 0.3 || p.anim.dive > 0 || pm.hurtAmt > 0.5;
       if (ns < 22) this.setFootShadow(ns++, dx + (lying ? Math.cos(f) * 0.7 : 0), dz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0);
     }
+    this.keepBallOffFeet();   // i piedi non attraversano il pallone (09_render_players.js)
     this.footShadows.count = ns;
     this.footShadows.instanceMatrix.needsUpdate = true;
     this.syncHumanMarks(match, this.localId, this.names);
@@ -977,6 +918,11 @@ class Renderer {
   // aggiornamento dal replay
   syncFromReplay(frame, match, dt) {
     this.frameDt = dt;
+    // nel replay la velocità del pallone si ricava da quanto si è spostato
+    const rb = this._replayBall || (this._replayBall = { x: frame[0], y: frame[1], z: frame[2] });
+    const jump = Math.hypot(frame[0] - rb.x, frame[2] - rb.z) > 3 || !(dt > 0);
+    this.spinBall(dt, jump ? 0 : (frame[0] - rb.x) / dt, jump ? 0 : (frame[2] - rb.z) / dt, frame[1] <= CONFIG.BALL_R + 0.03, 0, 0);
+    rb.x = frame[0]; rb.y = frame[1]; rb.z = frame[2];
     this.ballMesh.position.set(frame[0], frame[1] + 0.07, frame[2]);
     this.placeBallShadow(frame[0], frame[1], frame[2]);
     let k = 3, ns = 0;
@@ -1017,9 +963,9 @@ class Renderer {
     // punizioni, rigori e allenamento: telecamera dietro al pallone, la porta sempre tutta in vista (09_render_setpiece.js)
     if (match && this.camMode !== 2 && this.setPieceCamera(dt, match, bx, by, bz)) return;
     if (this.camMode === 0) {
-      // televisiva (0.22): più bassa e più vicina, come nelle partite in TV di oggi
-      want.set(bx * 0.84, 19.5, bz * 0.32 + 41);
-      look.set(bx * 0.9, 0.4, bz * 0.6 + 2);
+      // televisiva (0.22): più bassa e più vicina, come nelle partite in TV di oggi; dalla 0.24 anticipa l'azione e si
+      // avvicina davanti alle porte (09_render_field.js)
+      this.tvCamera(dt, bx, bz, match, want, look);
     } else if (this.camMode === 1) {
       want.set(bx * 0.5, 55, bz * 0.2 + 75);
       look.set(bx * 0.6, 0, bz * 0.3);

@@ -122,7 +122,7 @@ class TrainingMatch extends Match {
     const gx = me.oppGoalX();
     const gk = opp.players.find(x => x.isGK);
     if (gk) { gk.x = opp.ownGoalX() - opp.dir * 0.6; gk.z = 0; gk.vx = 0; gk.vz = 0; gk.facing = Math.PI; }
-    for (const x of this.allPlayers()) { x.stunned = 0; x.anim.dive = 0; x.anim.tackle = 0; x.anim.fall = 0; x.kickCooldown = 0; }
+    for (const x of this.allPlayers()) { x.stunned = 0; x.gkAi = null; x.anim.dive = 0; x.anim.tackle = 0; x.anim.fall = 0; x.kickCooldown = 0; }
     if (d === 'freekick') {
       const dist = randRange(19, 28), z = randRange(-15, 15);
       this.pendingSetPiece = { type: 'FREE_KICK', team: me, x: gx - dist, z: z };

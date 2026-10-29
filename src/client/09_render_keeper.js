@@ -27,8 +27,40 @@ function gkDiveHeight(p, b) {
   return clamp(by + vy * t - 4.9 * t * t, 0, 2.8);
 }
 
+// posa del portiere (0.24): prima si calcola la posa voluta (poseKeeperRaw), poi si fonde con quella del fotogramma
+// prima (blending): niente scatti tra fermo, passi laterali, pronto, parata, tuffo e recupero
 Renderer.prototype.poseKeeper = function (pm, p, m, dt, bx, by, bz) {
   if (!p.isGK) return;
+  this.poseKeeperRaw(pm, p, m, dt, bx, by, bz);
+  this.blendKeeperPose(pm, dt, p.anim.dive > 0 ? 30 : 16);
+};
+
+// le articolazioni del portiere che si fondono tra un fotogramma e l'altro
+function gkJoints(pm) {
+  if (pm._gkJ) return pm._gkJ;
+  const list = [pm.body.position, pm.body.rotation, pm.chest.rotation, pm.neck.rotation];
+  for (const A of pm.arms) list.push(A.sh.rotation, A.elbow.rotation);
+  for (const L of pm.legs) { list.push(L.hip.rotation, L.knee.rotation); if (L.ankle) list.push(L.ankle.rotation); }
+  return (pm._gkJ = list);
+}
+// avvicina ogni articolazione alla posa voluta con un'interpolazione esponenziale (rate più alto = più pronto);
+// il tuffo usa un rate alto: la spinta deve essere esplosiva, ma senza salti da un fotogramma all'altro
+Renderer.prototype.blendKeeperPose = function (pm, dt, rate) {
+  const J = gkJoints(pm), n = J.length * 3;
+  if (!pm._gkPrev) {   // prima volta o dopo resetPoses(): si parte dalla posa voluta
+    pm._gkPrev = new Float32Array(n);
+    J.forEach((v, i) => { pm._gkPrev[i * 3] = v.x; pm._gkPrev[i * 3 + 1] = v.y; pm._gkPrev[i * 3 + 2] = v.z; });
+    return;
+  }
+  const k = 1 - Math.exp(-rate * dt), P = pm._gkPrev;
+  J.forEach((v, i) => {
+    const o = i * 3;
+    v.x = P[o] + (v.x - P[o]) * k; v.y = P[o + 1] + (v.y - P[o + 1]) * k; v.z = P[o + 2] + (v.z - P[o + 2]) * k;
+    P[o] = v.x; P[o + 1] = v.y; P[o + 2] = v.z;
+  });
+};
+
+Renderer.prototype.poseKeeperRaw = function (pm, p, m, dt, bx, by, bz) {
   const b = m.ball;
   const body = pm.body, chest = pm.chest, neck = pm.neck;
   const L0 = pm.legs[0], L1 = pm.legs[1], A0 = pm.arms[0], A1 = pm.arms[1];
@@ -51,14 +83,22 @@ Renderer.prototype.poseKeeper = function (pm, p, m, dt, bx, by, bz) {
     } else if (u < 0.55) {
       // in volo verso il pallone, il corpo si stende
       const s = ss((u - 0.12) / 0.43);
-      tilt = dv.side * (0.15 + (rot - 0.15) * s); y = lift * Math.sin(Math.PI * Math.min(1, s * 1.1)) + 0.12 * s;
+      y = lift * Math.sin(Math.PI * Math.min(1, s * 1.1)) + 0.12 * s;
+      // il corpo si adatta al pallone mentre vola: con le braccia tese sopra la testa le mani stanno a circa 2,3 m
+      // dai piedi; l'inclinazione giusta porta le mani all'altezza del pallone (se è vicino)
+      let want = rot;
+      const near = Math.hypot(bx - p.x, bz - p.z);
+      if (near < 2.6) want = clamp(Math.acos(clamp((by - y) / 2.3, -1, 1)), 0.85, 1.55);
+      dv.rot = dv.rot === undefined ? rot : dv.rot + (want - dv.rot) * Math.min(1, dt * 10);
+      tilt = dv.side * (0.15 + (dv.rot - 0.15) * s);
       A0.sh.rotation.x = -2.9; A1.sh.rotation.x = 2.9; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.05;
       // la gamba di spinta resta indietro, l'altra si piega
       L0.hip.rotation.z = -0.2; L0.knee.rotation.z = -0.15; L1.hip.rotation.z = 0.35; L1.knee.rotation.z = -0.7;
     } else {
       // a terra sul fianco
       const s = ss(Math.min(1, (u - 0.55) / 0.2));
-      tilt = dv.side * (rot + (1.5 - rot) * s); y = 0.12;
+      const r0 = dv.rot === undefined ? rot : dv.rot;
+      tilt = dv.side * (r0 + (1.5 - r0) * s); y = 0.12;
       A0.sh.rotation.x = -2.9 + 0.7 * s; A1.sh.rotation.x = 2.9 - 0.7 * s; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.05 + 0.6 * s;
       L0.knee.rotation.z = -0.3; L1.hip.rotation.z = 0.4; L1.knee.rotation.z = -0.9;
     }
@@ -67,13 +107,19 @@ Renderer.prototype.poseKeeper = function (pm, p, m, dt, bx, by, bz) {
     dv.lastTilt = tilt;
     return;
   }
-  // ---- si rialza dopo il tuffo
-  if (pm.dv && !pm.dv.done) pm.dv.done = true;
+  // ---- si rialza dopo il tuffo: resta un attimo a terra (come nel motore), poi si spinge con le mani, porta le
+  // ginocchia sotto il corpo e si alza (0,85 s in tutto)
+  if (pm.dv && !pm.dv.done) { pm.dv.done = true; pm.dv.upT = 0; }
   if (pm.dv && pm.dv.up > 0) {
-    pm.dv.up = Math.max(0, pm.dv.up - dt / 0.45);
-    const k = ss(pm.dv.up);
+    pm.dv.upT = (pm.dv.upT || 0) + dt;
+    const t = pm.dv.upT;
+    pm.dv.up = t < 0.35 ? 1 : Math.max(0, 1 - (t - 0.35) / 0.5);
+    const k = ss(pm.dv.up), push = Math.sin(clamp((t - 0.3) / 0.55, 0, 1) * Math.PI);
     body.rotation.x = (pm.dv.lastTilt || 0) * k; body.position.y = body.position.y * (1 - k) + 0.1 * k;
-    for (const L of pm.legs) L.knee.rotation.z += -0.9 * k;
+    for (const L of pm.legs) L.knee.rotation.z += -0.9 * k - 0.6 * push;
+    // le braccia spingono a terra per rialzarsi
+    A0.sh.rotation.z = A1.sh.rotation.z = 0.6 * push; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.4 * push;
+    chest.rotation.z -= 0.35 * push;
   }
   // ---- rilancio con le mani: aveva la palla in mano e la passa corta (palla bassa): la fa rotolare
   const holding = b.owner === p && !(p.anim.kick > 0);
@@ -196,4 +242,9 @@ Renderer.prototype.poseKeeper = function (pm, p, m, dt, bx, by, bz) {
 };
 
 // parata (evento 'save' dal gioco): il portiere vicino al pallone respinge con i pugni se non l'ha presa
-Renderer.prototype.onSave = function () { this.saveAt = performance.now(); };
+Renderer.prototype.onSave = function () {
+  this.saveAt = performance.now();
+  // parata in tuffo: un po' d'erba che salta dove atterra il portiere (effetto discreto, 0.24)
+  const pm = this.playerMeshes.find(q => q.player.isGK && q.player.anim.dive > 0);
+  if (pm) this.burst('grass', pm.root.position.x, pm.root.position.z, { amount: 0.6 });
+};

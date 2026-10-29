@@ -90,7 +90,7 @@ function stepBallPhysics(b, dt) {
 }
 
 // Collisioni con pali, traversa e rete (per entrambe le porte)
-function collideGoalFrame(b) {
+function collideGoalFrame(b, dt) {
   const C = CONFIG, R = C.BALL_R;
   let hit = false;
   for (let side = -1; side <= 1; side += 2) {
@@ -122,21 +122,82 @@ function collideGoalFrame(b) {
         b.x = gx + nx * minD; b.y = C.GOAL_H + ny * minD;
       }
     }
-    // rete: se la palla è dentro la porta resta dentro
-    const insideX = side > 0 ? b.x > gx : b.x < gx;
-    if (insideX && Math.abs(b.z) < C.GOAL_HALF_W && b.y < C.GOAL_H) {
-      const backX = gx + side * C.GOAL_DEPTH;
-      if ((side > 0 && b.x > backX - R) || (side < 0 && b.x < backX + R)) {
-        // la rete trattiene il pallone: si ricorda dove e quanto forte l'ha colpita (la grafica la fa gonfiare)
-        if (!b.netHit) b.netHit = { side: side, y: b.y, z: b.z, v: Math.abs(b.vx) };
-        b.x = backX - side * R; b.vx = -b.vx * 0.15; b.vz *= 0.5; b.vy *= 0.5;
-      }
-      if (Math.abs(b.z) > C.GOAL_HALF_W - R) { b.z = Math.sign(b.z) * (C.GOAL_HALF_W - R); b.vz = -b.vz * 0.2; }
-      if (b.y > C.GOAL_H - R) { b.y = C.GOAL_H - R; b.vy = -Math.abs(b.vy) * 0.2; }
-      b.inNet = true;
-    }
+    // rete (0.24): la rete è elastica. Il pallone entra solo dalla bocca della porta; dentro, il fondo, i lati e il
+    // tetto lo frenano come una molla che cede (fino a 55 cm sul fondo) e lo lasciano ricadere; da fuori (tiro
+    // sull'esterno della rete, pallone che cade sul tetto) rimbalza piano e non entra mai
+    collideNet(b, side, gx, dt || 1 / 240);
   }
   return hit;
+}
+
+// forma e "morbidezza" della rete (la stessa forma è disegnata in 09_render_net.js)
+const GOAL_NET = {
+  ROOF_DROP: 0.37,  // il tetto scende di tanto dalla traversa al fondo della porta
+  K: 1500,          // forza della molla del fondo (più alta = rete più rigida)
+  SIDE_K: 3200,     // lati e tetto: un po' più rigidi
+  MAX: 0.55,        // quanto può cedere il fondo al massimo (m)
+  SIDE_MAX: 0.3,    // quanto possono cedere lati e tetto
+  DAMP: 5,          // quanto la rete assorbe la velocità del pallone mentre cede
+  OUT_BOUNCE: 0.15, // rimbalzo sulla rete presa da fuori
+};
+// altezza del tetto della rete a una certa profondità dentro la porta
+function goalRoofY(depth) { return CONFIG.GOAL_H - GOAL_NET.ROOF_DROP * clamp(depth / CONFIG.GOAL_DEPTH, 0, 1); }
+
+// una parete della rete che cede: pen = quanto il pallone è andato oltre la parete, n = verso fuori (+1/-1),
+// v = velocità del pallone su quell'asse. Restituisce la nuova velocità.
+function netGive(pen, n, v, dt, K, max) {
+  let out = v * n;   // velocità verso fuori dalla porta
+  if (out > 0) out = (out - K * pen * dt) * Math.exp(-GOAL_NET.DAMP * dt);   // la rete si tende e frena il pallone
+  else out = Math.max(out - K * pen * dt * 0.25, -1.2);                 // la rete torna indietro piano, senza fionda
+  if (pen > max && out > 0) out = 0;                                    // rete tesa al massimo
+  return out * n;
+}
+
+function collideNet(b, side, gx, dt) {
+  const C = CONFIG, R = C.BALL_R, W = C.GOAL_HALF_W, D = C.GOAL_DEPTH;
+  const depth = (b.x - gx) * side;           // quanto il pallone è dentro la porta (negativo = in campo)
+  if (depth <= 0 || depth > D + GOAL_NET.MAX + R) return;
+  const roof = goalRoofY(depth), az = Math.abs(b.z), sz = Math.sign(b.z) || 1;
+  // entra dalla bocca della porta: nell'ultimo passo ha attraversato la linea di porta tra i pali e sotto la traversa
+  if (!b.inNet && az < W && b.y < C.GOAL_H && depth <= Math.abs(b.vx) * dt + 0.05) b.inNet = true;
+  if (b.inNet) {
+    // dentro la porta: fondo, lati e tetto cedono come molle
+    const hit = (v) => { if (!b.netHit) b.netHit = { side: side, y: b.y, z: b.z, v: v }; };
+    const penB = depth - (D - R);
+    if (penB > 0) {
+      hit(Math.abs(b.vx));
+      b.vx = netGive(penB, side, b.vx, dt, GOAL_NET.K, GOAL_NET.MAX);
+      if (penB > GOAL_NET.MAX + 0.02) b.x = gx + side * (D - R + GOAL_NET.MAX + 0.02);
+      const f = Math.exp(-3 * dt); b.vz *= f; b.vy *= f;   // la rete trattiene anche di lato
+    }
+    const penS = az - (W - R);
+    if (penS > 0) {
+      hit(Math.abs(b.vz));
+      b.vz = netGive(penS, sz, b.vz, dt, GOAL_NET.SIDE_K, GOAL_NET.SIDE_MAX);
+      if (penS > GOAL_NET.SIDE_MAX + 0.02) b.z = sz * (W - R + GOAL_NET.SIDE_MAX + 0.02);
+    }
+    const penR = b.y - (roof - R);
+    if (penR > 0) {
+      hit(Math.abs(b.vy));
+      b.vy = netGive(penR, 1, b.vy, dt, GOAL_NET.SIDE_K, GOAL_NET.SIDE_MAX);
+      if (penR > GOAL_NET.SIDE_MAX + 0.02) b.y = roof - R + GOAL_NET.SIDE_MAX + 0.02;
+    }
+    return;
+  }
+  // fuori dalla porta: si cerca la parete da cui il pallone arriva (quella da cui è "più fuori")
+  const outS = az - W, outB = depth - D, outR = b.y - roof;
+  const best = Math.max(outS, outB, outR);
+  if (best >= R || b.y > C.GOAL_H + R) return;   // lontano dalla rete
+  if (best === outS) {
+    if (b.vz * sz < 0) { b.vz = -b.vz * GOAL_NET.OUT_BOUNCE; b.vx *= 0.6; b.vy *= 0.8; }
+    b.z = sz * (W + R);
+  } else if (best === outB) {
+    if (b.vx * side < 0) { b.vx = -b.vx * GOAL_NET.OUT_BOUNCE; b.vz *= 0.6; b.vy *= 0.8; }
+    b.x = gx + side * (D + R);
+  } else {
+    if (b.vy < 0) { b.vy = -b.vy * GOAL_NET.OUT_BOUNCE; b.vx *= 0.7; b.vz *= 0.7; }
+    b.y = roof + R;
+  }
 }
 
 // Prevede la posizione del pallone nei prossimi secondi

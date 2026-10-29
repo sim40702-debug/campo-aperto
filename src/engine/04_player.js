@@ -139,7 +139,9 @@ class Player {
     this.x += this.vx * dt;
     this.z += this.vz * dt;
     const sp = this.speed();
-    if (sp > 0.4 && this.anim.dive <= 0) {
+    // il corpo si gira nella direzione in cui corre. Il portiere no: si sposta di lato guardando il pallone (0.24),
+    // si gira solo quando corre davvero (uscite) o ha la palla
+    if (sp > 0.4 && this.anim.dive <= 0 && !(this.isGK && !this.sprinting && !this.hasBall())) {
       const target = Math.atan2(this.vz, this.vx);
       const d = angleDiff(this.facing, target);
       // chi è guidato da una persona gira il corpo più in fretta: si vede subito dove sta andando
