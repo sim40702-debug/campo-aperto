@@ -504,6 +504,21 @@ function aiGoalkeeper(p, dt) {
     p.faceTo(ball.x, ball.z, dt, 12);
     return;
   }
+  // uno contro uno (0.24.7): l'attaccante arriva da solo verso la porta. Il portiere esce per chiudere lo specchio
+  // e, quando è vicino, si butta sui piedi per prendere il pallone (non sempre ci riesce)
+  const opp = ball.owner && ball.owner.team !== team ? ball.owner : null;
+  if (opp && gkOneOnOne(p, opp)) {
+    const odx = opp.x - gx, odz = opp.z, od = len(odx, odz) || 1;
+    const dOpp = len(opp.x - p.x, opp.z - p.z);
+    if (dOpp < 1.6 && p.tackleCooldown <= 0) gkSmother(p, opp);
+    else {
+      // sulla linea porta-attaccante, abbastanza avanti da coprire lo specchio ma senza farsi saltare da lontano
+      const out = clamp(od * 0.3, 1.2, Math.max(1.2, Math.min(5, od - 2.5)));
+      gkShuffle(p, gx + odx / od * out, odz / od * out, dt);
+    }
+    p.faceTo(ball.x, ball.z, dt, 10);
+    return;
+  }
   // esce sulla palla libera in area
   if (!ball.owner && team.chaser === p) {
     p.moveToward(p.icX, p.icZ, true, dt, true);
@@ -518,6 +533,41 @@ function aiGoalkeeper(p, dt) {
   tz = clamp(tz, -CONFIG.GOAL_HALF_W + 0.4, CONFIG.GOAL_HALF_W - 0.4);
   gkShuffle(p, tx, tz, dt);
   p.faceTo(ball.x, ball.z, dt, 8);
+}
+
+// uno contro uno? L'avversario con la palla è vicino alla porta (entro 17 m, non troppo defilato), sta venendo
+// verso la porta e nessun difensore è tra lui e la porta
+function gkOneOnOne(p, opp) {
+  const team = p.team, gx = team.ownGoalX();
+  const dx = gx - opp.x, dz = -opp.z, d = len(dx, dz) || 1;
+  if (d > 17 || Math.abs(opp.z) > 12) return false;
+  const toward = (opp.vx * dx + opp.vz * dz) / d;
+  if (toward < 1 && d > 11) return false;
+  for (const t of team.players) {
+    if (t.isGK || t.sentOff || t.gone) continue;
+    const rx = t.x - opp.x, rz = t.z - opp.z, along = (rx * dx + rz * dz) / d;
+    if (along > 0.5 && along < d - 1 && Math.abs(rx * dz - rz * dx) / d < 2.5) return false;   // un difensore copre
+  }
+  return true;
+}
+
+// il portiere si butta sui piedi dell'attaccante: prende il pallone con una probabilità che dipende dalla sua
+// bravura contro il dribbling dell'attaccante; se sbaglia resta a terra un attimo e l'attaccante passa
+function gkSmother(p, opp) {
+  const m = p.team.match, S = gkState(p);
+  p.tackleCooldown = 1.0;
+  const q = clamp(0.3 + (p.attr.gk - 70) / 90 - (opp.attr.dribble - 70) / 140, 0.12, 0.7);
+  if (rand() < q) {
+    const b = m.ball;
+    b.owner = p; b.lastTouch = p; b.vx = b.vy = b.vz = 0;
+    m.possessionTeam = p.team;
+    opp.stunned = 0.4;
+    m.emit('save', {});
+    if (m.onTouch(p)) m.giveControl(p);
+  } else {
+    S.down = 0.6;   // a vuoto: a terra, l'attaccante lo salta
+  }
+  p.vx = p.vz = 0;
 }
 
 // dove arrivano le mani del portiere in questo istante: 0 = il pallone è fuori portata, altrimenti la qualità della

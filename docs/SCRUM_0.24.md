@@ -182,3 +182,13 @@ versione, in ordine di priorità del PO:
 - **Prove**: `rete_test.js` 18/18 (palo pieno, palo interno e gol, traversa, nessun evento ripetuto);
   `novita024_browser_test.py` 39/39 (allenamento e partita con eventi veri: suoni, scritte, replay, flash);
   `npm test`; natale, trofei, novita023, browser.
+
+### Sprint 0.24.7 — Portiere nell'uno contro uno: fatto
+- **Analisi**: posizionamento, lettura del tiro, tuffi, parate, presa, respinta e seconde palle (il portiere esce
+  sulla palla libera in area dopo essersi rialzato) c'erano già. Mancava l'uno contro uno.
+- **Motore** (`07_ai.js`): `gkOneOnOne` (attaccante con la palla entro 17 m, non defilato, che viene verso la porta,
+  nessun difensore in mezzo) e `gkSmother` (presa sui piedi a meno di 1,6 m: probabilità tra 12% e 70% secondo
+  portiere e dribbling; se sbaglia resta a terra 0,6 s). Uscita sulla linea porta-attaccante fino a 5 m.
+- **Equilibrio**: 3,2 → 3,4 gol a partita (16 partite): nessun portiere "muro". `motore_ref.json` rifatto.
+- **Prove**: `portiere_test.js` 16/16 (esce in media 3,1 m quando l'attaccante è a 10 m; prende il pallone 9 volte
+  su 30), `npm test`, novita024, novita023, browser.

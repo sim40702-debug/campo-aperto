@@ -35,12 +35,12 @@ function play(seed, opts, each) {
 const a = play(11, {}), b = play(11, {});
 check('stesso seme: partita identica', a.sig === b.sig, [a.sig, b.sig]);
 check('senza opts.subs nessun cambio', a.subs.length === 0);
-// impronta delle partite del server (motore 0.24.0, portiere e rete nuovi): devono restare uguali finché il motore non cambia
+// impronta delle partite del server (motore 0.24.7, portiere con l'uno contro uno): devono restare uguali finché il motore non cambia
 const REF = JSON.parse(fs.readFileSync(path.join(__dirname, 'motore_ref.json'), 'utf8'));
 const now = {};
 for (const s of [3, 11, 27, 40]) now[s] = play(s, {}).sig;
 const diff = Object.keys(REF).filter(s => REF[s] !== now[s]);
-check('partite tra IA come nella 0.24.0 (4 semi: risultato, tiri, passaggi, eventi, durata)', diff.length === 0, diff.map(s => [s, REF[s], now[s]]));
+check('partite tra IA come nella 0.24.7 (4 semi: risultato, tiri, passaggi, eventi, durata)', diff.length === 0, diff.map(s => [s, REF[s], now[s]]));
 
 // ---- 2. sostituzioni dell'IA
 const c = play(5, { subs: true });
