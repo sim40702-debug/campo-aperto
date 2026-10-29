@@ -152,3 +152,10 @@ parte con il prossimo.
   vicini e un poco in giù): angoli dietro arrotondati, niente spigolo che sembra un palo.
 - **Prove**: `novita024_browser_test.py` 35/35 (tuffo verso il pallone sulle due porte, tutorial, rete morbida),
   `npm test`, test nel browser delle altre modalità.
+
+### Sprint 0.24.5 — Allenamento senza telecronaca: fatto
+- **Richiesta del PO**: togliere subito la telecronaca dalle modalità di allenamento.
+- `14_game.js`: con una partita di allenamento (anche il tutorial, `match.training`) la telecronaca è spenta e
+  pulita a ogni evento: niente scritte e niente voce. In partita invariata.
+- In più: messaggio di aggiornamento visibile 7 s; test della neve che aspetta i fotogrammi.
+- **Prove**: `novita024_browser_test.py` 36/36, `updates_browser_test.py` 32/32, `novita_browser_test.py` 31/31.

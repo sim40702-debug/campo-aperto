@@ -17,6 +17,7 @@
 #   dietro liberi).
 # - 0.24.4: il portiere cade dalla parte del pallone (su tutte e due le porte); tutorial: arrivato nel cerchio il
 #   pallone non scappa e al passo dopo torna al piede.
+# - 0.24.5: in allenamento e nel tutorial niente telecronaca (con la telecronaca accesa nelle impostazioni).
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -247,6 +248,24 @@ async def main():
             }
             game.gameInput = gi; return out; }""")
         check('tutorial: arrivato nel cerchio il pallone non scappa e al passo dopo torna al piede', len(tut) == 2 and all(x['maxDist'] < 2 and x['owner'] for x in tut), tut)
+
+        # ---- 0.24.5: niente telecronaca in allenamento e nel tutorial
+        tc = await pg.evaluate("""() => { game.settings.commentary = true; const out = {};
+            for (const what of ['shots', 'tutorial', 'partita']) {
+              game.quitToMenu();
+              if (what === 'tutorial') game.startTutorial(); else if (what === 'partita') { game.setup.side = 0; game.startMatch(); } else game.startTraining(what);
+              for (let i = 0; i < 60; i++) game.updateOffline(1/60);
+              game.commentary.reset();
+              let shown = 0;
+              for (let k = 0; k < 4; k++) {
+                game.handleEvent({ type: k % 2 ? 'post' : 'save', x: 52, z: 0 });
+                game.commentary.update(game.time + k);
+                if (!document.getElementById('commentary').hidden && document.getElementById('commentary').textContent.trim()) shown++;
+              }
+              out[what] = shown;
+            }
+            return out; }""")
+        check('telecronaca: niente scritte in allenamento e nel tutorial (in partita sì)', tc['shots'] == 0 and tc['tutorial'] == 0 and tc['partita'] > 0, tc)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

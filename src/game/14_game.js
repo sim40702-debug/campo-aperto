@@ -1327,7 +1327,9 @@ class Game {
     const R = this.renderer, m = this.match;
     if (this.trophies) this.trophies.onEvent(e, m);
     this.hlEvent(e);   // azioni migliori da rivedere a fine partita (27_highlights.js)
-    if (this.commentary) {
+    // in allenamento e nel tutorial niente telecronaca (né scritte né voce, 0.24.5)
+    if (this.commentary && m && m.training) { this.commentary.enabled = false; this.commentary.reset(); }
+    else if (this.commentary) {
       const c = this.commentary, s = this.settings;
       c.enabled = s.commentary && !this.replay;
       c.voice = s.commentary && s.commentaryVoice && !this.paused;

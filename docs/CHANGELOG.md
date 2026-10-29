@@ -2,6 +2,11 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.5 — 29/10/2026 (allenamento senza telecronaca)
+- **In allenamento e nel tutorial niente telecronaca**: né scritte né voce, anche con la telecronaca accesa nelle
+  impostazioni. Nelle partite resta come prima.
+- Il messaggio "Aggiornato alla versione …" resta 7 secondi (sui computer lenti spariva prima di poterlo leggere).
+
 ## 0.24.4 — 29/10/2026 (portiere giusto, tutorial, rete morbida)
 - **Il portiere si tuffa verso il pallone.** Il motore lo spostava dalla parte giusta, ma il disegno lo faceva cadere
   dalla parte opposta: sembrava che si buttasse dall'altra parte e prendesse la palla lo stesso. Ora corpo, braccia e
