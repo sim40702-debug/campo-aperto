@@ -15,6 +15,8 @@
 #   (al più vicino al pallone, a chi riceve un passaggio); con la visuale televisiva no.
 # - 0.24.3: porta come quelle vere: sostegni dietro FUORI dalla rete, rete appesa (legata in pochi punti, spigoli
 #   dietro liberi).
+# - 0.24.4: il portiere cade dalla parte del pallone (su tutte e due le porte); tutorial: arrivato nel cerchio il
+#   pallone non scappa e al passo dopo torna al piede.
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -197,20 +199,54 @@ async def main():
         # ---- 0.24.3: porta con i sostegni dietro
         gs = await pg.evaluate("""() => { const R = game.renderer, net = R.nets.find(n => n.side > 0), C = CONFIG, D = C.GOAL_DEPTH, W = C.GOAL_HALF_W;
             // nessun nodo della rete sta oltre il fondo o fuori dai lati (i sostegni sono più in là)
-            let maxDepth = 0, maxZ = 0, freeCorner = 0, pins = 0;
+            let maxDepth = 0, maxZ = 0, cornerGap = 9, cornerPins = 0, pins = 0;
             for (let i = 0; i < net.n; i++) {
               const x = net.rest[i * 3], y = net.rest[i * 3 + 1], z = net.rest[i * 3 + 2];
               maxDepth = Math.max(maxDepth, x - C.HALF_L); maxZ = Math.max(maxZ, Math.abs(z));
-              // spigolo verticale dietro (tra fondo e lato), sopra terra e sotto il bordo in alto: libero
-              if (Math.abs(x - C.HALF_L - D) < 0.01 && Math.abs(Math.abs(z) - W) < 0.01 && y > 0.3 && y < 1.5 && !net.pin[i]) freeCorner++;
+              // spigolo verticale dietro (tra fondo e lato): niente nodi fermi sullo spigolo dritto (non c'è un palo), la
+              // rete lì è arrotondata (0.24.4)
+              if (y > 0.3 && y < 1.5) cornerGap = Math.min(cornerGap, Math.hypot(x - C.HALF_L - D, Math.abs(z) - W));
+              if (y > 0.3 && y < 1.5 && Math.abs(x - C.HALF_L - D) < 0.3 && Math.abs(Math.abs(z) - W) < 0.3 && net.pin[i]) cornerPins++;
               if (net.pin[i]) pins++;
             }
             // tubi curvi (sostegni) presenti, più lontani della rete
             let tubes = 0, tubeMaxZ = 0;
             R.scene.traverse(o => { if (o.geometry && o.geometry.type === 'TubeGeometry') { tubes++; o.geometry.computeBoundingBox(); tubeMaxZ = Math.max(tubeMaxZ, o.geometry.boundingBox.max.z); } });
-            return { maxDepth: maxDepth, maxZ: maxZ, freeCorner: freeCorner, ties: net.ties.length, pins: pins, n: net.n, tubes: tubes, tubeMaxZ: tubeMaxZ }; }""")
+            return { maxDepth: maxDepth, maxZ: maxZ, cornerGap: cornerGap, cornerPins: cornerPins, ties: net.ties.length, pins: pins, n: net.n, tubes: tubes, tubeMaxZ: tubeMaxZ }; }""")
         check('porta: sostegni curvi dietro, fuori dalla rete', gs['tubes'] >= 4 and gs['tubeMaxZ'] > gs['maxZ'] + 0.08, gs)
-        check('porta: rete appesa, legata in pochi punti, spigoli dietro liberi', gs['ties'] >= 10 and gs['freeCorner'] >= 4 and gs['pins'] < gs['n'] * 0.25, gs)
+        check('porta: rete appesa, legata in pochi punti, spigoli dietro morbidi e arrotondati (nessun palo)', gs['ties'] >= 10 and gs['cornerPins'] == 0 and gs['cornerGap'] > 0.05 and gs['pins'] < gs['n'] * 0.25, gs)
+
+        # ---- 0.24.4: il portiere cade verso il pallone, su tutte e due le porte
+        for gs_, vz in ((1, 6.0), (1, -6.0), (-1, 6.0), (-1, -6.0)):
+            r = await pg.evaluate("""([gs, vz]) => { game.quitToMenu(); game.setup.side = 0; game.startMatch(); for (let i = 0; i < 100; i++) game.updateOffline(1/60);
+                const m = game.match, R = game.renderer, t = m.teams.find(q => q.dir === gs), s = t.players[9], k = t.opponent().gk, gx = t.oppGoalX();
+                const pm = R.playerMeshes.find(q => q.player === k);
+                m.state = 'PLAY'; m.ball.owner = null; k.x = gx - t.dir * 0.9; k.z = 0; k.vx = k.vz = 0; k.gkAi = null; k.anim.dive = 0;
+                m.ball.x = gx - t.dir * 16; m.ball.z = 0; m.ball.y = 0.11; m.ball.vx = t.dir * 24; m.ball.vy = 3.2; m.ball.vz = vz;
+                m.ball.lastTouch = s; m.lastKick = { kind: 'shot', player: s, time: m.time }; s.x = m.ball.x - t.dir * 3; s.kickCooldown = 5;
+                let head = 0, dived = false;
+                for (let f = 0; f < 45; f++) { game.updateOffline(1/60);
+                  if (k.anim.dive > 0) { dived = true; pm.root.updateMatrixWorld(true); const v = new THREE.Vector3(); pm.neck.getWorldPosition(v); head = v.z - pm.root.position.z; } }
+                return { dived: dived, head: head }; }""", [gs_, vz])
+            check('portiere (porta %s, tiro verso %s): cade dalla parte del pallone' % ('destra' if gs_ > 0 else 'sinistra', '+z' if vz > 0 else '-z'), r['dived'] and r['head'] * vz > 0.3, r)
+        # ---- 0.24.4: tutorial, cerchio raggiunto: il pallone resta vicino e poi torna al piede
+        tut = await pg.evaluate("""() => { game.quitToMenu(); game.startTutorial(); const m = game.match, out = [], gi = game.gameInput;
+            for (let i = 0; i < 60; i++) game.updateOffline(1/60);
+            for (const step of ['move', 'sprint']) {
+              let f = 0;
+              while (TUTORIAL_STEPS[m.tu.i].id === step && f < 1500) {
+                const p = m.humans[0].player, t = m.tu.target;
+                game.gameInput = () => { const r = { mx: 0, mz: 0, sprint: step === 'sprint', shoot: false, press: false, pressed: {} };
+                  if (t && !m.tu.ok) { const dx = t.x - p.x, dz = t.z - p.z, l = Math.hypot(dx, dz) || 1; r.mx = dx / l; r.mz = dz / l; } return r; };
+                game.updateOffline(1/60); f++;
+                if (m.tu.ok) {
+                  let maxD = 0; for (let k = 0; k < 100 && m.tu.ok; k++) { game.updateOffline(1/60); if (m.tu.ok) maxD = Math.max(maxD, Math.hypot(m.ball.x - p.x, m.ball.z - p.z)); }
+                  out.push({ step: step, maxDist: maxD, owner: m.ball.owner === m.humans[0].player });
+                }
+              }
+            }
+            game.gameInput = gi; return out; }""")
+        check('tutorial: arrivato nel cerchio il pallone non scappa e al passo dopo torna al piede', len(tut) == 2 and all(x['maxDist'] < 2 and x['owner'] for x in tut), tut)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

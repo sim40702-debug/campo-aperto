@@ -143,6 +143,34 @@ Renderer.prototype.buildNet = function (s, gx, step) {
     const l = Math.hypot(normal[i * 3], normal[i * 3 + 1], normal[i * 3 + 2]) || 1;
     normal[i * 3] /= l; normal[i * 3 + 1] /= l; normal[i * 3 + 2] /= l;
   }
+  // forma di riposo naturale (0.24.4): la rete non è un telo tirato su una scatola. Si lascia "pendere": ogni nodo
+  // libero va verso la media dei vicini (i fili la tengono) e un poco in giù (il peso), per qualche giro. Così gli
+  // spigoli dietro, che non hanno pali, si arrotondano e scendono, il tetto si incurva e il fondo pende tra i lacci.
+  // Restano fermi i nodi fissati (pali, traversa, terra, lacci). Nessun nodo va sotto l'erba o dentro la porta oltre
+  // 25 cm (la fisica del pallone usa ancora la forma della porta).
+  const G = 0.004 * step / 0.16, ITER = 60;
+  for (let it = 0; it < ITER; it++) {
+    for (let i = 0; i < n; i++) {
+      if (pinned[i]) continue;
+      const nb = nbr[i];
+      let ax = 0, ay = 0, az = 0;
+      for (const j of nb) { ax += rest[j * 3]; ay += rest[j * 3 + 1]; az += rest[j * 3 + 2]; }
+      const k = 0.5;   // metà verso la media dei vicini a ogni giro
+      let x = rest[i * 3] + (ax / nb.length - rest[i * 3]) * k;
+      let y = rest[i * 3 + 1] + (ay / nb.length - rest[i * 3 + 1]) * k - G;
+      let z = rest[i * 3 + 2] + (az / nb.length - rest[i * 3 + 2]) * k;
+      y = Math.max(0.03, y);
+      const depth = (x - gx) * s;
+      if (depth < D - 0.25 && Math.abs(z) < W - 0.25 && y < goalRoofY(depth) - 0.25) {
+        // troppo dentro la porta: resta al limite
+        const c = Math.min(D - 0.25 - depth, W - 0.25 - Math.abs(z), goalRoofY(depth) - 0.25 - y);
+        if (c === D - 0.25 - depth) x = gx + s * (D - 0.25);
+        else if (c === W - 0.25 - Math.abs(z)) z = Math.sign(z) * (W - 0.25);
+        else y = goalRoofY(depth) - 0.25;
+      }
+      rest[i * 3] = x; rest[i * 3 + 1] = y; rest[i * 3 + 2] = z;
+    }
+  }
   const pos = new Float32Array(rest);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));

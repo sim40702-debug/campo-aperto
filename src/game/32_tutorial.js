@@ -83,6 +83,13 @@ class TutorialMatch extends TrainingMatch {
     if (s.id === 'move') { place(p, -10, 0); place(this.mates[0], 5, -18); place(this.mates[1], 5, 18); tu.target = { x: 2, z: -7 }; }
     if (s.id === 'sprint') { tu.target = { x: 26, z: 6 }; }
     if (s.id === 'pass') { place(this.mates[0], p.x + 12, p.z - 9); tu.base = me.stats.passesOk; }
+    // scatto, passaggio e finta: il pallone torna al piede di chi comandi, fermo (0.24.4)
+    if (s.id === 'sprint' || s.id === 'pass' || s.id === 'feint') {
+      const q = this.humans[0].player && this.humans[0].player.team === me && !this.humans[0].player.isGK ? this.humans[0].player : p;
+      q.vx = 0; q.vz = 0;
+      b.reset(q.x + Math.cos(q.facing) * 0.6, q.z + Math.sin(q.facing) * 0.6);
+      b.owner = q; b.lastTouch = q; this.possessionTeam = me; this.humans[0].player = q;
+    }
     if (s.id === 'feint') { /* chi ha ricevuto il passaggio fa la finta */ }
     if (s.id === 'shot') {
       const q = this.humans[0].player && this.humans[0].player.team === me ? this.humans[0].player : p;
@@ -127,9 +134,12 @@ class TutorialMatch extends TrainingMatch {
     if (ok) this.stepDone();
   }
   stepDone() {
-    const tu = this.tu;
+    const tu = this.tu, b = this.ball, s = TUTORIAL_STEPS[tu.i];
     tu.ok = true; tu.t = 0;
-    this.ball.owner = null;
+    // il pallone si ferma dov'è (accanto a te): prima continuava a rotolare con la velocità della corsa e "se ne
+    // andava da solo" appena arrivavi nel cerchio (0.24.4). Dopo il tiro invece resta in rete.
+    if (s.id !== 'shot') { b.vx = 0; b.vy = 0; b.vz = 0; b.spin = 0; b.topspin = 0; }
+    b.owner = null;
     this.setState('DEAD');
     this.showBanner(pick(['Bravo!', 'Perfetto!', 'Ottimo!']), 1.2, 'goal');
   }

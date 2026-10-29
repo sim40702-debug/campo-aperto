@@ -140,3 +140,15 @@ parte con il prossimo.
   dietro liberi.
 - **Prove**: `novita024_browser_test.py` 30/30 (sostegni fuori dalla rete, rete appesa con spigoli liberi, più tutte
   le prove della rete), `natale_browser_test.py`.
+
+### Sprint 0.24.4 — Portiere giusto e controllo di tutte le modalità: fatto
+- **Portiere** (`09_render_keeper.js`, `09_render.js`): il segno del tuffo nel disegno era al contrario rispetto al
+  motore (`anim.diveDir` = lato × direzione della squadra): il corpo cadeva dalla parte opposta a quella in cui il
+  motore spostava il portiere. Corretto anche nel disegno semplice usato dai replay. Verificato su tutte e due le
+  porte e con i rigori (150 rigori simulati: nessuna parata dalla parte sbagliata).
+- **Tutorial** (`32_tutorial.js`): a passo riuscito il pallone si ferma (prima continuava a rotolare); scatto,
+  passaggio e finta ripartono con il pallone al piede.
+- **Rete** (`09_render_net.js`): forma di riposo calcolata lasciando pendere la rete (nodi liberi verso la media dei
+  vicini e un poco in giù): angoli dietro arrotondati, niente spigolo che sembra un palo.
+- **Prove**: `novita024_browser_test.py` 35/35 (tuffo verso il pallone sulle due porte, tutorial, rete morbida),
+  `npm test`, test nel browser delle altre modalità.

@@ -2,6 +2,17 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.4 — 29/10/2026 (portiere giusto, tutorial, rete morbida)
+- **Il portiere si tuffa verso il pallone.** Il motore lo spostava dalla parte giusta, ma il disegno lo faceva cadere
+  dalla parte opposta: sembrava che si buttasse dall'altra parte e prendesse la palla lo stesso. Ora corpo, braccia e
+  mani vanno dove va il pallone, su tutte e due le porte, in partita, ai rigori, in allenamento, nel tutorial, online
+  e nei replay.
+- **Tutorial: il pallone non scappa più.** Arrivato nel cerchio giallo il pallone continuava a rotolare con la
+  velocità della corsa e se ne andava da solo; ora si ferma accanto a te e al passo dopo torna al tuo piede (scatto,
+  passaggio, finta).
+- **Rete morbida come quella vera**: negli angoli dietro non c'è più lo spigolo dritto che sembrava un palo. La rete
+  pende un po' per il suo peso, gli angoli sono arrotondati e il tetto si incurva tra i lacci.
+
 ## 0.24.3 — 29/10/2026 (porta come quelle vere)
 - **Porta vera**: dietro la rete ci sono due **sostegni curvi** in metallo che partono dai pali e scendono a terra
   dietro la porta, con un tubo a terra e una corda tesa in alto. I sostegni stanno **fuori dalla rete**, non dentro.
