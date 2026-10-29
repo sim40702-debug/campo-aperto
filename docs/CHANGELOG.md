@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.9 — 30/10/2026 (stop del pallone, prestazioni, giro completo di test)
+- **Stop del pallone**: chi riceve il pallone lo ammortizza: con la gamba se arriva basso (più marcato se arriva
+  forte), con il petto e le braccia larghe se arriva alto. Prima il pallone si "attaccava" al piede senza gesto.
+- **Prestazioni controllate** rispetto alla 0.23.2 con tutte le novità della 0.24: il costo di un fotogramma cresce
+  poco (qualità bassa da 3,1 a 4,6 ms nel browser di prova, qualità alta +11%). La rete si calcola solo quando il
+  pallone è vicino alla porta.
+- **Giro completo dei test** (tutti i test automatici del gioco nel browser): vedi `docs/SCRUM_0.24.md`.
+
 ## 0.24.8 — 30/10/2026 (presentazione della partita, panchine e tunnel)
 - **Presentazione come in TV** prima delle partite che fai partire dal menu (anche la Partita di Natale): la
   telecamera vola sopra lo stadio e scende fino all'inquadratura televisiva, mentre al centro compare la scheda con
