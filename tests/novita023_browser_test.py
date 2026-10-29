@@ -82,6 +82,23 @@ async def main():
             check('allenamento %s: la porta sempre tutta in vista (3 tentativi)' % drill, all(r), r)
         await pg.screenshot(path=HERE + '/shots/023_allenamento_tiri.png')
 
+        # ---- allenamento (0.23.2): dopo un tiro sbagliato si passa al prossimo tentativo in pochi secondi
+        miss = await pg.evaluate("""() => { const out = [], keep = game.gameInput;
+            for (const d of ['shots', 'dribble']) {
+              game.quitToMenu(); game.startTraining(d); const m = game.match, tr = m.tr;
+              let g = 0; while (tr.phase !== 'live' && g++ < 600) game.updateOffline(1/60);
+              let f = 0, shotF = -1; const start = tr.done;
+              // tiro largo: Tiro tenuto quasi un secondo mirando fuori, poi rilasciato
+              game.gameInput = () => ({ mx: 0, mz: f < 70 ? 1 : 0, sprint: false, shoot: f >= 20 && f < 70, press: false, pressed: {} });
+              while (tr.done === start && tr.phase === 'live' && f++ < 60 * 20) { game.updateOffline(1/60); if (shotF < 0 && tr.shotAt !== undefined) shotF = f; }
+              out.push(shotF < 0 ? 99 : (f - shotF) / 60);
+              // e la respinta ripresa dal tuo calciatore non fa continuare il tentativo
+              m.tr.phase = 'live'; m.tr.shotAt = 0.1; m.tr.playT = 1; m.state = 'PLAY'; m.ball.owner = m.trMain; const d0 = tr.done; game.gameInput = () => ({ mx: 0, mz: 0, sprint: false, shoot: false, press: false, pressed: {} });
+              game.updateOffline(1/60); out.push(tr.done > d0 ? 'finito' : 'continua');
+            }
+            game.gameInput = keep; return out; }""")
+        check('allenamento: dopo il tiro sbagliato al massimo 3 s e si passa al prossimo; riprendere la palla non fa continuare', miss[0] <= 3.05 and miss[2] <= 3.05 and miss[1] == 'finito' and miss[3] == 'finito', miss)
+
         # ---- comandi che seguono la telecamera dietro al calciatore (allenamento, punizioni)
         async def keys(code):
             await pg.keyboard.down(code)

@@ -45,6 +45,9 @@ async def newpage(b):
     await pg.add_init_script('if (!localStorage.getItem("campoAperto.settings.v1")) localStorage.setItem("campoAperto.settings.v1", ' + json.dumps(json.dumps(s)) + ')')
     await pg.goto(URL)
     await pg.wait_for_function('window.game && window.game.loaded', timeout=60000, polling=250)
+    # il pannello Amici parte chiuso (0.23.2): si apre come farebbe un giocatore
+    await pg.evaluate("document.getElementById('loading') && document.getElementById('loading').remove()")
+    if not await pg.is_visible('#social-body'): await pg.click('#social-toggle')
     return ctx, pg, errs
 
 async def register(pg, name):

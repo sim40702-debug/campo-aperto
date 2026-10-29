@@ -73,10 +73,14 @@ async def main():
             # ---- pannello a destra, a metà schermo
             box = await A.locator('#social').bounding_box()
             check('pannello Amici nella Home: a destra, a metà altezza', box and abs(box['x'] + box['width'] - 1400) < 2 and abs(box['y'] + box['height'] / 2 - 410) < 40, box)
-            check('aperto su schermo largo, senza account chiede di accedere', await A.is_visible('#social-body') and 'Accedi' in await social_text(A))
+            # dalla 0.23.2 parte chiuso anche su uno schermo largo: si apre cliccando la linguetta
+            check('all\'avvio è chiuso: si vede solo la linguetta Amici', not await A.is_visible('#social-body') and await A.is_visible('#social-toggle'))
+            await A.click('#social-toggle')
+            check('cliccando si apre; senza account chiede di accedere', await A.is_visible('#social-body') and 'Accedi' in await social_text(A))
             await A.click('#social-toggle')
             check('si chiude e resta solo la linguetta', not await A.is_visible('#social-body') and await A.is_visible('#social-toggle'))
             await A.click('#social-toggle')
+            await B.click('#social-toggle')
 
             # ---- account e amicizia
             await register(A, NA); await register(B, NB)
