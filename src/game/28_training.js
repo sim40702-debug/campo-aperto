@@ -72,6 +72,7 @@ class TrainingMatch extends Match {
     if (tr.phase === 'over') { this.realTime += dt; this.stateTime += dt; return; }
     if (tr.phase === 'ready' || tr.phase === 'result') {
       // pausa tra un tentativo e l'altro: la palla rotola, i giocatori si fermano
+      this.rememberPositions();
       tr.t += dt;
       this.realTime += dt; this.stateTime += dt;
       if (this.banner) { this.banner.t -= dt; if (this.banner.t <= 0) this.banner = null; }
@@ -110,6 +111,14 @@ class TrainingMatch extends Match {
       if ((since > 0.8 && b.speed() < 1.2 && !b.inNet) || away || since > 3) return this.attemptResult(false, 'Niente gol');
     }
     if (tr.playT > (tr.drill.id === 'dribble' ? 16 : 10)) return this.attemptResult(false, 'Tempo scaduto');
+  }
+
+  // posizioni del passo precedente (come all'inizio di Match.step): la grafica disegna tra i due passi. Senza, durante
+  // la pausa dopo un gol il pallone disegnato restava fermo sulla linea e la rete non si muoveva (0.24.1)
+  rememberPositions() {
+    const b = this.ball;
+    b.px = b.x; b.py = b.y; b.pz = b.z;
+    for (const t of this.teams) for (const p of t.roster) { p.px = p.x; p.pz = p.z; p.pf = p.facing; p.pph = p.anim.phase; }
   }
 
   // prepara il prossimo tentativo

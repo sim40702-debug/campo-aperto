@@ -1080,7 +1080,7 @@ class Game {
     }
     R.render();
     // primo fotogramma: il gioco è pronto. La schermata di caricamento resta finché non finisce il controllo dei server
-    if (!this.loaded) { this.loaded = true; this.startupCheck(); }
+    if (!this.loaded) { this.loaded = true; this.startupCheck(); if (this.upd) this.onUpdateState(); }
     this.input.endFrame();
   }
 

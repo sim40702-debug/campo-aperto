@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.1 — 29/10/2026 (allenamento con tutte le novità)
+- **Allenamento: rete, pallone e portiere nuovi anche qui.** Nelle pause dell'allenamento (dopo un tiro, un gol o
+  una parata) il pallone e i calciatori disegnati restavano fermi: dopo il gol il pallone si fermava sulla linea e la
+  rete non si muoveva, e il tuffo del portiere si bloccava a metà. Ora in tiri, punizioni, rigori e dribbling (e nel
+  tutorial) il pallone entra in rete, la rete si gonfia e ondeggia e il portiere finisce il tuffo e si rialza.
+- **Messaggio "Aggiornato alla versione …"**: compare quando il gioco ha finito di caricare (prima a volte spariva
+  durante il caricamento).
+
 ## 0.24.0 — 29/10/2026 (nuova generazione: portiere, rete, pallone, calciatori, campo)
 Fatta con Scrum in 5 sprint (piano e review in `docs/SCRUM_0.24.md`).
 - **Portiere vero, nel motore** (non solo nel disegno). Vede il tiro e reagisce dopo un tempo che dipende dalla sua
