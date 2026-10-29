@@ -120,3 +120,13 @@ parte con il prossimo.
 - **In più**: il messaggio "Aggiornato alla versione" aspetta la fine del caricamento.
 - **Prove**: `novita024_browser_test.py` (gol in tiri, punizioni, rigori e dribbling: pallone in rete, rete che si
   gonfia, portiere che si tuffa), `updates_browser_test.py` 32/32, `npm test`.
+
+### Sprint 0.24.2 — Visuale "Dietro al giocatore": fatto
+- **Telecamera** (`09_render.js`): segue il pallone (centro dell'inquadratura morbido), non più il calciatore
+  comandato.
+- **Cambio automatico** (`08_match.js`, `autoSwitchTarget`): attivo solo con questa visuale (il gioco manda
+  `input.autoSwitch`, anche in rete con il campo `au`). Senza palla: il compagno più vicino a dove va il pallone,
+  solo se più vicino di almeno 2,5 m e al massimo un cambio ogni 0,35 s; passaggio in viaggio: chi lo riceve.
+  Le partite tra computer non cambiano (`motore_test` uguale).
+- **Prove**: `novita024_browser_test.py` 28/28 (cambio automatico, telecamera sul pallone, nessun cambio con la
+  visuale televisiva, passaggio), `controls`, `novita023`, `feel`, `npm test`.

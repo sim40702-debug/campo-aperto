@@ -749,6 +749,27 @@ class Match {
     this.issuePendingCards();
   }
 
+  // cambio automatico del calciatore comandato: con un tuo passaggio in viaggio passa subito a chi lo riceve;
+  // altrimenti va al compagno più vicino al punto dove sta andando il pallone, ma solo se è davvero più vicino
+  // (almeno 2,5 m) e non più di un cambio ogni 0,35 s: così non salta avanti e indietro tra due compagni vicini
+  autoSwitchTarget(h, p, team, freeMate) {
+    const b = this.ball, pp = this.pendingPass;
+    if (pp && pp.to && !b.owner && pp.to.team === team && pp.to !== p && freeMate(pp.to)) return pp.to;
+    if (this.realTime - (h.autoAt || -9) < 0.35) return null;
+    const tx = b.x + (b.owner ? b.owner.vx : b.vx) * 0.4, tz = b.z + (b.owner ? b.owner.vz : b.vz) * 0.4;
+    let best = null, bd = 1e9;
+    for (const t of team.players) {
+      if (!freeMate(t) || t.sentOff || t.gone) continue;
+      const d = dist2(t.x, t.z, tx, tz);
+      if (d < bd) { bd = d; best = t; }
+    }
+    if (!best || best === p) return null;
+    const dp = p && !p.isGK ? Math.sqrt(dist2(p.x, p.z, tx, tz)) : 1e9;
+    if (Math.sqrt(bd) + 2.5 >= dp) return null;
+    h.autoAt = this.realTime;
+    return best;
+  }
+
   // ---------- CONTROLLO UMANO ----------
   // input: { mx, mz (direzione sul campo, lunghezza 0..1), sprint, shoot (tenuto), press (pressing tenuto),
   //          switchDir ([x, z] colpetto della levetta destra), pressed: { pass, long, through, switch, shootDown } }
@@ -787,6 +808,11 @@ class Match {
         if (sc > bs) { bs = sc; best = t; }
       }
       if (best) { p = h.player = best; this.emit('switch', { id: h.id }); }
+    } else if (input.autoSwitch && this.state === 'PLAY' && !(b.owner && b.owner.team === team)) {
+      // cambio automatico (visuale "Dietro al giocatore", 0.24.2): senza la palla si comanda sempre il compagno
+      // più utile, senza premere niente
+      const np = this.autoSwitchTarget(h, p, team, freeMate);
+      if (np) { p = h.player = np; this.emit('switch', { id: h.id }); }
     }
     // tiro: un tocco rapidissimo (premuto e rilasciato tra due passi) conta comunque come tiro debole
     const shootHeld = !!input.shoot || !!pressed.shootDown;

@@ -1127,6 +1127,8 @@ class Game {
     if (m && R.camMode === 2) {
       const h = m.humanById(R.localId);
       fx = h ? m.teams[h.team].dir : 1;
+      // con questa visuale il calciatore comandato cambia da solo (08_match.js, autoSwitchTarget)
+      inp.autoSwitch = true;
     } else if (m && (spc === 'set' || spc === 'after' || spc === 'train')) {
       const cf = R.camTarget.clone().sub(R.camera.position);
       // punizioni e rigori: avanti è dritto verso la porta (così il mirino va su e giù, a destra e a sinistra

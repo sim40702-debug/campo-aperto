@@ -243,7 +243,7 @@ function sanitizeInput(d) {
     const x = num(d.sw[0]), z = num(d.sw[1]), m = Math.hypot(x, z);
     if (m > 0.5) sw = [x / m, z / m];
   }
-  return { mx: mx, mz: mz, sprint: !!d.sp, shoot: !!d.sh, press: !!d.pr, acts: acts, sw: sw };
+  return { mx: mx, mz: mz, sprint: !!d.sp, shoot: !!d.sh, press: !!d.pr, acts: acts, sw: sw, auto: !!d.au };
 }
 
 // ---------- EVENTI IN RETE ----------
@@ -464,7 +464,7 @@ class HostSession {
           const pressed = {};
           for (const a of r.acts) pressed[a] = true;
           r.acts = [];
-          h.input = { mx: r.mx, mz: r.mz, sprint: r.sprint, shoot: r.shoot, press: r.press, switchDir: r.sw, pressed: pressed };
+          h.input = { mx: r.mx, mz: r.mz, sprint: r.sprint, shoot: r.shoot, press: r.press, switchDir: r.sw, pressed: pressed, autoSwitch: r.auto };
           r.sw = null;
         }
       }
@@ -782,12 +782,13 @@ class ClientSession {
     for (const a of NET.ACTIONS) if (input.pressed[a]) this.pendingActs.push(a);
     if (input.switchDir) this.pendingSw = input.switchDir;
     const urgent = this.pendingActs.length || this.pendingSw;
-    const key = input.mx.toFixed(2) + input.mz.toFixed(2) + (input.sprint ? 1 : 0) + (input.shoot ? 1 : 0) + (input.press ? 1 : 0);
+    const key = input.mx.toFixed(2) + input.mz.toFixed(2) + (input.sprint ? 1 : 0) + (input.shoot ? 1 : 0) + (input.press ? 1 : 0) + (input.autoSwitch ? 1 : 0);
     const now = performance.now();
     if (!urgent && key === this.lastInputKey && now - this.lastSend < 250) return;
     if (!urgent && now - this.lastSend < 1000 / NET.INPUT_HZ) return;
     const msg = { t: 'in', mx: input.mx, mz: input.mz, sp: input.sprint ? 1 : 0, sh: input.shoot ? 1 : 0, pr: input.press ? 1 : 0, a: this.pendingActs };
     if (this.pendingSw) msg.sw = this.pendingSw;
+    if (input.autoSwitch) msg.au = 1;   // visuale "Dietro al giocatore": cambio automatico del calciatore
     this.link.toHost(msg);
     this.pendingActs = []; this.pendingSw = null; this.lastInputKey = key; this.lastSend = now;
   }
