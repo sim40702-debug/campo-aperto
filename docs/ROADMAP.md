@@ -51,6 +51,7 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.23.0 — dopo il gol come in TV, telecamera di punizioni e allenamento, portiere
 - 0.24.0 — nuova generazione: portiere vero, rete 3D dinamica, pallone premium, calciatori, campo e telecamera
 - 0.24.1 — le novità della 0.24 anche in allenamento
-- 0.24.2 — visuale dietro al giocatore che segue il pallone, cambio automatico del calciatore  ← attuale
+- 0.24.2 — visuale dietro al giocatore che segue il pallone, cambio automatico del calciatore
+- 0.24.3 — porta come quelle vere, con i sostegni dietro la rete  ← attuale
 - prossime — carriera: contratti, infortuni, obiettivi della società
 - 1.0.0 — M6 rifinitura completa, prima versione completa

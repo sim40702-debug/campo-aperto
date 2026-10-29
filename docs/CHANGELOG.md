@@ -2,6 +2,13 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.3 — 29/10/2026 (porta come quelle vere)
+- **Porta vera**: dietro la rete ci sono due **sostegni curvi** in metallo che partono dai pali e scendono a terra
+  dietro la porta, con un tubo a terra e una corda tesa in alto. I sostegni stanno **fuori dalla rete**, non dentro.
+- **La rete è appesa**: fissata a pali, traversa e terra, legata ai sostegni e alla corda con dei lacci (si vedono),
+  e per il resto libera. Gli spigoli dietro non sono più tubi: lì la rete pende un po' e si muove insieme al resto
+  quando arriva il pallone. Fisica e gol come prima.
+
 ## 0.24.2 — 29/10/2026 (visuale dietro al giocatore)
 - **La visuale "Dietro al giocatore" segue il pallone**, sempre alle spalle nella direzione in cui attacchi, con
   movimenti morbidi. Prima seguiva il calciatore comandato e, quando cambiavi giocatore, l'inquadratura saltava.
