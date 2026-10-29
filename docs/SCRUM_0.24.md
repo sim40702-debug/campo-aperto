@@ -130,3 +130,13 @@ parte con il prossimo.
   Le partite tra computer non cambiano (`motore_test` uguale).
 - **Prove**: `novita024_browser_test.py` 28/28 (cambio automatico, telecamera sul pallone, nessun cambio con la
   visuale televisiva, passaggio), `controls`, `novita023`, `feel`, `npm test`.
+
+### Sprint 0.24.3 — Porta come quelle vere: fatto
+- **Richiesta del PO**: i pali dietro devono tenere la rete, non essere dentro la rete.
+- **Grafica** (`09_render_net.js`): tolto il telaio a scatola (pali dietro, tubi del tetto e a terra lungo la rete).
+  Nuovi sostegni curvi (TubeGeometry) dai pali fino a terra dietro la porta, 14 cm fuori dai lati e 55 cm dietro il
+  fondo, tubo a terra e corda in alto. La rete è un pezzo solo (i nodi degli spigoli sono in comune tra i pannelli):
+  fissata solo lungo pali, traversa e terra, e legata con un laccio ogni tre nodi lungo i bordi in alto; spigoli
+  dietro liberi.
+- **Prove**: `novita024_browser_test.py` 30/30 (sostegni fuori dalla rete, rete appesa con spigoli liberi, più tutte
+  le prove della rete), `natale_browser_test.py`.

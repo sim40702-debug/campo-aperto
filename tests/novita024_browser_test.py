@@ -13,6 +13,8 @@
 #   rete si gonfia; il portiere nuovo si tuffa.
 # - 0.24.2: visuale "Dietro al giocatore": la telecamera segue il pallone e il calciatore comandato cambia da solo
 #   (al più vicino al pallone, a chi riceve un passaggio); con la visuale televisiva no.
+# - 0.24.3: porta come quelle vere: sostegni dietro FUORI dalla rete, rete appesa (legata in pochi punti, spigoli
+#   dietro liberi).
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -191,6 +193,24 @@ async def main():
             m.pendingPass = { from: p1, to: p2, t: 0 }; game.updateOffline(1/60); game.updateOffline(1/60); return h.player === p2; }""")
         check('dietro al giocatore: passaggio in viaggio, il comando passa subito a chi lo riceve', recv, recv)
         await pg.evaluate("() => { game.renderer.camMode = 0; }")
+
+        # ---- 0.24.3: porta con i sostegni dietro
+        gs = await pg.evaluate("""() => { const R = game.renderer, net = R.nets.find(n => n.side > 0), C = CONFIG, D = C.GOAL_DEPTH, W = C.GOAL_HALF_W;
+            // nessun nodo della rete sta oltre il fondo o fuori dai lati (i sostegni sono più in là)
+            let maxDepth = 0, maxZ = 0, freeCorner = 0, pins = 0;
+            for (let i = 0; i < net.n; i++) {
+              const x = net.rest[i * 3], y = net.rest[i * 3 + 1], z = net.rest[i * 3 + 2];
+              maxDepth = Math.max(maxDepth, x - C.HALF_L); maxZ = Math.max(maxZ, Math.abs(z));
+              // spigolo verticale dietro (tra fondo e lato), sopra terra e sotto il bordo in alto: libero
+              if (Math.abs(x - C.HALF_L - D) < 0.01 && Math.abs(Math.abs(z) - W) < 0.01 && y > 0.3 && y < 1.5 && !net.pin[i]) freeCorner++;
+              if (net.pin[i]) pins++;
+            }
+            // tubi curvi (sostegni) presenti, più lontani della rete
+            let tubes = 0, tubeMaxZ = 0;
+            R.scene.traverse(o => { if (o.geometry && o.geometry.type === 'TubeGeometry') { tubes++; o.geometry.computeBoundingBox(); tubeMaxZ = Math.max(tubeMaxZ, o.geometry.boundingBox.max.z); } });
+            return { maxDepth: maxDepth, maxZ: maxZ, freeCorner: freeCorner, ties: net.ties.length, pins: pins, n: net.n, tubes: tubes, tubeMaxZ: tubeMaxZ }; }""")
+        check('porta: sostegni curvi dietro, fuori dalla rete', gs['tubes'] >= 4 and gs['tubeMaxZ'] > gs['maxZ'] + 0.08, gs)
+        check('porta: rete appesa, legata in pochi punti, spigoli dietro liberi', gs['ties'] >= 10 and gs['freeCorner'] >= 4 and gs['pins'] < gs['n'] * 0.25, gs)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()
