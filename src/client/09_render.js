@@ -769,7 +769,7 @@ class Renderer {
       chest.rotation.y = 0.3 * k; chest.rotation.z = -0.1 * k;
     }
     if (diveDir) { // tuffo del portiere
-      body.rotation.x = -diveDir * 1.25; body.position.y = 0.3;
+      body.rotation.x = diveDir * 1.25; body.position.y = 0.3;   // stesso verso del tuffo vero (09_render_keeper.js)
       A0.sh.rotation.x = -2.6; A1.sh.rotation.x = 2.6; A0.elbow.rotation.z = A1.elbow.rotation.z = 0.15;
       L0.knee.rotation.z = -0.4;
     }

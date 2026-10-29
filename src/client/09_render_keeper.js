@@ -67,7 +67,9 @@ Renderer.prototype.poseKeeperRaw = function (pm, p, m, dt, bx, by, bz) {
   const ss = x => x * x * (3 - 2 * x);
   // ---- tuffo
   if (p.anim.dive > 0) {
-    if (!pm.dv || pm.dv.done) pm.dv = { h: gkDiveHeight(p, b), side: -(p.anim.diveDir || 1), up: 1, done: false };
+    // diveDir = lato del tuffo × direzione della squadra (07_ai.js): con questo segno il corpo cade dalla parte dove il
+    // motore lo sposta, cioè verso il pallone (prima era al contrario: si buttava dall'altra parte, 0.24.4)
+    if (!pm.dv || pm.dv.done) pm.dv = { h: gkDiveHeight(p, b), side: p.anim.diveDir || 1, up: 1, done: false };
     const dv = pm.dv, u = clamp(1 - p.anim.dive / GK_DIVE_SECS, 0, 1);
     const high = dv.h > 1.7, low = dv.h < 0.55;
     const rot = high ? 1.1 : low ? 1.52 : 1.35, lift = high ? 0.55 : low ? 0.1 : 0.38;
