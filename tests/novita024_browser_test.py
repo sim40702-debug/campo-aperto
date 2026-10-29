@@ -11,6 +11,8 @@
 #   che anticipa il pallone e si avvicina davanti alle porte, piccolo effetto sul palo.
 # - 0.24.1: in allenamento (tiri, punizioni, rigori, dribbling) dopo il gol il pallone disegnato entra in rete e la
 #   rete si gonfia; il portiere nuovo si tuffa.
+# - 0.24.2: visuale "Dietro al giocatore": la telecamera segue il pallone e il calciatore comandato cambia da solo
+#   (al più vicino al pallone, a chi riceve un passaggio); con la visuale televisiva no.
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -164,6 +166,31 @@ async def main():
                   for (let k = 0; k < net.d.length; k++) netMax = Math.max(netMax, Math.abs(net.d[k])); }
                 return { last: m.tr.last, dive: dive, netMax: netMax, ballX: ballX }; }""", drill)
             check('allenamento ' + drill + ': gol, il pallone disegnato entra in rete e la rete si gonfia, il portiere si tuffa', r['last'] == 'Gol!' and r['netMax'] > 0.3 and r['ballX'] > 54 and r['dive'], r)
+
+        # ---- 0.24.2: visuale dietro al giocatore
+        AUTO = """(cam) => { game.quitToMenu(); game.setup.side = 0; game.startMatch(); game.renderer.camMode = cam;
+            for (let i = 0; i < 200; i++) game.updateOffline(1/60);
+            const m = game.match, R = game.renderer, h = m.humanById(R.localId), me = m.teams[h.team], opp = me.opponent();
+            // un avversario con la palla lontano dal tuo calciatore
+            const far = me.players.filter(p => !p.isGK).sort((a, b) => b.x - a.x)[0];
+            h.player = far; const a = opp.players[9]; m.state = 'PLAY'; m.ball.owner = a; a.x = me.ownGoalX() - me.dir * -25; a.z = 10; a.vx = a.vz = 0;
+            for (let i = 0; i < 40; i++) game.updateOffline(1/60);
+            const near = me.players.filter(p => !p.isGK).sort((p, q) => Math.hypot(p.x - a.x, p.z - a.z) - Math.hypot(q.x - a.x, q.z - a.z))[0];
+            const out = { switched: h.player !== far, nearest: h.player === near };
+            // la telecamera guarda il pallone (non il calciatore)
+            out.camLook = Math.abs(R.camTarget.z - m.ball.z * 0.85) < 3;
+            return out; }"""
+        tv = await pg.evaluate(AUTO, 0)
+        bh = await pg.evaluate(AUTO, 2)
+        check('dietro al giocatore: senza palla il calciatore comandato passa da solo al più vicino al pallone', bh['switched'] and bh['nearest'], bh)
+        check('dietro al giocatore: la telecamera segue il pallone', bh['camLook'], bh)
+        check('visuale televisiva: nessun cambio automatico (come prima)', not tv['switched'], tv)
+        recv = await pg.evaluate("""() => { const m = game.match, R = game.renderer, h = m.humanById(R.localId), me = m.teams[h.team];
+            const [p1, p2] = me.players.filter(p => !p.isGK).slice(5, 7); m.state = 'PLAY';
+            p1.x = 0; p1.z = 0; p2.x = me.dir * 20; p2.z = 5; h.player = p1; m.ball.owner = null; m.ball.x = 0.3; m.ball.z = 0; m.ball.vx = me.dir * 15; m.ball.vz = 3.5;
+            m.pendingPass = { from: p1, to: p2, t: 0 }; game.updateOffline(1/60); game.updateOffline(1/60); return h.player === p2; }""")
+        check('dietro al giocatore: passaggio in viaggio, il comando passa subito a chi lo riceve', recv, recv)
+        await pg.evaluate("() => { game.renderer.camMode = 0; }")
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

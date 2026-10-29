@@ -970,11 +970,15 @@ class Renderer {
       want.set(bx * 0.5, 55, bz * 0.2 + 75);
       look.set(bx * 0.6, 0, bz * 0.3);
     } else {
+      // dietro al giocatore (0.24.2): segue il pallone (non il calciatore comandato, che cambia da solo), sempre
+      // alle spalle nella direzione in cui attacchi; il centro dell'inquadratura si muove morbido
       const mh = match && match.humanById ? match.humanById(this.localId) : null;
       const dir = mh ? match.teams[mh.team].dir : 1;
-      const f = controlled ? { x: controlled.rx !== undefined ? controlled.rx : controlled.x, z: controlled.rz !== undefined ? controlled.rz : controlled.z } : { x: bx, z: bz };
-      want.set(f.x - dir * 16, 9, f.z * 0.9);
-      look.set(f.x + dir * 8, 0, f.z * 0.8);
+      const f = this._bf || (this._bf = { x: bx, z: bz });
+      const kf = 1 - Math.exp(-4 * dt);
+      if (this._cut) { f.x = bx; f.z = bz; } else { f.x += (bx - f.x) * kf; f.z += (bz - f.z) * kf; }
+      want.set(f.x - dir * 15, 8.5, f.z * 0.9);
+      look.set(f.x + dir * 9, 0, f.z * 0.85);
     }
     // inseguimento esponenziale: stessa morbidezza a 30, 60 o 144 fps; dopo uno stacco (calcio d'inizio) salta subito
     if (this._cut) { this._cut = false; this.camera.position.copy(want); this.camTarget.copy(look); }

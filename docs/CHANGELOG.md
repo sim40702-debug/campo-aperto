@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.2 — 29/10/2026 (visuale dietro al giocatore)
+- **La visuale "Dietro al giocatore" segue il pallone**, sempre alle spalle nella direzione in cui attacchi, con
+  movimenti morbidi. Prima seguiva il calciatore comandato e, quando cambiavi giocatore, l'inquadratura saltava.
+- **Con questa visuale il calciatore comandato cambia da solo**: quando non hai la palla comandi sempre il compagno
+  più vicino al punto dove sta andando il pallone (senza saltare avanti e indietro tra due compagni vicini), e quando
+  passi la palla comandi subito chi la riceve. Il cambio con il tasto funziona come prima. Con la visuale televisiva
+  e con quella dall'alto non cambia niente. Funziona anche online.
+
 ## 0.24.1 — 29/10/2026 (allenamento con tutte le novità)
 - **Allenamento: rete, pallone e portiere nuovi anche qui.** Nelle pause dell'allenamento (dopo un tiro, un gol o
   una parata) il pallone e i calciatori disegnati restavano fermi: dopo il gol il pallone si fermava sulla linea e la
