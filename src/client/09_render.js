@@ -654,6 +654,8 @@ class Renderer {
     this.applyEnvironment(match.weather, match.timeOfDay);   // meteo e ora del giorno della partita
     this.setupOfficials(match);   // arbitro e barellieri (09_render_referee.js)
     this.setupStadiumLife(match);   // bandiere, sciarpe e flash (09_render_stadium.js)
+    this.resetPoses(); this.cutCamera();
+    this.warmShaders();   // niente pause al primo tiro o al primo gol (09_render_setpiece.js)
   }
 
   // aspetto comprato (letto dal server) per un calciatore: si ricostruisce solo il suo modello
@@ -745,6 +747,29 @@ class Renderer {
     chest.rotation.z = -(gait.lean + pm.lean + cr * 0.4);
     pelvis.rotation.z = -(gait.tilt + pm.lean * 0.3);
     body.position.y = gait.bodyY - cr * 0.35;
+    // passi laterali (0.23): chi si sposta di lato guardando da un'altra parte (il portiere sulla linea che segue la
+    // palla, il difensore che temporeggia) non corre di traverso: apre e chiude le gambe, busto basso e braccia larghe
+    let side = 0;
+    if (extra && extra.vx !== undefined && speed > 0.4 && speed < 4.8) {
+      const lat = (-extra.vx * Math.sin(facing) + extra.vz * Math.cos(facing)) / speed;
+      side = clamp((Math.abs(lat) - 0.55) / 0.3, 0, 1) * clamp((4.8 - speed) / 1.5, 0, 1);
+    }
+    pm.side = (pm.side || 0) + (side - (pm.side || 0)) * Math.min(1, dt * 8);
+    if (pm.side > 0.02) {
+      const k = pm.side, st = Math.abs(Math.sin(phase));
+      for (const L of pm.legs) {
+        L.hip.rotation.z = L.hip.rotation.z * (1 - k) + 0.22 * k;
+        L.knee.rotation.z = L.knee.rotation.z * (1 - k) - 0.45 * k;
+        if (L.ankle) L.ankle.rotation.z = L.ankle.rotation.z * (1 - k) + 0.2 * k;
+      }
+      const spread = (0.07 + 0.22 * st) * k;
+      L0.hip.rotation.x -= spread; L1.hip.rotation.x += spread;
+      chest.rotation.z = chest.rotation.z * (1 - k) - 0.14 * k;
+      pelvis.rotation.z *= 1 - k;
+      body.position.y = body.position.y * (1 - k) + (-0.07 - 0.03 * st) * k;
+      A0.sh.rotation.z += 0.2 * k; A1.sh.rotation.z += 0.2 * k;
+      A0.sh.rotation.x -= 0.25 * k; A1.sh.rotation.x += 0.25 * k;
+    }
     if (amt < 0.08) {
       // fermo: respiro, peso che passa da una gamba all'altra, braccia sciolte, sguardo che si muove
       chest.rotation.z += Math.sin(pm.t * 2.1) * 0.014;
@@ -973,9 +998,11 @@ class Renderer {
     this.updateStadiumLife(dt);
     // telecamera del replay: bassa e laterale verso la porta
     const side = Math.sign(frame[0]) || 1;
-    const want = new THREE.Vector3(frame[0] - side * 14, 5, frame[2] + 16);
+    const want = new THREE.Vector3(frame[0] - side * 14, 5, frame[2] + 16), look = new THREE.Vector3(frame[0], frame[1] * 0.5 + 0.5, frame[2]);
+    // il replay comincia con uno stacco (la telecamera non vola dal posto di prima)
+    if (this._cut) { this._cut = false; this.camera.position.copy(want); this.camTarget.copy(look); }
     this.camera.position.lerp(want, Math.min(1, dt * 2.5));
-    this.camTarget.lerp(new THREE.Vector3(frame[0], frame[1] * 0.5 + 0.5, frame[2]), Math.min(1, dt * 5));
+    this.camTarget.lerp(look, Math.min(1, dt * 5));
     this.camera.lookAt(this.camTarget);
     this.updateWeather(dt);
     this.updateChristmas(dt, false);
@@ -987,6 +1014,8 @@ class Renderer {
     // serie dei rigori: inquadrature come in televisione (09_render_shootout.js)
     if (match && match.so && match.so.phase !== 'done') { this.shootoutCamera(dt, match, bx, by, bz); return; }
     this._soShot = null;
+    // punizioni, rigori e allenamento: telecamera dietro al pallone, la porta sempre tutta in vista (09_render_setpiece.js)
+    if (match && this.camMode !== 2 && this.setPieceCamera(dt, match, bx, by, bz)) return;
     if (this.camMode === 0) {
       // televisiva (0.22): più bassa e più vicina, come nelle partite in TV di oggi
       want.set(bx * 0.84, 19.5, bz * 0.32 + 41);
@@ -1001,9 +1030,12 @@ class Renderer {
       want.set(f.x - dir * 16, 9, f.z * 0.9);
       look.set(f.x + dir * 8, 0, f.z * 0.8);
     }
-    // inseguimento esponenziale: stessa morbidezza a 30, 60 o 144 fps
-    this.camera.position.lerp(want, 1 - Math.exp(-3.6 * dt));
-    this.camTarget.lerp(look, 1 - Math.exp(-5 * dt));
+    // inseguimento esponenziale: stessa morbidezza a 30, 60 o 144 fps; dopo uno stacco (calcio d'inizio) salta subito
+    if (this._cut) { this._cut = false; this.camera.position.copy(want); this.camTarget.copy(look); }
+    else {
+      this.camera.position.lerp(want, 1 - Math.exp(-3.6 * dt));
+      this.camTarget.lerp(look, 1 - Math.exp(-5 * dt));
+    }
     this.camera.lookAt(this.camTarget);
     // piccolo tremolio della telecamera dopo un gol
     if (this.shake > 0) {

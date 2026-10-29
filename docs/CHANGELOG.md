@@ -2,6 +2,29 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.23.0 — 29/10/2026 (dopo il gol come in TV, punizioni, portiere)
+- **Dopo il gol non si "bugga" più niente**. Prima il replay partiva a metà esultanza, poi l'esultanza ripartiva con
+  i giocatori che saltavano di posto, e al calcio d'inizio tutti si teletrasportavano mentre la telecamera volava
+  dalla porta al centro. Ora va come in TV: **esultanza intera** (3 secondi), **stacco** con la fascia di Campo
+  Aperto, **replay** dal tiro al gol, di nuovo lo stacco e **subito il calcio d'inizio** con la telecamera già al
+  suo posto e i giocatori fermi nella loro posizione. Il replay si salta sempre con Passaggio. Online la partita non
+  si ferma: il replay resta breve, con gli stessi stacchi.
+- **Punizioni e rigori: tutta la porta in vista**. Per le punizioni dirette (fino a 36 m) e i rigori la telecamera
+  va dietro al pallone, un po' di lato e in alto: si vedono tiratore, barriera, portiere e tutta la porta con il
+  mirino. Dopo il calcio resta ferma e segue il pallone, poi torna all'inquadratura di sempre.
+- **Allenamento**: in tiri, punizioni, rigori e dribbling la telecamera sta sempre dietro al tuo calciatore e guarda
+  la porta, che resta tutta nell'inquadratura anche mentre corri; a ogni tentativo nuovo uno stacco.
+- **Portiere più vero**: si sposta lungo la linea con i **passi laterali** (non corre di traverso); quando un
+  avversario arriva con la palla vicino alla porta fa il **saltello** e si mette **pronto** sulle punte; sui **tiri
+  centrali** va incontro al pallone (basso si china a raccoglierlo, a mezza altezza lo blocca sul petto, alto alza le
+  braccia); quando passa corto **fa rotolare la palla con il braccio**. Anche i difensori che temporeggiano fanno i
+  passi laterali.
+- **Gol più leggeri per il computer**: meno suoni e scintille dei fuochi d'artificio nello stesso istante, e i
+  disegni dei flash e dei fuochi preparati all'inizio della partita (prima il gioco si fermava un attimo al primo
+  tiro o al primo gol).
+- Solo grafica, telecamera e animazioni: il motore della partita non cambia (stessa impronta), il server non va
+  aggiornato.
+
 ## 0.22.0 — 27/10/2026 (Natale come in TV)
 - **Il tema di Natale è sempre acceso**: è il tema del gioco per queste feste (niente più scelta nelle impostazioni).
 - **Immagine come nelle partite in TV** (qualità Media, Alta e Ultra): bagliore attorno a fari, lucine, stelle e

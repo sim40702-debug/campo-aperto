@@ -380,6 +380,21 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
   background: rgba(12,26,43,0.88); border-left: 4px solid var(--flood); padding: 8px 10px 8px 16px; white-space: nowrap; }
 #hl-label { font-family: var(--display); font-weight: 700; font-size: 20px; margin-right: 6px; }
 #hl-bar .ghost { padding: 6px 14px; font-size: 14px; }
+/* stacco come in TV (src/game/14_game.js, tvWipe): una fascia inclinata attraversa lo schermo in 0,6 s; nel mezzo, quando
+   copre tutto, cambia l'inquadratura */
+#tv-wipe { position: fixed; inset: 0; z-index: 30; pointer-events: none; overflow: hidden; }
+#tv-wipe .tw-panel { position: absolute; top: 0; bottom: 0; left: -20vw; width: 140vw; transform: translateX(-120%);
+  background: linear-gradient(100deg, #0c1a2b 0%, #13253b 55%, #1b3150 100%); clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border-left: 0; }
+#tv-wipe .tw-panel::before, #tv-wipe .tw-panel::after { content: ''; position: absolute; top: 0; bottom: 0; width: 1.2vw; background: var(--flood); transform: skewX(-10deg); }
+#tv-wipe .tw-panel::before { left: 10%; } #tv-wipe .tw-panel::after { right: 10%; background: #c8102e; }
+#tv-wipe.go .tw-panel { animation: tv-wipe 0.62s cubic-bezier(.6,.05,.3,1) both; }
+@keyframes tv-wipe { 0% { transform: translateX(-120%); } 40% { transform: translateX(0); } 52% { transform: translateX(0); } 100% { transform: translateX(120%); } }
+.tw-logo { display: flex; align-items: center; gap: 14px; font-family: var(--display); font-weight: 800; font-style: italic; text-transform: uppercase; font-size: clamp(34px, 6vw, 72px); color: var(--chalk); letter-spacing: 0.01em; }
+.tw-logo svg { width: 1.1em; height: 1.1em; fill: none; stroke: var(--chalk); stroke-width: 1.6; stroke-linejoin: round; }
+.tw-logo svg .f { fill: var(--flood); stroke: none; }
+#tw-label { font-family: var(--display); font-weight: 700; font-size: clamp(16px, 2.2vw, 26px); color: var(--flood); letter-spacing: 0.3em; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) { #tv-wipe.go .tw-panel { animation-duration: 0.01s; } }
 #replay-tag small { font-family: var(--text); font-style: normal; font-weight: 400; font-size: 13px; margin-left: 8px; }
 .netind { position: fixed; top: calc(60px + env(safe-area-inset-top, 0px)); left: 16px; display: flex; align-items: center; gap: 8px; background: rgba(12,26,43,0.85); padding: 4px 10px; font-size: 14px; }
 .pc { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 280px; background: rgba(12,26,43,0.85); padding: 10px 12px; }
@@ -1325,6 +1340,8 @@ select.sel:focus { outline: none; border-color: var(--flood); }
   <div id="scorer" hidden></div>
   <div id="commentary" hidden role="status" aria-live="polite"></div>
   <div id="replay-tag" hidden>Replay<small></small></div>
+  <!-- stacco come in TV: una fascia passa sullo schermo mentre l'inquadratura cambia (replay, calcio d'inizio) -->
+  <div id="tv-wipe" hidden aria-hidden="true"><div class="tw-panel"><div class="tw-logo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M12 7.2l3.6 2.6-1.4 4.2H9.8L8.4 9.8z" class="f"/><path d="M12 7.2V2.9M15.6 9.8l4.1-1.4M14.2 14l2.6 3.5M9.8 14l-2.6 3.5M8.4 9.8L4.3 8.4"/></svg><b>Campo Aperto</b></div><span id="tw-label"></span></div></div>
   <div id="tr-hud" hidden></div>
   <div id="so-panel" hidden><div class="sop-row"><b id="so-n0"></b><span id="so-d0"></span></div><div class="sop-row"><b id="so-n1"></b><span id="so-d1"></span></div></div>
   <div class="pc" id="pc" hidden>

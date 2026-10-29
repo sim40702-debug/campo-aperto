@@ -10,6 +10,8 @@ const CAMERA_NAMES = ['Televisiva', 'Larga', 'Dietro al giocatore'];
 const WEATHER_CHOICES = [['clear', 'Sereno'], ['rain', 'Pioggia'], ['snow', 'Neve'], ['random', 'A caso']];
 const TIME_CHOICES = [['day', 'Giorno'], ['sunset', 'Tramonto'], ['night', 'Sera'], ['random', 'A caso']];
 // partita rapida finita in parità: resta pari, supplementari e poi rigori, oppure subito i rigori
+// stacco come in TV (tvWipe): a metà cambia l'inquadratura, alla fine la fascia è uscita (come l'animazione CSS)
+const TV_WIPE_CUT = 0.27, TV_WIPE_END = 0.64;
 const DRAW_CHOICES = [['draw', 'Resta pari'], ['extra', 'Supplementari e rigori'], ['pens', 'Subito i rigori']];
 // "A caso": quasi sempre sereno, a volte pioggia, raramente neve
 function pickWeather(v) {
@@ -383,6 +385,7 @@ class Game {
     this.renderer.menuDemo = false;
     this.renderer.setupMatch(m);
     this.replay = null; this.replayPending = null; this.paused = false;
+    this.finishWipe(false); this.lastMatchState = null;
     this.demo = null; this.acc = 0;
     $('sb-home').textContent = m.teams[0].data.short;
     $('sb-away').textContent = m.teams[1].data.short;
@@ -485,6 +488,7 @@ class Game {
     this.compMatch = null;
     if (this.net) this.leaveOnline(false);
     this.mode = 'menu';
+    this.finishWipe(false);
     this.match = null; this.paused = false; this.replay = null;
     $('pause').hidden = true;
     this.startDemo();
@@ -494,6 +498,7 @@ class Game {
   togglePause(v) {
     if (!this.match) return;
     this.paused = v === undefined ? !this.paused : v;
+    if (this.paused) this.finishWipe(true);   // in pausa niente stacco a metà
     $('pause').hidden = !this.paused;
     if (this.paused) {
       const online = this.mode !== 'offline';
@@ -1139,6 +1144,12 @@ class Game {
   updateOffline(dt) {
     const m = this.match, R = this.renderer;
     if (this.paused) { R.syncFromMatch(m, 0, this.acc / CONFIG.DT); return; }
+    // stacco come in TV in corso: finché la fascia non copre lo schermo la partita aspetta
+    if (this.stepWipe(dt)) {
+      if (this.replay) this.renderer.syncFromReplay(this.replay.frames[Math.floor(this.replay.i)], m, dt);
+      else R.syncFromMatch(m, dt, this.acc / CONFIG.DT);
+      return;
+    }
     if (this.playReplay(dt)) return;
     this.acc += dt;
     let first = true;
@@ -1170,6 +1181,7 @@ class Game {
     if (background) return;
     for (const e of evs) this.handleEvent(this.eventFromMatch(h.match, e));
     if (this.screen === 'fulltime') { this.renderer.syncFromMatch(h.match, dt); return; }
+    this.stepWipe(dt);   // online la partita non aspetta lo stacco
     if (this.playReplay(dt)) return;
     this.afterSim(h.match, dt, 0.7, true, h.acc / CONFIG.DT);
     this.updateNetIndicator();
@@ -1183,6 +1195,7 @@ class Game {
     c.sendInput(input);
     const evs = c.update(dt);
     for (const e of evs) this.handleEvent(e);
+    this.stepWipe(dt);
     if (this.playReplay(dt)) { this.updateNetIndicator(); return; }
     this.afterSim(c.match, dt, 0.7, true);
     this.updateNetIndicator();
@@ -1193,18 +1206,27 @@ class Game {
     this.hlTick(m);
     if (m.tutorial) this.renderTutorialHud();   // tutorial (32_tutorial.js)
     else if (m.training) this.renderTrainingHud();   // allenamento (28_training.js)
-    if (this.replayPending && m.state === 'GOAL' && m.stateTime > 1.6) {
+    // calcio d'inizio dopo il gol: tutti al loro posto in un colpo, quindi stacco della telecamera e pose da zero
+    if (this.lastMatchState === 'GOAL' && m.state === 'KICKOFF') { R.cutCamera(); R.resetPoses(); }
+    this.lastMatchState = m.state;
+    // replay del gol. Offline prima si vede tutta l'esultanza (3 s), online la partita non si ferma e il replay è
+    // breve e parte prima. Il replay si apre con uno stacco come in TV.
+    if (this.replayPending && m.state === 'GOAL' && m.stateTime > (online ? 1.6 : 3.0) && !this.wipe) {
       this.replayPending = false;
       let frames = m.replay.slice();
-      // online la partita non si ferma: replay breve (2 s attorno al gol) che finisce prima della ripresa
-      if (online) {
-        // il buffer scorre: il gol è avvenuto stateTime secondi fa
-        const end = Math.max(0, Math.min(frames.length, frames.length - Math.round(m.stateTime * 60) + 24));
-        frames = frames.slice(Math.max(0, end - 120), end);
-      }
+      // il buffer scorre: il gol è avvenuto stateTime secondi fa. Il replay finisce poco dopo il gol (dopo ci sono
+      // solo giocatori fermi: l'esultanza vera l'hai già vista)
+      const end = Math.max(0, Math.min(frames.length, frames.length - Math.round(m.stateTime * 60) + (online ? 24 : 54)));
+      frames = frames.slice(Math.max(0, end - (online ? 120 : 270)), end);
       // copia: i fotogrammi del buffer vengono riusati mentre la partita va avanti
       frames = frames.map(f => f.slice());
-      if (frames.length > 10) { this.replay = { frames: frames, i: 0, speed: replaySpeed }; this.updateReplayTag(); $('replay-tag').hidden = false; }
+      if (frames.length > 10) {
+        this.tvWipe('Replay', () => {
+          this.replay = { frames: frames, i: 0, speed: replaySpeed };
+          this.updateReplayTag(); $('replay-tag').hidden = false;
+          R.cutCamera();
+        });
+      }
     }
     R.syncFromMatch(m, dt, alpha);
     const excite = m.state === 'GOAL' ? 1 : Math.max(0, (Math.abs(m.ball.x) - 25) / 30);
@@ -1221,15 +1243,60 @@ class Game {
   playReplay(dt) {
     if (!this.replay) return false;
     const rp = this.replay, m = this.match;
-    rp.i += dt * 60 * rp.speed;
-    // si salta con l'azione Passaggio (tasto o pulsante scelti dal giocatore), non con un tasto fisso
-    const skip = this.input.consumeAction('pass');
-    if (rp.i >= rp.frames.length - 1 || skip || (this.mode !== 'offline' && m.state !== 'GOAL' && rp.i > 10 && m.state !== 'KICKOFF')) {
-      this.replay = null; $('replay-tag').hidden = true; return false;
+    if (!rp.ending) {
+      rp.i += dt * 60 * rp.speed;
+      // si salta con l'azione Passaggio (tasto o pulsante scelti dal giocatore), non con un tasto fisso
+      const skip = this.input.consumeAction('pass');
+      const last = rp.frames.length - 1;
+      if (rp.i >= last || skip || (this.mode !== 'offline' && m.state !== 'GOAL' && rp.i > 10 && m.state !== 'KICKOFF')) {
+        // fine del replay: stacco come in TV, poi si torna in campo (endReplay)
+        rp.i = Math.min(rp.i, last); rp.ending = true;
+        this.tvWipe('', () => this.endReplay());
+      }
     }
     this.renderer.syncFromReplay(rp.frames[Math.floor(rp.i)], m, dt);
     this.updateHUD();
     return true;
+  }
+
+  // dopo il replay: offline niente seconda esultanza, si va dritti al calcio d'inizio (com'è in TV). Le posizioni
+  // cambiano tutte insieme mentre la fascia dello stacco copre lo schermo, e la telecamera salta al suo posto.
+  endReplay() {
+    this.replay = null; $('replay-tag').hidden = true;
+    const m = this.match;
+    if (this.mode === 'offline' && m && m.state === 'GOAL') m.stateTime = Math.max(m.stateTime, m.goalPause || 3.5);
+    this.renderer.cutCamera(); this.renderer.resetPoses();
+  }
+
+  // ---------- stacco come in TV (fascia #tv-wipe) ----------
+  // fn si esegue a metà, quando la fascia copre lo schermo. Il tempo è quello del gioco (dt), non un timer:
+  // la partita offline aspetta lo stacco, così niente si muove sotto la fascia.
+  tvWipe(label, fn) {
+    if (this.wipe && !this.wipe.done) {   // ce n'è già uno: questa cosa si fa allo stesso stacco
+      const f0 = this.wipe.fn;
+      this.wipe.fn = () => { if (f0) f0(); if (fn) fn(); };
+      return;
+    }
+    this.wipe = { t: 0, fn: fn, done: false };
+    $('tw-label').textContent = label ? tr(label) : '';
+    const el = $('tv-wipe');
+    el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+  }
+  // avanza lo stacco; true finché la fascia non copre lo schermo (la partita offline aspetta)
+  stepWipe(dt) {
+    const w = this.wipe;
+    if (!w) return false;
+    w.t += dt;
+    if (!w.done && w.t >= TV_WIPE_CUT) { w.done = true; if (w.fn) w.fn(); }
+    if (w.t >= TV_WIPE_END) { this.wipe = null; $('tv-wipe').hidden = true; }
+    return !w.done;
+  }
+  // chiude subito lo stacco (pausa, uscita dalla partita), facendo comunque quello che doveva fare
+  finishWipe(run) {
+    const w = this.wipe;
+    if (!w) return;
+    this.wipe = null; $('tv-wipe').hidden = true;
+    if (run && !w.done && w.fn) w.fn();
   }
 
   // evento della simulazione locale -> stesso formato degli eventi di rete

@@ -269,7 +269,8 @@ class GameAudio {
         g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * (off ? 0.6 : 1) * (1 - i / hits * 0.4), t + 0.003); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.13);
         g.connect(this.sfx);
         // suono di campanella: frequenze non armoniche, che vibrano un po'
-        for (const f of [2637, 3951, 5274, 6640]) {
+        // due campanelle per colpo (prima quattro): stesso suono, metà dei suoni da calcolare al gol
+        for (const f of [3951, 6640]) {
           const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * (0.985 + Math.random() * 0.03);
           o.connect(g); o.start(t); o.stop(t + 0.15);
         }
@@ -287,7 +288,7 @@ class GameAudio {
       const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 380;
       const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
       src.connect(f); f.connect(g); g.connect(this.sfx); src.start(t, Math.random()); src.stop(t + 0.8);
-      for (let k = 0; k < 14; k++) {
+      for (let k = 0; k < 6; k++) {
         const tt = t + 0.15 + Math.random() * 0.9;
         const c = ctx.createBufferSource(); c.buffer = this.noise;
         const cf = ctx.createBiquadFilter(); cf.type = 'highpass'; cf.frequency.value = 2500;
