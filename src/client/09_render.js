@@ -41,6 +41,7 @@ class Renderer {
     this.buildPitch(); this.buildFieldLines();
     this.buildGoals();
     this.buildStadium();
+    this.buildBenches();   // panchine, allenatori e tunnel (09_render_bench.js)
     this.buildBall(); this.buildBallExtras();
     this.buildFx();
     this.buildWeather();    // pioggia e neve (src/client/09_render_weather.js)
@@ -582,6 +583,7 @@ class Renderer {
     this.match = match;
     this.applyEnvironment(match.weather, match.timeOfDay);   // meteo e ora del giorno della partita
     this.setupOfficials(match);   // arbitro e barellieri (09_render_referee.js)
+    this.setupBenches(match);     // riserve e allenatori (09_render_bench.js)
     this.setupStadiumLife(match);   // bandiere, sciarpe e flash (09_render_stadium.js)
     this.resetPoses(); this.cutCamera();
     this.warmShaders();   // niente pause al primo tiro o al primo gol (09_render_setpiece.js)
@@ -902,6 +904,7 @@ class Renderer {
     this.updateFx(dt);
     this.updateNets(dt);
     this.updateOfficials(match, dt, bx, bz);
+    this.updateBenches(dt, bx, bz);
     this.updateCamera(dt, bx, by, bz, mine && mine.player, match);
     this.updateWeather(dt);
     this.updateChristmas(dt, this.menuDemo);   // lucine e fuochi d'artificio (09_render_natale.js)
@@ -957,6 +960,8 @@ class Renderer {
   updateCamera(dt, bx, by, bz, controlled, match) {
     // vettori riusati (niente oggetti nuovi a ogni fotogramma)
     const want = this._want || (this._want = new THREE.Vector3()), look = this._look || (this._look = new THREE.Vector3());
+    // presentazione della partita (38_intro.js)
+    if (this.introU != null) { this.introCamera(this.introU); return; }
     // serie dei rigori: inquadrature come in televisione (09_render_shootout.js)
     if (match && match.so && match.so.phase !== 'done') { this.shootoutCamera(dt, match, bx, by, bz); return; }
     this._soShot = null;

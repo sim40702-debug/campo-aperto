@@ -192,3 +192,13 @@ versione, in ordine di priorità del PO:
 - **Equilibrio**: 3,2 → 3,4 gol a partita (16 partite): nessun portiere "muro". `motore_ref.json` rifatto.
 - **Prove**: `portiere_test.js` 16/16 (esce in media 3,1 m quando l'attaccante è a 10 m; prende il pallone 9 volte
   su 30), `npm test`, novita024, novita023, browser.
+
+### Sprint 0.24.8 — Presentazione, panchine, tunnel: fatto
+- **Presentazione** (`38_intro.js`, nuovo): parte dal pulsante "Gioca" della nuova partita e dalla Partita di Natale;
+  5 s di volo della telecamera (la partita non avanza), scheda con le squadre; salto con un tasto o un clic;
+  impostazione `intro` (Presentazione). I test che avviano una partita dal menu la spengono nelle impostazioni.
+- **Stadio** (`09_render_bench.js`, nuovo): panchine coperte con 6 riserve e l'allenatore per squadra (colori della
+  squadra, vuote in allenamento), allenatore che si sposta e si gira verso il pallone, tunnel con copertura.
+- **Non fatto in questo sprint**: il rifacimento completo dei menu (fase 10): i menu attuali funzionano e sono già
+  coerenti; si può fare in uno sprint dedicato.
+- **Prove**: `novita024_browser_test.py` 42/42, `npm test`, browser, controls, feel, novita, natale, grafica.

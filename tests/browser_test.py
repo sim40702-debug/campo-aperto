@@ -15,7 +15,7 @@ async def newpage(b, w=960, h=540, dpr=1, settings=None):
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
-    s = {'quality': 'bassa', 'dynamicRes': False}
+    s = {'quality': 'bassa', 'dynamicRes': False, 'intro': False}
     if settings: s.update(settings)
     await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", ' + json.dumps(json.dumps(s)) + ')')
     await pg.goto(URL)

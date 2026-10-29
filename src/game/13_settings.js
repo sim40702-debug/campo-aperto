@@ -23,6 +23,7 @@ function defaultSettings() {
     padEnabled: true,         // controller attivo
     padLayout: 'xbox',        // nomi dei pulsanti: xbox o ps (PlayStation)
     vibration: true,          // vibrazione del controller
+    intro: true,              // presentazione prima della partita (38_intro.js)
     deadzone: 0.22,           // zona morta delle levette (0.1 - 0.4)
     assistReceive: true,      // senza direzione, chi riceve un tuo passaggio va incontro alla palla
     lastSetup: null,          // ultima partita impostata (squadre, durata...)

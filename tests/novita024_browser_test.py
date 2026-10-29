@@ -20,6 +20,8 @@
 # - 0.24.5: in allenamento e nel tutorial niente telecronaca (con la telecronaca accesa nelle impostazioni).
 # - 0.24.6: Partita e Allenamento separati: in allenamento pali e traversa suonano ma senza scritte né "ooh", il gol
 #   senza esultanza, replay, flash, fuochi e boato, pubblico basso; in partita "Palo!" e "Traversa!" e tutto come prima.
+# - 0.24.8: presentazione della partita (telecamera che vola, scheda delle squadre, si salta con un tasto, mai in
+#   allenamento), panchine con riserve e allenatori, tunnel.
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -291,6 +293,25 @@ async def main():
         check('allenamento: palo e traversa suonano (senza "ooh"), niente scritte PALO!/TRAVERSA!/GOL! grandi', 'post:false:false' in tr_['calls'] and 'post:false:true' in tr_['calls'] and 'ooh' not in tr_['calls'] and not any(b in ('Palo!', 'Traversa!', 'GOL!') for b in tr_['banners']), tr_)
         check('allenamento: gol senza boato, replay, flash e fuochi; niente telecronaca', 'roar' not in tr_['calls'] and 'fireworks' not in tr_['calls'] and not tr_['replay'] and tr_['flashes'] == 0 and not tr_['commentary'], tr_)
         check('partita: "Palo!" e "Traversa!" con il suono giusto, gol con replay e festa (come prima)', 'Palo!' in pt['banners'] and 'Traversa!' in pt['banners'] and 'post:true:false' in pt['calls'] and 'post:true:true' in pt['calls'] and 'roar' in pt['calls'] and pt['replay'], pt)
+
+        # ---- 0.24.8: presentazione e panchine
+        it = await pg.evaluate("""() => { game.quitToMenu(); game.settings.intro = true; game.setup.side = 0; document.getElementById('setup-start').click();
+            const R = game.renderer, out = { started: !!game.intro, card: !document.getElementById('intro-card').hidden, text: document.getElementById('intro-card').textContent };
+            const clock0 = game.match.clock; const p0 = R.camera.position.clone();
+            for (let i = 0; i < 60; i++) game.updateOffline(1/60);
+            out.camMoved = R.camera.position.distanceTo(p0) > 3; out.camHigh = R.camera.position.y > 25; out.clockStill = game.match.clock === clock0;
+            window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' })); game.updateOffline(1/60);
+            out.skipped = !game.intro && document.getElementById('intro-card').hidden;
+            for (let i = 0; i < 60; i++) game.updateOffline(1/60);
+            out.subs = R.benches.filter(b => b.subs && b.coach).length;
+            game.quitToMenu(); game.startTraining('shots'); for (let i = 0; i < 10; i++) game.updateOffline(1/60);
+            out.trainingIntro = !!game.intro; out.trainingSubs = R.benches.filter(b => b.subs).length;
+            let tunnel = false; R.scene.traverse(o => { if (o.geometry && o.geometry.type === 'TorusGeometry' && Math.abs(o.position.z + 42) < 3) tunnel = true; });
+            out.tunnel = tunnel; game.settings.intro = false;
+            return out; }""")
+        check('presentazione: scheda con le squadre e telecamera che vola sopra lo stadio, la partita aspetta', it['started'] and it['card'] and 'contro' in it['text'] and it['camMoved'] and it['camHigh'] and it['clockStill'], it)
+        check('presentazione: si salta con un tasto; in allenamento non c\'è', it['skipped'] and not it['trainingIntro'], it)
+        check('stadio: panchine con riserve e allenatori in partita (vuote in allenamento), tunnel', it['subs'] == 2 and it['trainingSubs'] == 0 and it['tunnel'], it)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

@@ -63,7 +63,7 @@ async def newpage(b, w=1280, h=800, profile=None):
     pg.on('console', lambda m: pg.net.append(m.text) if m.text.startswith('[rm]') else None)
     pg.on('response', lambda r: pg.net.append('HTTP %d %s %s' % (r.status, r.request.method, r.url)) if r.status >= 400 else None)
     await pg.add_init_script('(() => { const rm = Storage.prototype.removeItem; Storage.prototype.removeItem = function (k) { console.warn("[rm] removeItem " + k + " " + new Error().stack.replace(/\\s+/g, " ").slice(0, 600)); return rm.call(this, k); }; })()')
-    s = {'quality': 'bassa', 'dynamicRes': False, 'apiUrl': API}
+    s = {'quality': 'bassa', 'dynamicRes': False, 'intro': False, 'apiUrl': API}
     await pg.add_init_script('if (!localStorage.getItem("campoAperto.settings.v1")) localStorage.setItem("campoAperto.settings.v1", ' + json.dumps(json.dumps(s)) + ')')
     await pg.goto(URL)
     await pg.wait_for_function('window.game && window.game.loaded', timeout=60000, polling=250)

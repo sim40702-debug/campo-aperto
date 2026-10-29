@@ -374,6 +374,16 @@ body.pad-nav :focus { outline: 2px solid var(--flood); outline-offset: 2px; }
 .sb-red { color: var(--signal); font-size: 18px; letter-spacing: 1px; padding: 4px 2px !important; }
 .sb-adv { background: var(--turf-light); color: var(--night); font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
 @keyframes pop { from { transform: scale(0.82); opacity: 0; } to { transform: none; opacity: 1; } }
+/* presentazione della partita (38_intro.js): scheda al centro con le due squadre */
+#intro-card { position: fixed; left: 50%; top: 58%; transform: translateX(-50%); z-index: 25; text-align: center; background: rgba(12,26,43,0.86);
+  border-top: 4px solid var(--flood); padding: 18px 30px 14px; min-width: min(560px, 92vw); animation: pop 0.5s ease-out; }
+#intro-card .ic-teams { display: flex; align-items: center; justify-content: center; gap: 22px; }
+#intro-card .ic-team { display: flex; align-items: center; gap: 10px; }
+#intro-card .ic-team b { font-family: var(--display); font-size: 30px; font-weight: 800; font-style: italic; text-transform: uppercase; }
+#intro-card .ic-team i { display: inline-block; width: 8px; height: 34px; }
+#intro-card .ic-vs { font-size: 15px; opacity: 0.75; text-transform: uppercase; letter-spacing: 2px; }
+#intro-card .ic-place { margin-top: 8px; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; color: var(--flood); }
+#intro-card small { display: block; margin-top: 6px; font-size: 12px; opacity: 0.6; }
 #scorer { position: fixed; top: 44%; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 600; text-shadow: 0 2px 0 rgba(0,0,0,0.5); }
 #replay-tag { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 18px; font-family: var(--display); font-weight: 800; font-style: italic; font-size: 26px; color: var(--night); background: var(--flood); padding: 2px 14px; }
 #hl-bar { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 10px;
@@ -1038,6 +1048,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     <div data-pane="generale" class="opts">
       <span class="lbl">Lingua</span><div class="segs" id="st-lang"></div>
       <span class="lbl">Telecronaca</span><div class="segs" id="st-commentary"></div>
+      <span class="lbl">Presentazione</span><label class="check"><input type="checkbox" id="st-intro"> Presentazione della partita</label>
       <span></span><p class="small" style="margin:0">Frasi brevi durante la partita (gol, parate, falli, cartellini). La voce usa la sintesi vocale del computer, nella lingua del gioco.</p>
       <span class="lbl" id="st-updlbl" hidden>Aggiornamenti</span><div class="segs upd-row" id="st-updrow" hidden><button class="seg" id="st-upd">Controlla ora</button><span class="small" id="st-updinfo"></span></div>
     </div>
@@ -1338,6 +1349,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
   <div class="netind" id="netind" hidden><span class="dot" id="net-dot"></span><span id="net-text"></span></div>
   <div id="banner" class="banner" hidden></div>
   <div id="scorer" hidden></div>
+  <div id="intro-card" hidden></div>
   <div id="commentary" hidden role="status" aria-live="polite"></div>
   <div id="replay-tag" hidden>Replay<small></small></div>
   <!-- stacco come in TV: una fascia passa sullo schermo mentre l'inquadratura cambia (replay, calcio d'inizio) -->
