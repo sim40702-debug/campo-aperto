@@ -51,3 +51,18 @@ Ogni sprint finisce con una **review** (cosa è fatto, come è stato provato, co
   `tests/novita024_browser_test.py` (tuffo nel gioco vero senza scatti, recupero lento); `rules_test` 31/31.
 - **Equilibrio**: 3,8 → 3,3 gol a partita tra computer (16 partite di prova): il portiere è più bravo ma non imbattibile.
 - **Resta**: il riferimento del motore (`motore_ref.json`) e le quote si rifanno nello sprint 5.
+
+### Sprint 2 — Porta e rete (con la fisica del pallone nella rete): fatto
+- **Motore** (`03_ball.js`): la rete è elastica. Il pallone entra solo dalla bocca della porta; dentro, fondo, lati e
+  tetto lo frenano come molle che cedono (il fondo fino a 55 cm) e poi lo lasciano ricadere piano (niente effetto
+  fionda). Da fuori (esterno della rete, pallone che cade sul tetto, pallone da dietro) rimbalza piano e non entra mai.
+  Il tetto ha la stessa pendenza della rete disegnata (`goalRoofY`). Il gol si riconosce come prima.
+- **Grafica** (`09_render_net.js`, nuovo): rete 3D a nodi (maglie di 13-22 cm secondo la qualità) agganciata a pali,
+  traversa e telaio dietro. Il pallone spinge i nodi nel punto preciso dove arriva (da dentro e da fuori), i fili
+  tirano i vicini e la deformazione si propaga come un'onda, poi oscilla e torna a riposo. Quando nessuno la tocca non
+  si calcola. Pali e traversa in metallo verniciato lucido con ombre, telaio dietro in metallo grigio.
+- **Prove**: `tests/rete_test.js` (14 controlli: cede e frena gradualmente, non esce dal fondo, niente fionda, tiro
+  debole, incrocio, esterno della rete, tetto, da dietro, gol riconosciuti); `novita024_browser_test.py` (rete che si
+  gonfia di oltre 30 cm sul tiro forte, lati sull'esterno della rete, torna ferma, costo basso).
+- **Resta**: le linee della rete non fanno ombra sull'erba (in three.js le linee non proiettano ombre; servirebbe una
+  rete fatta di superfici, molto più pesante).

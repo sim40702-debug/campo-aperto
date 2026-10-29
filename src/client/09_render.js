@@ -224,71 +224,7 @@ class Renderer {
     }
   }
 
-  buildGoals() {
-    const C = CONFIG;
-    const postMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.35 });
-    const netMat = new THREE.LineBasicMaterial({ color: '#e8eef5', transparent: true, opacity: 0.42 });
-    for (const s of [-1, 1]) {
-      const g = new THREE.Group();
-      const gx = s * C.HALF_L;
-      for (const pz of [-C.GOAL_HALF_W, C.GOAL_HALF_W]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(C.POST_R, C.POST_R, C.GOAL_H, 10), postMat);
-        post.position.set(gx, C.GOAL_H / 2, pz); post.castShadow = true; g.add(post);
-      }
-      const bar = new THREE.Mesh(new THREE.CylinderGeometry(C.POST_R, C.POST_R, C.GOAL_HALF_W * 2 + 0.12, 10), postMat);
-      bar.rotation.x = Math.PI / 2; bar.position.set(gx, C.GOAL_H, 0); bar.castShadow = true; g.add(bar);
-      // rete: griglia di linee su retro, lati e tetto
-      const pts = [];
-      const bx = gx + s * C.GOAL_DEPTH, step = 0.25;
-      for (let z = -C.GOAL_HALF_W; z <= C.GOAL_HALF_W + 0.01; z += step) {
-        pts.push(bx, 0, z, bx, C.GOAL_H * 0.85, z);
-        pts.push(gx, C.GOAL_H, z, bx, C.GOAL_H * 0.85, z);
-      }
-      for (let y = 0; y <= C.GOAL_H * 0.85 + 0.01; y += step) pts.push(bx, y, -C.GOAL_HALF_W, bx, y, C.GOAL_HALF_W);
-      for (let t = 0; t <= 1.001; t += step / C.GOAL_DEPTH) {
-        const x = gx + s * C.GOAL_DEPTH * t, y = C.GOAL_H - C.GOAL_H * 0.15 * t;
-        pts.push(x, C.GOAL_H - C.GOAL_H * 0.15 * t, -C.GOAL_HALF_W, x, C.GOAL_H - C.GOAL_H * 0.15 * t, C.GOAL_HALF_W);
-        for (const pz of [-C.GOAL_HALF_W, C.GOAL_HALF_W]) pts.push(x, 0, pz, x, y, pz);
-      }
-      for (const pz of [-C.GOAL_HALF_W, C.GOAL_HALF_W]) for (let y = 0; y <= C.GOAL_H; y += step) {
-        const k = y / C.GOAL_H;
-        pts.push(gx, y, pz, bx, y * (0.85 + 0.15 * (1 - k)) / 1, pz);
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-      geo.attributes.position.setUsage(THREE.DynamicDrawUsage);
-      g.add(new THREE.LineSegments(geo, netMat));
-      this.scene.add(g);
-      this.nets = this.nets || [];
-      this.nets.push({ side: s, gx: gx, geo: geo, base: Float32Array.from(pts), hit: null });
-    }
-  }
-
-  // il pallone entra in rete: la rete si gonfia attorno al punto colpito e torna indietro oscillando
-  netBulge(side, y, z, power) {
-    const net = this.nets && this.nets.find(n => n.side === side);
-    if (!net) return;
-    net.hit = { y: clamp(y, 0.1, CONFIG.GOAL_H), z: clamp(z, -CONFIG.GOAL_HALF_W, CONFIG.GOAL_HALF_W), amp: clamp(power / 22, 0.25, 1) * 0.5, t: 0 };
-  }
-  updateNets(dt) {
-    if (!this.nets) return;
-    for (const n of this.nets) {
-      if (!n.hit) continue;
-      const h = n.hit, pos = n.geo.attributes.position.array, base = n.base;
-      h.t += dt;
-      const done = h.t > 2;
-      const disp = done ? 0 : h.amp * Math.exp(-2.6 * h.t) * Math.cos(11 * h.t);
-      for (let i = 0; i < pos.length; i += 3) {
-        const depth = (base[i] - n.gx) * n.side / CONFIG.GOAL_DEPTH;   // 0 sulla linea di porta (fissa), 1 in fondo
-        const dy = base[i + 1] - h.y, dz = base[i + 2] - h.z;
-        const w = Math.exp(-(dy * dy + dz * dz) / 0.9) * clamp(depth, 0, 1);
-        pos[i] = base[i] + n.side * disp * w;
-        pos[i + 1] = base[i + 1] - Math.abs(disp) * w * 0.15;
-      }
-      n.geo.attributes.position.needsUpdate = true;
-      if (done) n.hit = null;
-    }
-  }
+  // porte e reti: 09_render_net.js
 
   // tribune con pubblico procedurale, tetti, cartelloni e torri faro
   buildStadium() {

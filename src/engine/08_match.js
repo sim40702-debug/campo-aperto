@@ -1171,7 +1171,7 @@ class Match {
     const sub = 4;
     for (let i = 0; i < sub; i++) {
       stepBallPhysics(b, dt / sub);
-      if (collideGoalFrame(b)) this.emit('post', {});
+      if (collideGoalFrame(b, dt / sub)) this.emit('post', {});
     }
   }
 
