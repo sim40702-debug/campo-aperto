@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.7 — 29/10/2026 (portiere nell'uno contro uno)
+- **Uno contro uno**: quando un attaccante arriva da solo verso la porta (nessun difensore in mezzo, entro 17 m) il
+  portiere esce sulla linea tra l'attaccante e la porta per chiudere lo specchio, senza esagerare (fino a 5 m), e
+  quando l'attaccante è vicino si butta sui piedi: a volte prende il pallone, a volte viene saltato e resta a terra.
+  Dipende dalla bravura del portiere e dal dribbling dell'attaccante (nelle prove 9 volte su 30).
+- Equilibrio delle partite tra computer quasi uguale (3,4 gol a partita). Le partite del server cambiano: il server
+  va aggiornato.
+
 ## 0.24.6 — 29/10/2026 (Allenamento e Partita separati, pali e traversa)
 - **Pali e traversa distinti**: in partita compare **"Palo!"** o **"Traversa!"** secondo il legno colpito davvero,
   con un colpo metallico diverso (la traversa suona più bassa). Un solo suono e una sola scritta per colpo, anche se

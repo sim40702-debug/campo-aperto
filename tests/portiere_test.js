@@ -123,5 +123,35 @@ check('e para anche quelli angolati, a volte (' + lowCorner.saved.toFixed(2) + '
   check('stesso seme: stesso tuffo e stesso risultato', a.result === b.result && a.log.length === b.log.length && a.log.every((e, i) => e.z === b.log[i].z));
 }
 
+// ---------- uno contro uno (0.24.7) ----------
+// un attaccante guidato da una persona corre verso la porta da solo, con la palla al piede
+function oneOnOne(seed) {
+  const m = new A.Match(db[0], db[1], { humanTeam: 0, halfSeconds: 600, rng: A.makeRng(seed) });
+  m.setState('PLAY');
+  const t = m.teams[0], k = t.opponent().gk, gx = t.oppGoalX(), a = t.players[9];
+  for (const q of m.allPlayers()) if (q !== a && q !== k) { q.x = -t.dir * 40; q.z = 30; q.vx = q.vz = 0; }
+  a.x = gx - t.dir * 20; a.z = 2; a.vx = t.dir * 5; a.vz = 0; m.ball.owner = a; m.ball.lastTouch = a; m.humans[0].player = a;
+  k.x = gx - t.dir * 0.8; k.z = 0; k.gkAi = null;
+  let maxOut = 0, outAt10 = null, res = 'niente';
+  for (let i = 0; i < 60 * 5; i++) {
+    m.update(DT, { mx: t.dir, mz: -0.15, sprint: false, shoot: false, pressed: {} });
+    const dA = Math.abs(gx - a.x);
+    const out = Math.abs(gx - k.x);
+    maxOut = Math.max(maxOut, out);
+    if (outAt10 === null && dA < 10) outAt10 = out;
+    if (m.ball.owner === k) { res = 'preso'; break; }
+    if (dA < 1.5 || m.state !== 'PLAY') { res = 'saltato'; break; }
+  }
+  return { maxOut: maxOut, outAt10: outAt10, res: res };
+}
+{
+  const runs = []; for (let s = 1; s <= 30; s++) runs.push(oneOnOne(s));
+  const taken = runs.filter(r => r.res === 'preso').length;
+  const at10 = runs.map(r => r.outAt10).filter(v => v !== null);
+  const avg10 = at10.reduce((x, y) => x + y, 0) / Math.max(1, at10.length);
+  check('uno contro uno: il portiere esce dalla porta per chiudere lo specchio (in media ' + avg10.toFixed(1) + ' m quando l\'attaccante è a 10 m)', avg10 > 2 && avg10 < 6, at10);
+  check('uno contro uno: si butta sui piedi e a volte prende il pallone, a volte viene saltato (' + taken + ' su 30)', taken >= 3 && taken <= 24, runs.map(r => r.res));
+}
+
 console.log('\nRisultato: ' + ok + ' superati, ' + ko + ' falliti');
 process.exit(ko ? 1 : 0);
