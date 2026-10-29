@@ -66,3 +66,15 @@ Ogni sprint finisce con una **review** (cosa è fatto, come è stato provato, co
   gonfia di oltre 30 cm sul tiro forte, lati sull'esterno della rete, torna ferma, costo basso).
 - **Resta**: le linee della rete non fanno ombra sull'erba (in three.js le linee non proiettano ombre; servirebbe una
   rete fatta di superfici, molto più pesante).
+
+### Sprint 3 — Pallone: fatto
+- **Grafica** (`09_render_ball.js`, nuovo): disegno originale senza marchi né scritte, 6 pannelli a elica con bordi
+  curvi, fasce blu notte e oro lungo le cuciture (a Natale rosso, verde e oro), solco delle cuciture e micro-trama a
+  esagoni in rilievo (bumpMap), materiale sintetico con vernice lucida (clearcoat) a qualità alta. Dimensione
+  disegnata e collisioni uguali a prima.
+- **Rotazione vera**: prima il pallone girava con due angoli sommati in modo sbagliato (a volte "scivolava"); ora
+  ruota con un quaternione attorno all'asse perpendicolare alla direzione, angolo = strada / raggio; in volo mantiene
+  la rotazione del calcio e segue l'effetto (spin e topspin del motore); anche nel replay.
+- **Prove**: `novita024_browser_test.py` (dimensione, rilievo, asse e angolo della rotazione, punto a contatto che
+  non striscia, rotazione in volo).
+- **Resta**: niente.

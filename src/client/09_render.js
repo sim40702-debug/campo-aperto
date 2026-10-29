@@ -41,7 +41,7 @@ class Renderer {
     this.buildPitch();
     this.buildGoals();
     this.buildStadium();
-    this.buildBall();
+    this.buildBall(); this.buildBallExtras();
     this.buildFx();
     this.buildWeather();    // pioggia e neve (src/client/09_render_weather.js)
     this.playerMeshes = [];
@@ -332,21 +332,8 @@ class Renderer {
     return this._glow = new THREE.CanvasTexture(cv);
   }
 
-  buildBall() {
-    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256;
-    const g = cv.getContext('2d');
-    g.fillStyle = '#f7f7f2'; g.fillRect(0, 0, 512, 256);
-    g.fillStyle = '#1a1a1a';
-    for (let i = 0; i < 8; i++) for (let j = 0; j < 4; j++) if ((i + j) % 2 === 0) {
-      g.beginPath(); g.arc(i * 64 + 32, j * 64 + 32, 20, 0, Math.PI * 2); g.fill();
-    }
-    const tex = new THREE.CanvasTexture(cv);
-    this.ballMesh = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.BALL_R * 1.6, 28, 20), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.45 }));
-    this.ballMesh.castShadow = true;
-    this.scene.add(this.ballMesh);
-    // indicatore del giocatore controllato
-    const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 3), new THREE.MeshBasicMaterial({ color: '#ffd84a' }));
-    arrow.rotation.x = Math.PI; this.arrow = arrow; this.scene.add(arrow);
+  // pallone: 09_render_ball.js
+  buildBallExtras() {
     // ombra morbida del pallone: piccola e scura a terra, più larga e chiara quando sale
     this.ballShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshBasicMaterial({ map: this.softShadowTexture(), color: '#000000', transparent: true, opacity: 0.55, depthWrite: false }));
     this.ballShadow.rotation.x = -Math.PI / 2; this.ballShadow.position.y = 0.02;
@@ -844,11 +831,8 @@ class Renderer {
     const bx = mix(b.px, b.x, 3), by = mix(b.py, b.y, 3), bz = mix(b.pz, b.z, 3);
     b.rx = bx; b.ry = by; b.rz = bz;
     this.ballMesh.position.set(bx, by + 0.07, bz);
-    const sp = len(b.vx, b.vz);
-    if (sp > 0.05) {
-      this.ballMesh.rotation.z -= b.vx * dt / 0.18;
-      this.ballMesh.rotation.x += b.vz * dt / 0.18;
-    }
+    // rotazione vera del pallone (09_render_ball.js); al piede o in mano gira con il giocatore che lo porta
+    this.spinBall(dt, b.vx, b.vz, by <= CONFIG.BALL_R + 0.03 && Math.abs(b.vy || 0) < 0.6, b.spin, b.topspin);
     this.placeBallShadow(bx, by, bz);
     // scia sui tiri potenti: qualche particella dietro al pallone
     const sp3 = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
@@ -913,6 +897,11 @@ class Renderer {
   // aggiornamento dal replay
   syncFromReplay(frame, match, dt) {
     this.frameDt = dt;
+    // nel replay la velocità del pallone si ricava da quanto si è spostato
+    const rb = this._replayBall || (this._replayBall = { x: frame[0], y: frame[1], z: frame[2] });
+    const jump = Math.hypot(frame[0] - rb.x, frame[2] - rb.z) > 3 || !(dt > 0);
+    this.spinBall(dt, jump ? 0 : (frame[0] - rb.x) / dt, jump ? 0 : (frame[2] - rb.z) / dt, frame[1] <= CONFIG.BALL_R + 0.03, 0, 0);
+    rb.x = frame[0]; rb.y = frame[1]; rb.z = frame[2];
     this.ballMesh.position.set(frame[0], frame[1] + 0.07, frame[2]);
     this.placeBallShadow(frame[0], frame[1], frame[2]);
     let k = 3, ns = 0;
