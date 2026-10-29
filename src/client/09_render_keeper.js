@@ -8,6 +8,13 @@
 // - presa alta: se prende un pallone alto salta con le braccia in alto;
 // - respinta: dopo una parata senza presa colpisce con i pugni;
 // - uscita bassa: quando esce sui piedi dell'attaccante si butta basso con le braccia larghe.
+// Dalla 0.23:
+// - "set": quando un avversario arriva con la palla vicino alla porta (o un giocatore carica il tiro) il portiere fa
+//   un saltello sul posto e si abbassa, pesato sulle punte, braccia larghe e basse;
+// - tiro centrale (niente tuffo): va incontro al pallone con le mani; basso si china a raccoglierlo, alto alza le
+//   braccia, a mezza altezza lo blocca sul petto;
+// - rilancio con le mani: quando passa corto a un compagno lo fa rotolare con il braccio, come i portieri veri;
+// - si sposta lungo la linea con i passi laterali (09_render.js), non correndo di traverso.
 // ============================================================
 const GK_DIVE_SECS = 0.9;   // durata del tuffo nel motore (07_ai.js, 08_match.js)
 
@@ -68,8 +75,76 @@ Renderer.prototype.poseKeeper = function (pm, p, m, dt, bx, by, bz) {
     body.rotation.x = (pm.dv.lastTilt || 0) * k; body.position.y = body.position.y * (1 - k) + 0.1 * k;
     for (const L of pm.legs) L.knee.rotation.z += -0.9 * k;
   }
-  // ---- palla in mano: davanti al petto (presa alta: un salto con le braccia in alto)
+  // ---- rilancio con le mani: aveva la palla in mano e la passa corta (palla bassa): la fa rotolare
   const holding = b.owner === p && !(p.anim.kick > 0);
+  if (pm.held && !holding && p.anim.kick > 0 && b.owner !== p && Math.abs(b.vy || 0) < 2 && Math.hypot(b.vx || 0, b.vz || 0) < 22) { pm.release = { t: 0 }; pm.held = false; }
+  if (pm.release) {
+    pm.release.t += dt;
+    const u = pm.release.t / 0.55;
+    if (u >= 1) pm.release = null;
+    else {
+      const e = Math.sin(Math.min(1, u * 1.3) * Math.PI * 0.5), down = Math.sin(u * Math.PI);
+      // passo avanti, ginocchio dietro quasi a terra, busto giù, braccio che passa da dietro a davanti rasoterra
+      L0.hip.rotation.z = 0.55 * down; L0.knee.rotation.z = -0.7 * down;
+      L1.hip.rotation.z = -0.3 * down; L1.knee.rotation.z = -1.3 * down;
+      body.position.y = -0.3 * down; chest.rotation.z = -0.55 * down;
+      A1.sh.rotation.z = -0.9 + 2.0 * e; A1.sh.rotation.x = 0.1; A1.elbow.rotation.z = 0.1;
+      A0.sh.rotation.z = -0.3 * down; A0.sh.rotation.x = -0.6 * down;
+      chest.rotation.y = 0.25 * (1 - e);
+      return;
+    }
+  }
+  // ---- "set" e parata centrale: solo in piedi, senza la palla
+  const carrier = b.owner && b.owner.team !== p.team ? b.owner : null;
+  const gx = p.team.ownGoalX();
+  const danger = !!carrier && Math.hypot(carrier.x - gx, carrier.z) < 24 && Math.hypot(carrier.x - p.x, carrier.z - p.z) > 3;
+  const charging = !!carrier && (m.humans || []).some(h => h.player === carrier && h.shootCharge > 0);
+  if ((danger && !pm.wasDanger) || (charging && !pm.wasCharging)) pm.setHop = 0.3;
+  pm.wasDanger = danger; pm.wasCharging = charging;
+  pm.setK = (pm.setK || 0) + ((danger && p.speed() < 2.5 ? (charging ? 1 : 0.6) : 0) - (pm.setK || 0)) * Math.min(1, dt * 6);
+  if (!holding && b.owner !== p) {
+    if (pm.setHop > 0) {
+      // saltello sul posto: si stacca appena da terra con le gambe tese, poi atterra piegato
+      pm.setHop = Math.max(0, pm.setHop - dt);
+      const h = Math.sin((1 - pm.setHop / 0.3) * Math.PI);
+      body.position.y += 0.09 * h;
+      for (const L of pm.legs) { L.knee.rotation.z *= 1 - 0.6 * h; if (L.ankle) L.ankle.rotation.z -= 0.35 * h; }
+    }
+    if (pm.setK > 0.02) {
+      const k = pm.setK;
+      for (const L of pm.legs) { L.hip.rotation.z += 0.18 * k; L.knee.rotation.z -= 0.35 * k; }
+      chest.rotation.z -= 0.12 * k; body.position.y -= 0.06 * k;
+      A0.sh.rotation.z += 0.25 * k; A1.sh.rotation.z += 0.25 * k;
+      A0.sh.rotation.x -= 0.35 * k; A1.sh.rotation.x += 0.35 * k;
+    }
+    // tiro che arriva addosso (senza tuffo): mani incontro al pallone all'altezza giusta
+    const toGoal = (b.vx || 0) * Math.sign(gx);
+    const dBall = Math.hypot(bx - p.x, bz - p.z);
+    const incoming = !b.owner && toGoal > 7 && dBall < 7 && Math.abs(bz - p.z) < 1.4;
+    pm.block = (pm.block || 0) + ((incoming ? 1 : 0) - (pm.block || 0)) * Math.min(1, dt * 12);
+    if (incoming) pm.blockH = by;
+    if (pm.block > 0.02) {
+      const k = pm.block, hgt = pm.blockH || 1;
+      if (hgt < 0.55) {
+        // palla bassa: si china, ginocchio a terra, mani a cucchiaio davanti ai piedi
+        for (const L of pm.legs) { L.hip.rotation.z += 0.5 * k; L.knee.rotation.z -= 1.0 * k; }
+        chest.rotation.z -= 0.75 * k; body.position.y -= 0.22 * k;
+        A0.sh.rotation.z = A1.sh.rotation.z = 0.5 * k; A0.sh.rotation.x = -0.15 * k; A1.sh.rotation.x = 0.15 * k;
+        A0.elbow.rotation.z = A1.elbow.rotation.z = 0.2 * k;
+      } else if (hgt > 1.6) {
+        // palla alta: braccia in alto, sulle punte
+        A0.sh.rotation.x = -2.75 * k; A1.sh.rotation.x = 2.75 * k; A0.sh.rotation.z = A1.sh.rotation.z = 0.35 * k;
+        A0.elbow.rotation.z = A1.elbow.rotation.z = 0.15;
+        body.position.y += 0.12 * k;
+      } else {
+        // a mezza altezza: braccia avanti, la palla si blocca sul petto
+        A0.sh.rotation.z = A1.sh.rotation.z = 1.25 * k; A0.sh.rotation.x = 0.25 * k; A1.sh.rotation.x = -0.25 * k;
+        A0.elbow.rotation.z = A1.elbow.rotation.z = 0.7 * k;
+        chest.rotation.z -= 0.2 * k;
+      }
+    }
+  }
+  // ---- palla in mano: davanti al petto (presa alta: un salto con le braccia in alto)
   if (holding && !pm.held) {
     const prevY = b.py !== undefined ? b.py : by;
     pm.catchHigh = prevY > 1.5 || (pm.lastBallY || 0) > 1.5 ? 0.5 : 0;

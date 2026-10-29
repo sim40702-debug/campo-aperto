@@ -8,8 +8,11 @@
 
 In italiano, inglese, tedesco e francese.
 
-### Le novità (0.10 – 0.22)
+### Le novità (0.10 – 0.23)
 
+- **Dopo il gol come in TV** (0.23): esultanza, stacco, replay e subito il calcio d'inizio; **tutta la porta in
+  vista** in punizioni, rigori e allenamento; **portiere** con passi laterali, saltello prima del tiro, parate
+  centrali e rilancio con le mani.
 - **Natale come in TV** (0.22): il tema di Natale è sempre acceso; immagine con bagliore e colori da partita in TV,
   telecamera più vicina, prato nuovo, neve attorno al campo, tifosi in 3D che esultano, Jingle Bells suonata davvero
   nei menu e dagli altoparlanti dello stadio.
@@ -482,6 +485,7 @@ python3 tests/replay_browser_test.py     # salva un'azione, schermata Replay, te
 python3 tests/trofei_browser_test.py     # tutorial giocato da un bot, trofei, schermata Trofei
 python3 tests/grafica_browser_test.py    # tuffi del portiere, palla in mano, uscite, esultanze dopo il gol
 python3 tests/avvio_browser_test.py      # caricamento a passi, aggiornamento che salta versioni, dati vecchi, ripristino
+python3 tests/novita023_browser_test.py  # dopo il gol, telecamera di punizioni e allenamento, portiere
 python3 tests/natale_browser_test.py     # tema di Natale: date, Home, stadio addobbato, cappelli, Partita di Natale, fuochi, trofei
 ```
 

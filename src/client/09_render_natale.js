@@ -224,7 +224,7 @@ Renderer.prototype.launchFirework = function (x, z, delay) {
 // gol: una raffica di fuochi dietro la porta di chi ha segnato (side = +1 o -1) e lungo la linea laterale lontana
 Renderer.prototype.christmasGoal = function (side) {
   if (!this.xmasDeco) return [];
-  const n = this.Q.crowd ? 10 : 6, times = [];
+  const n = this.Q.crowd ? 8 : 5, times = [];
   for (let i = 0; i < n; i++) {
     const behind = i % 3 !== 2;
     const x = behind ? side * (58.5 + Math.random() * 2) : side * (20 + Math.random() * 30);
@@ -272,7 +272,7 @@ Renderer.prototype.updateChristmas = function (dt, menu) {
     r.vy -= 9 * dt; r.x += r.vx * dt; r.y += r.vy * dt; r.z += r.vz * dt;
     if (sparks.length < XMAS_FIREWORKS - 2) sparks.push({ x: r.x, y: r.y, z: r.z, vx: 0, vy: -1, vz: 0, life: 0, max: 0.35, r: 1, g: 0.85, b: 0.6, drag: 3, grav: 2 });
     if (r.fuse <= 0) {
-      const n = Math.round(150 * Math.max(0.5, this.Q.particles));
+      const n = Math.round(110 * Math.max(0.5, this.Q.particles));
       for (let k = 0; k < n && sparks.length < XMAS_FIREWORKS; k++) {
         // direzione a caso su una sfera, velocità quasi uguale: una palla di scintille
         const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, q = Math.sqrt(1 - u * u), sp = 8 + Math.random() * 2;
