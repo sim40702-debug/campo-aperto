@@ -1249,7 +1249,7 @@ class Game {
     const excite = m.state === 'GOAL' ? 1 : Math.max(0, (Math.abs(m.ball.x) - 25) / 30);
     // rigori: durante la rincorsa lo stadio trattiene il fiato e si sente il battito del cuore
     const tense = !!(m.so && m.so.phase === 'kick' && m.state !== 'PLAY' && !this.replay);
-    this.audio.crowd(tense ? 0 : m.so && m.so.phase !== 'done' ? Math.max(0.35, excite) : excite);
+    this.audio.crowd(tense ? 0 : m.so && m.so.phase !== 'done' ? Math.max(0.35, excite) : excite, this.modeFx().crowd);
     this.audio.heartbeat(dt, tense);
     // cori: solo a palla lontana dalle porte, mai in allenamento o ai rigori
     this.audio.chantTick(dt, m.state === 'PLAY' && !m.so && !m.training && !this.replay && !this.paused && Math.abs(m.ball.x) < 30);
@@ -1324,11 +1324,11 @@ class Game {
     if (this.input.lastDevice === 'pad' && this.settings.vibration) this.input.rumble(ms, strong, weak);
   }
   handleEvent(e) {
-    const R = this.renderer, m = this.match;
+    const R = this.renderer, m = this.match, fx = this.modeFx();   // fx: cosa prevede la modalità (37_modes.js)
     if (this.trophies) this.trophies.onEvent(e, m);
     this.hlEvent(e);   // azioni migliori da rivedere a fine partita (27_highlights.js)
     // in allenamento e nel tutorial niente telecronaca (né scritte né voce, 0.24.5)
-    if (this.commentary && m && m.training) { this.commentary.enabled = false; this.commentary.reset(); }
+    if (this.commentary && !fx.commentary) { this.commentary.enabled = false; this.commentary.reset(); }
     else if (this.commentary) {
       const c = this.commentary, s = this.settings;
       c.enabled = s.commentary && !this.replay;
@@ -1338,13 +1338,13 @@ class Game {
     }
     switch (e.type) {
       case 'kick': {
-        this.audio.kick(e.power || 10, e.kind); R.onKick(e); if (e.kind === 'shot') R.cameraFlashes(0.35); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });
+        this.audio.kick(e.power || 10, e.kind); R.onKick(e); if (e.kind === 'shot' && fx.flashes) R.cameraFlashes(0.35); R.burst('grass', e.x, e.z, { amount: Math.min(1.5, (e.power || 10) / 18) });
         // calcio del tuo calciatore: piccolo colpo nelle mani
         const me = this.localPlayer();
         if (me && dist2(me.x, me.z, e.x, e.z) < 1.6) {
           this.rumble(e.power > 20 ? 110 : 60, e.power > 20 ? 0.45 : 0.15, 0.5);
           // tiro potente del tuo calciatore: un piccolissimo colpo di telecamera
-          if (e.power > 24) R.shake = Math.max(R.shake, 0.12);
+          if (e.power > 24 && fx.shake) R.shake = Math.max(R.shake, 0.12);
         }
         break;
       }
@@ -1361,21 +1361,32 @@ class Game {
         if (e.r && e.r.type === 'SUB' && m && e.r.player) { const p = m.allSlots()[e.r.player.id]; if (p) R.refreshPlayer(p); }
         break;
       case 'whistle': this.audio.whistle(e.kind === 'END' ? 3 : e.kind === 'HALF' ? 2 : 1); break;
-      case 'post': this.audio.post(); this.rumble(160, 0.3, 0.8); R.onPost(); if (m && this.mode !== 'client') m.showBanner('Palo!', 1.2); else if (m) m.banner = { text: 'Palo!', t: 1.2 }; break;
-      case 'save': this.audio.roar(false); this.audio.ooh(0.1); R.onSave(); break;
+      case 'post': {
+        // palo o traversa (e.kind 'bar'): colpo metallico sempre; "ooh" del pubblico e scritta solo in partita
+        const bar = e.kind === 'bar', text = bar ? 'Traversa!' : 'Palo!';
+        this.audio.post(fx.crowdReactions, bar); this.rumble(160, 0.3, 0.8); R.onPost(fx.shake);
+        if (fx.banners) { if (m && this.mode !== 'client') m.showBanner(text, 1.2); else if (m) m.banner = { text: text, t: 1.2 }; }
+        break;
+      }
+      case 'save':
+        this.audio.save();   // il pallone sui guanti (sempre)
+        if (fx.crowdReactions) { this.audio.roar(false); this.audio.ooh(0.1); }
+        R.onSave();
+        break;
       case 'goal': {
+        R.netBulge(Math.sign(e.x || 1), e.y || 1, e.z || 0, e.power || 15);
+        this.rumble(450, 1, 0.7);
+        if (!fx.celebrations) break;   // allenamento: il pallone in rete e basta
         this.audio.roar(true);
         this.audio.chantWait = 5;   // dopo l'esultanza parte un coro
         // ai rigori niente replay: il prossimo tiro arriva subito
-        if (!(m && m.so)) this.replayPending = true;
+        if (!(m && m.so) && fx.replay) this.replayPending = true;
         const team = m && m.teams[e.team];
         R.burst('confetti', Math.sign(e.x || 1) * 46, 0, { colors: team ? [team.kit[0], team.kit[1]] : null });
-        R.netBulge(Math.sign(e.x || 1), e.y || 1, e.z || 0, e.power || 15);
         R.shake = 0.6;
         R.cameraFlashes(2.8);   // flash dei fotografi (09_render_stadium.js)
         // a Natale: fuochi d'artificio sopra lo stadio e campanelli della slitta (09_render_natale.js, 10_audio.js)
         if (R.xmasDeco) { this.audio.fireworks(R.christmasGoal(Math.sign(e.x || 1))); this.audio.sleighBells(0.3, 2.6); }
-        this.rumble(450, 1, 0.7);
         break;
       }
     }

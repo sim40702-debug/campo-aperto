@@ -89,7 +89,8 @@ function stepBallPhysics(b, dt) {
   }
 }
 
-// Collisioni con pali, traversa e rete (per entrambe le porte)
+// Collisioni con pali, traversa e rete (per entrambe le porte). Restituisce 'post' (palo), 'bar' (traversa) o false.
+// Il colpo conta solo se il pallone andava contro il legno (vn < 0): mentre resta a contatto non si ripete.
 function collideGoalFrame(b, dt) {
   const C = CONFIG, R = C.BALL_R;
   let hit = false;
@@ -105,7 +106,7 @@ function collideGoalFrame(b, dt) {
         if (d < minD && d > 0.0001) {
           const nx = dx / d, nz = dz / d;
           const vn = b.vx * nx + b.vz * nz;
-          if (vn < 0) { b.vx -= 1.7 * vn * nx; b.vz -= 1.7 * vn * nz; b.spin *= -0.5; hit = true; }
+          if (vn < 0) { b.vx -= 1.7 * vn * nx; b.vz -= 1.7 * vn * nz; b.spin *= -0.5; hit = 'post'; }
           b.x = gx + nx * minD; b.z = pz + nz * minD;
         }
       }
@@ -118,7 +119,7 @@ function collideGoalFrame(b, dt) {
       if (d < minD && d > 0.0001) {
         const nx = dx / d, ny = dy / d;
         const vn = b.vx * nx + b.vy * ny;
-        if (vn < 0) { b.vx -= 1.7 * vn * nx; b.vy -= 1.7 * vn * ny; hit = true; }
+        if (vn < 0) { b.vx -= 1.7 * vn * nx; b.vy -= 1.7 * vn * ny; hit = 'bar'; }
         b.x = gx + nx * minD; b.y = C.GOAL_H + ny * minD;
       }
     }

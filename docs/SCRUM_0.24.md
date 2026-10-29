@@ -159,3 +159,26 @@ parte con il prossimo.
   pulita a ogni evento: niente scritte e niente voce. In partita invariata.
 - In più: messaggio di aggiornamento visibile 7 s; test della neve che aspetta i fotogrammi.
 - **Prove**: `novita024_browser_test.py` 36/36, `updates_browser_test.py` 32/32, `novita_browser_test.py` 31/31.
+
+## Missione "simulatore di livello AAA" (richiesta del 29/10/2026, sera)
+Il PO ha consegnato una missione in 15 fasi. Analisi fatta sul progetto vero: la base migliore è la versione attuale
+(`main`, 0.24.5): tutte le versioni precedenti sono nella storia di git e ogni release è su GitHub; le funzioni delle
+versioni vecchie sono già tutte dentro (nessuna è stata tolta). Molte fasi sono già coperte (rete 3D, pallone,
+portiere, telecamera TV, campo, esultanze, replay, telecronaca); gli sprint seguenti chiudono i buchi, uno per
+versione, in ordine di priorità del PO:
+- 0.24.6 — Fasi 6, 7, 8: pali e traversa distinti, configurazione per modalità, allenamento senza feedback da partita.
+- 0.24.7 — Fase 4: portiere (uscite nell'uno contro uno, seconde palle, parate con i piedi).
+- 0.24.8 — Fasi 2, 9, 10: stadio (panchine, tunnel), presentazione della partita, interfaccia.
+- 0.24.9 — Fasi 3, 12, 13: animazioni (controllo di palla, recuperi), prestazioni, giro completo di test.
+
+### Sprint 0.24.6 — Pali, traversa e modalità separate: fatto
+- **Motore** (`03_ball.js`, `08_match.js`): `collideGoalFrame` dice se il colpo è sul palo o sulla traversa (solo
+  se il pallone andava contro il legno); l'evento `post` porta `bar` e non si ripete prima di 0,25 s. In rete il
+  campo `kind` ('post'/'bar').
+- **Configurazione per modalità** (`37_modes.js`, nuovo): `MODE_FX.partita` e `MODE_FX.allenamento` (telecronaca,
+  scritte, volume del pubblico, reazioni, replay, festa del gol, flash, scossoni). `handleEvent` e il volume del
+  pubblico la seguono; la Partita non è stata toccata.
+- **Audio** (`10_audio.js`): palo e traversa con suono diverso, "ooh" solo se previsto; suono della parata.
+- **Prove**: `rete_test.js` 18/18 (palo pieno, palo interno e gol, traversa, nessun evento ripetuto);
+  `novita024_browser_test.py` 39/39 (allenamento e partita con eventi veri: suoni, scritte, replay, flash);
+  `npm test`; natale, trofei, novita023, browser.

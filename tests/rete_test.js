@@ -77,5 +77,30 @@ for (const [y, z] of [[0.3, 0], [2.1, 3.2], [1.2, -3.3]]) {
   check('gol riconosciuto (altezza ' + y + ', z ' + z + ')', goal && tm.score === 1, [m.state, tm.score]);
 }
 
+// pali e traversa (0.24.6): un evento per colpo, palo o traversa distinti; palo e gol, palo e fuori
+function postShot(x, y, z, vx, vy, vz) {
+  const m = new A.Match(db[0], db[1], { halfSeconds: 180 });
+  m.setState('PLAY');
+  const tm = m.teams.find(q => q.dir > 0), b = m.ball, k = tm.opponent().gk;
+  k.x = -50; k.z = 30;
+  b.owner = null; b.x = x; b.y = y; b.z = z; b.vx = vx; b.vy = vy; b.vz = vz; b.lastTouch = tm.players[9];
+  const ev = [];
+  for (let i = 0; i < 90; i++) { m.update(1 / 60); for (const e of m.events) if (e.type === 'post') ev.push(e.data.bar ? 'bar' : 'post'); m.events.length = 0; if (m.state !== 'PLAY') break; }
+  return { ev: ev, goal: tm.score > 0, state: m.state, vx: b.vx };
+}
+const W2 = C.GOAL_HALF_W;
+// tiro sul palo esterno: rimbalza fuori
+let ps = postShot(C.HALF_L - 6, 0.6, W2 + 0.12, 24, 0.5, 0);
+check('palo preso in pieno: un solo evento "palo", il pallone rimbalza indietro, niente gol', ps.ev.length === 1 && ps.ev[0] === 'post' && !ps.goal, ps);
+// palo interno: entra
+ps = postShot(C.HALF_L - 6, 0.6, W2 - 0.15, 24, 0.5, 0);
+check('palo interno e gol: evento "palo" e gol valido', ps.ev.length === 1 && ps.ev[0] === 'post' && ps.goal, ps);
+// traversa
+ps = postShot(C.HALF_L - 6, C.GOAL_H + 0.1 - 0.6 * 0, 0, 24, 0.8, 0);
+check('traversa: un solo evento "traversa", niente gol', ps.ev.length === 1 && ps.ev[0] === 'bar' && !ps.goal, ps);
+// pallone che rotola lento contro il palo: nessun evento ripetuto
+ps = postShot(C.HALF_L - 1, 0.11, W2 + 0.12, 3, 0, 0);
+check('pallone lento appoggiato al palo: al massimo un evento (niente suoni ripetuti)', ps.ev.length <= 1, ps);
+
 console.log('\nRisultato: ' + ok + ' superati, ' + fail + ' falliti');
 process.exit(fail ? 1 : 0);

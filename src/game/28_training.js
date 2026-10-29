@@ -180,7 +180,7 @@ class TrainingMatch extends Match {
     tr.phase = 'result'; tr.t = 0;
     this.ball.owner = null;
     this.setState('DEAD');
-    this.showBanner(text, 1.4, ok ? 'goal' : 'info');
+    this.showBanner(text, 1.4, 'info');   // risultato dell'esercizio, piccolo (niente scritta grande da partita, 0.24.6)
     if (!tr.drill.seconds && tr.done >= tr.drill.tries) tr.t = -0.6;   // l'ultimo: un attimo in più per vederlo
   }
   finish() {

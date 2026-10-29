@@ -69,8 +69,8 @@ Renderer.prototype.tvCamera = function (dt, bx, bz, match, want, look) {
 };
 
 // effetti discreti
-Renderer.prototype.onPost = function () {
+Renderer.prototype.onPost = function (shake) {
   const p = this.ballMesh.position;
   this.burst('dust', p.x, p.z, { amount: 0.35 });
-  this.shake = Math.max(this.shake || 0, 0.12);
+  if (shake !== false) this.shake = Math.max(this.shake || 0, 0.12);
 };

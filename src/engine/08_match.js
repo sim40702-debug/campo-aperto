@@ -1197,7 +1197,9 @@ class Match {
     const sub = 4;
     for (let i = 0; i < sub; i++) {
       stepBallPhysics(b, dt / sub);
-      if (collideGoalFrame(b, dt / sub)) this.emit('post', {});
+      const hit = collideGoalFrame(b, dt / sub);
+      // palo o traversa: un solo evento per colpo (anche se il contatto dura qualche passo, 0.24.6)
+      if (hit && this.realTime - (this.lastPostT || -9) > 0.25) { this.lastPostT = this.realTime; this.emit('post', { bar: hit === 'bar' }); }
     }
   }
 
