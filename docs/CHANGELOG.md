@@ -2,6 +2,16 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.23.2 — 29/10/2026 (allenamento più svelto)
+- **Allenamento: dopo il tiro si passa subito al prossimo tentativo**. Nei tiri in porta, nelle punizioni, nei rigori
+  e nel dribbling, dopo un tiro sbagliato il tentativo finisce quando il pallone esce, si ferma, torna indietro o al
+  massimo **3 secondi dopo il tiro**; se riprendi la palla (una respinta) il tentativo è finito, non si continua a
+  giocare. Prima si poteva andare avanti fino a 10 secondi (16 nel dribbling), che su un computer lento diventavano
+  anche mezzo minuto. Anche la pausa tra un tentativo e l'altro è più corta.
+- **Pannello Amici chiuso all'avvio**: di lato nella Home c'è solo la linguetta "Amici" (con il pallino rosso se ci
+  sono richieste o inviti) e il pannello si apre cliccandola. Prima su uno schermo grande si apriva da solo e sugli
+  schermi piccoli finiva sopra il menu.
+
 ## 0.23.1 — 29/10/2026 (comandi con la telecamera dietro)
 - **I comandi seguono la telecamera quando sta dietro al tuo calciatore**: in allenamento (tiri, punizioni, rigori,
   dribbling) e su punizioni e rigori **W (o la levetta in su) va avanti verso la porta**, S indietro, A e D a

@@ -78,7 +78,8 @@ class TrainingMatch extends Match {
       this.stepBallFree(dt);
       for (const p of this.allPlayers()) { p.moveToward(p.x, p.z, false, dt); p.update(dt); }
       this.recordReplay();
-      if (tr.t > (tr.phase === 'ready' ? 1.6 : 1.4)) this.nextAttempt();
+      // pausa breve: si passa al prossimo tentativo quasi subito (si vede il risultato e si riparte)
+      if (tr.t > (tr.phase === 'ready' ? 1.4 : 1.2)) this.nextAttempt();
       return;
     }
     super.step(dt, input);
@@ -96,9 +97,18 @@ class TrainingMatch extends Match {
     if (this.state !== 'PLAY') return;
     tr.playT += dt;   // tempo con la palla in gioco (dopo il calcio di una punizione o di un rigore)
     if (b.owner && b.owner.team === opp) return this.attemptResult(false, b.owner.isGK ? 'Parato!' : tr.drill.id === 'freekick' ? 'Respinta dalla barriera' : 'Palla persa');
-    // tiro partito e pallone fermo fuori dalla porta: tentativo fallito
+    // tiro partito (la palla ha lasciato il piede del tuo calciatore): da qui si conta il tempo del tiro (0.23.2)
     const kicked = !b.owner && b.lastTouch && b.lastTouch.team === me;
-    if (kicked && tr.playT > 1 && b.speed() < 1.2 && !b.inNet) return this.attemptResult(false, 'Niente gol');
+    // (un calcio vero del tuo calciatore: lastKick si azzera a ogni tentativo; i dribbling non lo cambiano)
+    if (kicked && tr.shotAt === undefined && this.lastKick && this.lastKick.player && this.lastKick.player.team === me) tr.shotAt = tr.playT;
+    if (tr.shotAt !== undefined) {
+      const since = tr.playT - tr.shotAt;
+      // dopo il tiro non si continua a giocare: se riprendi la palla (respinta) il tentativo è finito
+      if (b.owner && b.owner.team === me && since > 0.3) return this.attemptResult(false, 'Niente gol');
+      // pallone fermo, o che si allontana dalla porta, o tiro da più di 3 secondi: tentativo fallito, si passa al prossimo
+      const away = (b.vx || 0) < -1 && since > 0.6;
+      if ((since > 0.8 && b.speed() < 1.2 && !b.inNet) || away || since > 3) return this.attemptResult(false, 'Niente gol');
+    }
     if (tr.playT > (tr.drill.id === 'dribble' ? 16 : 10)) return this.attemptResult(false, 'Tempo scaduto');
   }
 
@@ -106,7 +116,7 @@ class TrainingMatch extends Match {
   nextAttempt() {
     const tr = this.tr, d = tr.drill.id, me = this.teams[0], opp = this.teams[1], b = this.ball, p = this.trMain;
     if (!tr.drill.seconds && tr.done >= tr.drill.tries) return this.finish();
-    tr.phase = 'live'; tr.liveT = 0; tr.playT = 0; tr.t = 0;
+    tr.phase = 'live'; tr.liveT = 0; tr.playT = 0; tr.t = 0; tr.shotAt = undefined;
     this.lastKick = null; this.offside = null; this.advantage = null; this.pendingPass = null;
     b.inNet = false; b.netHit = null;
     const gx = me.oppGoalX();

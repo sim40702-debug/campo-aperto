@@ -4,7 +4,7 @@
 // Tutto arriva dal server (nessun giocatore inventato); degli altri si vede solo il nome pubblico.
 // Aggiornamento leggero: all'apertura, al ritorno nella Home e ogni 45 secondi solo con il pannello aperto.
 // ============================================================
-const SOCIAL_OPEN_KEY = 'campoAperto.socialOpen.v1';
+const SOCIAL_OPEN_KEY = 'campoAperto.socialOpen.v1';   // vecchia preferenza (fino alla 0.23.1), si toglie all'avvio
 const SOCIAL_REFRESH_MS = 30000;
 
 class SocialUI {
@@ -12,9 +12,10 @@ class SocialUI {
     this.g = game; this.api = game.eco.api;
     this.friends = null; this.comps = null; this.users = null; this.usersQ = '';
     this.err = ''; this.busyReq = null; this.lastUser = this.api.username || null;
-    let open = window.innerWidth > 900;
-    try { const v = localStorage.getItem(SOCIAL_OPEN_KEY); if (v === '0' || v === '1') open = v === '1'; } catch (e) { /* preferenza non disponibile */ }
-    this.setOpen(open, true);
+    // il pannello parte sempre chiuso (0.23.2): si vede solo la linguetta "Amici" di lato e si apre cliccandola.
+    // Aperto da solo copriva il menu sugli schermi piccoli.
+    this.setOpen(false, true);
+    try { localStorage.removeItem(SOCIAL_OPEN_KEY); } catch (e) { /* niente */ }
     $('social-toggle').onclick = () => this.setOpen(!this.open);
     $('so-refresh').onclick = () => this.refresh();
     $('so-content').addEventListener('click', e => { const b = e.target.closest('[data-so]'); if (b) this.act(b); });
@@ -41,7 +42,6 @@ class SocialUI {
     this.open = !!open;
     $('social-body').hidden = !this.open;
     $('social-toggle').setAttribute('aria-expanded', String(this.open));
-    if (!quiet) { try { localStorage.setItem(SOCIAL_OPEN_KEY, this.open ? '1' : '0'); } catch (e) { /* resta per questa sessione */ } }
     if (this.open && !quiet) this.refresh();
   }
   // ritorno nella Home: dati freschi (una richiesta, non a ripetizione)
