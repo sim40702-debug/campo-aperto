@@ -150,11 +150,12 @@ class Game {
     else if (a.song && (a.song.mode === 'menu' || !inGame)) a.stopJingleBells();
   }
 
-  toast(text, isErr) {
+  // ms (facoltativo): quanto resta visibile (di solito 3 s, 5 s per gli errori)
+  toast(text, isErr, ms) {
     const t = $('toast');
     t.textContent = text; t.className = isErr ? 'err' : ''; t.hidden = false;
     clearTimeout(this._toastT);
-    this._toastT = setTimeout(() => { t.hidden = true; }, isErr ? 5000 : 3000);
+    this._toastT = setTimeout(() => { t.hidden = true; }, ms || (isErr ? 5000 : 3000));
   }
   busy(text, onCancel) {
     $('busy').hidden = !text;
