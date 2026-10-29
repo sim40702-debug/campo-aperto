@@ -82,6 +82,21 @@ async def main():
             check('allenamento %s: la porta sempre tutta in vista (3 tentativi)' % drill, all(r), r)
         await pg.screenshot(path=HERE + '/shots/023_allenamento_tiri.png')
 
+        # ---- comandi che seguono la telecamera dietro al calciatore (allenamento, punizioni)
+        async def keys(code):
+            await pg.keyboard.down(code)
+            v = await pg.evaluate("() => { const i = game.gameInput(false); return [+i.mx.toFixed(2), +i.mz.toFixed(2)]; }")
+            await pg.keyboard.up(code)
+            return v
+        w, d = await keys('KeyW'), await keys('KeyD')
+        check('allenamento con la telecamera dietro: W va avanti verso la porta, D a destra', w[0] > 0.8 and abs(w[1]) < 0.5 and d[1] > 0.8, [w, d])
+        await pg.evaluate("() => { game.quitToMenu(); game.startTraining('freekick'); for (let i = 0; i < 120; i++) game.updateOffline(1/60); }")
+        w, d = await keys('KeyW'), await keys('KeyD')
+        check('punizione: W verso la porta (alza il mirino), D a destra dello schermo', w == [1, 0] and d == [0, 1], [w, d])
+        await pg.evaluate("() => { game.quitToMenu(); game.setup.side = 0; game.startMatch(); for (let i = 0; i < 30; i++) game.updateOffline(1/60); }")
+        w = await keys('KeyW')
+        check('telecamera televisiva: W resta "su sullo schermo" come prima', w == [0, -1], w)
+
         # ---- portiere
         await pg.evaluate("() => { game.quitToMenu(); game.setup.side = -1; game.startMatch(); for (let i = 0; i < 60; i++) game.updateOffline(1/60); }")
         side = await pg.evaluate("""() => { const m = game.match, R = game.renderer, t = m.teams[1], gk = t.gk, pm = R.playerMeshes.find(q => q.player === gk), gx = t.ownGoalX();
