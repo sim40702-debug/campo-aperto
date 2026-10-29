@@ -18,6 +18,8 @@
 # - 0.24.4: il portiere cade dalla parte del pallone (su tutte e due le porte); tutorial: arrivato nel cerchio il
 #   pallone non scappa e al passo dopo torna al piede.
 # - 0.24.5: in allenamento e nel tutorial niente telecronaca (con la telecronaca accesa nelle impostazioni).
+# - 0.24.6: Partita e Allenamento separati: in allenamento pali e traversa suonano ma senza scritte né "ooh", il gol
+#   senza esultanza, replay, flash, fuochi e boato, pubblico basso; in partita "Palo!" e "Traversa!" e tutto come prima.
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -266,6 +268,29 @@ async def main():
             }
             return out; }""")
         check('telecronaca: niente scritte in allenamento e nel tutorial (in partita sì)', tc['shots'] == 0 and tc['tutorial'] == 0 and tc['partita'] > 0, tc)
+
+        # ---- 0.24.6: allenamento e partita separati (eventi veri dal motore)
+        SEP = """(mode) => { game.quitToMenu(); if (mode === 'partita') { game.setup.side = 0; game.startMatch(); } else game.startTraining('shots');
+            for (let i = 0; i < 90; i++) game.updateOffline(1/60);
+            const m = game.match, R = game.renderer, A = game.audio, calls = [];
+            for (const f of ['post', 'save', 'roar', 'ooh', 'fireworks', 'sleighBells']) { const o = A[f].bind(A); A['__' + f] = o; A[f] = function () { calls.push(f + (f === 'post' ? ':' + arguments[0] + ':' + arguments[1] : '')); return o.apply(A, arguments); }; }
+            const fl = R.cameraFlashes.bind(R); let flashes = 0; R.cameraFlashes = function () { flashes++; return fl.apply(R, arguments); };
+            const out = { banners: [], replay: false };
+            const shot = (z, y) => { const t = m.teams[0], s = m.trMain || t.players[9], k = t.opponent().gk; m.state = 'PLAY'; if (m.tr) m.tr.phase = 'live';
+              if (k) { k.x = -40; k.z = 25; } m.ball.owner = null; m.ball.x = t.oppGoalX() - t.dir * 6; m.ball.y = y; m.ball.z = z; m.ball.vx = t.dir * 24; m.ball.vy = 0.6; m.ball.vz = 0; m.ball.lastTouch = s; s.kickCooldown = 5;
+              for (let i = 0; i < 40; i++) { game.updateOffline(1/60); if (m.banner && out.banners.indexOf(m.banner.text) < 0) out.banners.push(m.banner.text); if (game.replayPending) out.replay = true; } };
+            shot(CONFIG.GOAL_HALF_W + 0.12, 0.6);          // palo
+            shot(0, CONFIG.GOAL_H + 0.1);                   // traversa
+            shot(1, 0.5);                                   // gol
+            for (const f of ['post', 'save', 'roar', 'ooh', 'fireworks', 'sleighBells']) A[f] = A['__' + f];
+            R.cameraFlashes = fl;
+            out.calls = calls; out.flashes = flashes; out.commentary = !document.getElementById('commentary').hidden;
+            return out; }"""
+        tr_ = await pg.evaluate(SEP, 'allenamento')
+        pt = await pg.evaluate(SEP, 'partita')
+        check('allenamento: palo e traversa suonano (senza "ooh"), niente scritte PALO!/TRAVERSA!/GOL! grandi', 'post:false:false' in tr_['calls'] and 'post:false:true' in tr_['calls'] and 'ooh' not in tr_['calls'] and not any(b in ('Palo!', 'Traversa!', 'GOL!') for b in tr_['banners']), tr_)
+        check('allenamento: gol senza boato, replay, flash e fuochi; niente telecronaca', 'roar' not in tr_['calls'] and 'fireworks' not in tr_['calls'] and not tr_['replay'] and tr_['flashes'] == 0 and not tr_['commentary'], tr_)
+        check('partita: "Palo!" e "Traversa!" con il suono giusto, gol con replay e festa (come prima)', 'Palo!' in pt['banners'] and 'Traversa!' in pt['banners'] and 'post:true:false' in pt['calls'] and 'post:true:true' in pt['calls'] and 'roar' in pt['calls'] and pt['replay'], pt)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

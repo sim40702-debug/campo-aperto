@@ -2,6 +2,16 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.6 — 29/10/2026 (Allenamento e Partita separati, pali e traversa)
+- **Pali e traversa distinti**: in partita compare **"Palo!"** o **"Traversa!"** secondo il legno colpito davvero,
+  con un colpo metallico diverso (la traversa suona più bassa). Un solo suono e una sola scritta per colpo, anche se
+  il pallone resta a contatto per un attimo. Palo e gol: il gol vale; palo e fuori: si continua.
+- **Allenamento come un campo di pratica** (anche il tutorial): il pallone suona su pali, traversa, guanti e rete, ma
+  **niente** scritte PALO!/TRAVERSA!, niente scritta grande GOL!, niente boato, "ooh", cori, replay, coriandoli,
+  fuochi d'artificio, flash dei fotografi e scossoni; il pubblico si sente appena. Il risultato del tentativo resta
+  in una scritta piccola. In partita tutto come prima.
+- **Parate**: nuovo suono del pallone sui guanti.
+
 ## 0.24.5 — 29/10/2026 (allenamento senza telecronaca)
 - **In allenamento e nel tutorial niente telecronaca**: né scritte né voce, anche con la telecronaca accesa nelle
   impostazioni. Nelle partite resta come prima.

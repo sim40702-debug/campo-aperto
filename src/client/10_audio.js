@@ -46,10 +46,11 @@ class GameAudio {
     const g = ctx.createGain(); g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
     o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.08);
   }
-  crowd(level) {
+  // scale: volume del pubblico della modalità (allenamento: quasi niente, 37_modes.js)
+  crowd(level, scale) {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
-    this.crowdGain.gain.setTargetAtTime(0.05 + level * 0.25, t, 0.4);
+    const t = this.ctx.currentTime, k = scale === undefined ? 1 : scale;
+    this.crowdGain.gain.setTargetAtTime((0.05 + level * 0.25) * k, t, 0.4);
     this.crowdFilter.frequency.setTargetAtTime(500 + level * 500, t, 0.4);
   }
   whistle(times) {
@@ -100,11 +101,12 @@ class GameAudio {
     }
   }
   // palo o traversa: colpo metallico che vibra (frequenze non armoniche, come un tubo), poi il pubblico fa "ooh"
-  post() {
+  // crowd: false = senza "ooh" (allenamento); bar: traversa, un tubo più lungo che suona un po' più basso
+  post(crowd, bar) {
     if (!this.ctx) return;
-    const ctx = this.ctx, t = ctx.currentTime;
+    const ctx = this.ctx, t = ctx.currentTime, k = bar ? 0.82 : 1;
     for (const [fr, v, d] of [[310, 0.16, 1.3], [829, 0.12, 1.0], [1587, 0.08, 0.7], [2410, 0.05, 0.5], [3720, 0.03, 0.3]]) {
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = fr * (1 + (Math.random() - 0.5) * 0.01);
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = fr * k * (1 + (Math.random() - 0.5) * 0.01);
       const g = ctx.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0005, t + d);
       o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + d + 0.05);
     }
@@ -112,7 +114,16 @@ class GameAudio {
     const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500;
     const g = ctx.createGain(); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
     src.connect(f); f.connect(g); g.connect(this.sfx); src.start(t); src.stop(t + 0.06);
-    this.ooh(0.25);
+    if (crowd !== false) this.ooh(0.25);
+  }
+  // parata: il pallone sui guanti, un colpo sordo e corto (rumore filtrato basso)
+  save() {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const src = ctx.createBufferSource(); src.buffer = this.noise;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    src.connect(f); f.connect(g); g.connect(this.sfx); src.start(t, Math.random()); src.stop(t + 0.14);
   }
   // tante voci insieme: oscillatori un po' stonati tra loro, filtrati come una vocale (o, a, e)
   voices(t, notes, opts) {
