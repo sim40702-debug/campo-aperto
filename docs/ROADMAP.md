@@ -49,6 +49,7 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.21.0 — versione di Natale (tema con stadio addobbato, Partita di Natale, trofei)
 - 0.22.0 — Natale come in TV: rifinitura dell'immagine, telecamera, prato, neve, giocatori
 - 0.23.0 — dopo il gol come in TV, telecamera di punizioni e allenamento, portiere
-- 0.24.0 — nuova generazione: portiere vero, rete 3D dinamica, pallone premium, calciatori, campo e telecamera  ← attuale
+- 0.24.0 — nuova generazione: portiere vero, rete 3D dinamica, pallone premium, calciatori, campo e telecamera
+- 0.24.1 — le novità della 0.24 anche in allenamento  ← attuale
 - prossime — carriera: contratti, infortuni, obiettivi della società
 - 1.0.0 — M6 rifinitura completa, prima versione completa

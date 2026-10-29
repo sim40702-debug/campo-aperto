@@ -30,8 +30,9 @@ Game.prototype.initUpdates = function () {
 // arriva uno stato nuovo dal processo principale
 Game.prototype.onUpdateState = function () {
   const s = this.upd;
-  // dopo il riavvio: l'aggiornamento è andato a buon fine?
-  if (!this.updToastShown && (s.appenaAggiornato || s.nonRiuscito)) {
+  // dopo il riavvio: l'aggiornamento è andato a buon fine? (si dice quando il gioco è caricato: durante il
+  // caricamento il messaggio spariva prima che si potesse leggere)
+  if (this.loaded && !this.updToastShown && (s.appenaAggiornato || s.nonRiuscito)) {
     this.updToastShown = true;
     if (s.appenaAggiornato) this.toast(trf('Aggiornato alla versione {0}', s.appenaAggiornato));
     else this.toast(trf('L\'aggiornamento alla versione {0} non è stato completato: il gioco usa ancora la versione {1}.', s.nonRiuscito, s.attuale), true);

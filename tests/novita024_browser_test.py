@@ -9,6 +9,8 @@
 #   attraversano il pallone; frenata con la gamba avanti.
 # - campo, telecamera, effetti: linee del campo come geometria nitida (non più nella texture), telecamera televisiva
 #   che anticipa il pallone e si avvicina davanti alle porte, piccolo effetto sul palo.
+# - 0.24.1: in allenamento (tiri, punizioni, rigori, dribbling) dopo il gol il pallone disegnato entra in rete e la
+#   rete si gonfia; il portiere nuovo si tuffa.
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -150,6 +152,18 @@ async def main():
         check('telecamera: anticipa il pallone che corre (guarda più avanti)', f5['lead'] > 3 and f5['lookAhead'] > 2, f5)
         check('telecamera: davanti alla porta si abbassa e si avvicina', f5['dy'] < -1.5 and f5['dz'] < -2.5, f5)
         check('effetti: piccolo scossone sul palo (discreto)', 0 < f5['shake'] <= 0.2, f5)
+
+        # ---- 0.24.1: allenamento
+        for drill in ('shots', 'freekick', 'penalty', 'dribble'):
+            r = await pg.evaluate("""(d) => { game.quitToMenu(); game.startTraining(d); for (let i = 0; i < 90; i++) game.updateOffline(1/60);
+                const m = game.match, R = game.renderer, b = m.ball, me = m.trMain, gk = m.teams[1].players.find(p => p.isGK);
+                m.state = 'PLAY'; m.tr.phase = 'live';
+                b.owner = null; b.x = 52.5 - 14; b.z = 0; b.y = 0.11; b.vx = 26; b.vy = 2.5; b.vz = 6.5; b.lastTouch = me; m.lastKick = { kind: 'shot', player: me, time: m.time }; me.kickCooldown = 5;
+                const net = R.nets.find(n => n.side > 0); let dive = false, netMax = 0, ballX = 0;
+                for (let i = 0; i < 80; i++) { game.updateOffline(1/60); if (gk && gk.anim.dive > 0) dive = true; ballX = Math.max(ballX, R.ballMesh.position.x);
+                  for (let k = 0; k < net.d.length; k++) netMax = Math.max(netMax, Math.abs(net.d[k])); }
+                return { last: m.tr.last, dive: dive, netMax: netMax, ballX: ballX }; }""", drill)
+            check('allenamento ' + drill + ': gol, il pallone disegnato entra in rete e la rete si gonfia, il portiere si tuffa', r['last'] == 'Gol!' and r['netMax'] > 0.3 and r['ballX'] > 54 and r['dive'], r)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

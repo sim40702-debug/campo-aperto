@@ -106,3 +106,17 @@ Ogni sprint finisce con una **review** (cosa è fatto, come è stato provato, co
 - **Rilascio**: riferimento del motore (`motore_ref.json`) rifatto per la 0.24.0. Le quote delle scommesse vanno
   ricalcolate con il nuovo motore (`cloud/scripts/calibra-quote.mjs`) prima di aggiornare il server: il ricalcolo è
   lungo e il Product Owner ha chiesto di pubblicare subito l'app.
+
+## Sprint dopo la 0.24.0 (uno alla volta, ognuno con la sua versione)
+Il Product Owner ha chiesto: ogni sprint finito e provato esce subito come versione (0.24.1, 0.24.2, …), poi si
+parte con il prossimo.
+
+### Sprint 0.24.1 — Tutte le novità anche in allenamento: fatto
+- **Problema trovato**: l'allenamento usa lo stesso motore e la stessa grafica della partita, ma nelle pause tra un
+  tentativo e l'altro (`TrainingMatch.step`) non si salvavano le posizioni del passo precedente, che la grafica usa
+  per disegnare: pallone e giocatori disegnati restavano fermi. Dopo un gol il pallone si fermava sulla linea, la
+  rete non si muoveva e il tuffo del portiere si bloccava. Stessa cosa nel tutorial.
+- **Correzione**: `rememberPositions()` in `28_training.js`, usata nelle pause dell'allenamento e del tutorial.
+- **In più**: il messaggio "Aggiornato alla versione" aspetta la fine del caricamento.
+- **Prove**: `novita024_browser_test.py` (gol in tiri, punizioni, rigori e dribbling: pallone in rete, rete che si
+  gonfia, portiere che si tuffa), `updates_browser_test.py` 32/32, `npm test`.

@@ -49,6 +49,7 @@ class TutorialMatch extends TrainingMatch {
     if (tu.finished) { this.realTime += dt; this.stateTime += dt; if (this.banner) { this.banner.t -= dt; if (this.banner.t <= 0) this.banner = null; } return; }
     // tra un passo e l'altro un attimo di pausa ("Bravo!")
     if (tu.ok) {
+      this.rememberPositions();   // la grafica continua a muovere pallone e giocatori nella pausa (28_training.js)
       tu.t += dt; this.realTime += dt; this.stateTime += dt;
       if (this.banner) { this.banner.t -= dt; if (this.banner.t <= 0) this.banner = null; }
       this.stepBallFree(dt);
