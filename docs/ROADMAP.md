@@ -53,6 +53,7 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.24.1 — le novità della 0.24 anche in allenamento
 - 0.24.2 — visuale dietro al giocatore che segue il pallone, cambio automatico del calciatore
 - 0.24.3 — porta come quelle vere, con i sostegni dietro la rete
-- 0.24.4 — portiere che si tuffa verso il pallone, tutorial senza palla che scappa, rete morbida  ← attuale
+- 0.24.4 — portiere che si tuffa verso il pallone, tutorial senza palla che scappa, rete morbida
+- 0.24.5 — allenamento e tutorial senza telecronaca  ← attuale
 - prossime — carriera: contratti, infortuni, obiettivi della società
 - 1.0.0 — M6 rifinitura completa, prima versione completa

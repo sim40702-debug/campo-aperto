@@ -34,7 +34,8 @@ Game.prototype.onUpdateState = function () {
   // caricamento il messaggio spariva prima che si potesse leggere)
   if (this.loaded && !this.updToastShown && (s.appenaAggiornato || s.nonRiuscito)) {
     this.updToastShown = true;
-    if (s.appenaAggiornato) this.toast(trf('Aggiornato alla versione {0}', s.appenaAggiornato));
+    // resta 7 secondi: subito dopo il caricamento il computer è ancora occupato a preparare la grafica
+    if (s.appenaAggiornato) this.toast(trf('Aggiornato alla versione {0}', s.appenaAggiornato), false, 7000);
     else this.toast(trf('L\'aggiornamento alla versione {0} non è stato completato: il gioco usa ancora la versione {1}.', s.nonRiuscito, s.attuale), true);
     window.campoUpdate.visto().catch(() => {});
   }
