@@ -94,3 +94,15 @@ Ogni sprint finisce con una **review** (cosa è fatto, come è stato provato, co
   volto e divisa e normal map) e animazioni registrate dal vivo (motion capture: corsa, scatto, frenata, tiro,
   passaggio, contrasto, esultanze), con una licenza che permetta di usarli nel gioco. Il gioco è pronto ad
   accoglierli (three.js li carica con GLTFLoader e AnimationMixer) ma è un lavoro a parte.
+
+### Sprint 5 — Campo, telecamera, effetti, rilascio: fatto
+- **Campo** (`09_render_field.js`, nuovo): linee del campo fatte di geometria (12 cm, nitide da vicino e da lontano,
+  ricevono le ombre), non più disegnate nella texture; prato con macchie di colore larghe e naturali.
+- **Telecamera televisiva**: guarda avanti nella direzione del pallone (o di chi lo porta) e davanti alle porte si
+  abbassa e si avvicina, con movimenti morbidi.
+- **Effetti discreti**: sbuffo e piccolo scossone sul palo, zolle d'erba quando il portiere atterra dopo un tuffo.
+- **Prove**: `novita024_browser_test.py` (20 controlli in tutto), `npm test` tutto superato, test nel browser delle
+  versioni precedenti superati, nessun errore nella console.
+- **Rilascio**: riferimento del motore (`motore_ref.json`) rifatto per la 0.24.0. Le quote delle scommesse vanno
+  ricalcolate con il nuovo motore (`cloud/scripts/calibra-quote.mjs`) prima di aggiornare il server: il ricalcolo è
+  lungo e il Product Owner ha chiesto di pubblicare subito l'app.
