@@ -78,3 +78,19 @@ Ogni sprint finisce con una **review** (cosa è fatto, come è stato provato, co
 - **Prove**: `novita024_browser_test.py` (dimensione, rilievo, asse e angolo della rotazione, punto a contatto che
   non striscia, rotazione in volo).
 - **Resta**: niente.
+
+### Sprint 4 — Giocatori: fatto (con i limiti dei modelli fatti di forme semplici)
+- **Modelli** (`09_render.js`, `09_render_players.js` nuovo): occhi con bianco, iride e pupilla, bocca e zigomi;
+  maglia con colletto a polo e apertura, orlo, cuciture sui fianchi (anche sui pantaloncini) e orlo dei pantaloncini;
+  parastinchi sotto il calzettone; scarpe con zona dei lacci, suola e tacchetti (qualità media e alta).
+- **Materiali**: un solo materiale per tutti (nessun costo in più), ma ogni pezzo ha la sua opacità (pelle, stoffa,
+  capelli, scarpe lucide, suola, occhi) e la stoffa ha pieghe calcolate sulla superficie (in vita, sotto le braccia).
+- **Animazioni**: corsa, scatto, cambio di direzione, salto, tiro, dribbling, contrasti ed esultanze c'erano già
+  (09_render_gait.js, 09_render_kicks.js, 09_render_celebrate.js). Nuovo: frenata forte con la gamba avanti che pianta
+  il piede e braccia larghe; braccio esterno che si apre in curva; il pallone disegnato non entra mai nelle scarpe.
+- **Prove**: `novita024_browser_test.py` (opacità per pezzo, stoffa, pallone fuori dalla scarpa, frenata).
+- **Resta / asset esterni**: volti e corpi realistici come nei giochi commerciali non si fanno con forme semplici.
+  Servirebbero modelli 3D con scheletro (file GLTF/GLB, ~5.000-15.000 triangoli per calciatore, con texture di
+  volto e divisa e normal map) e animazioni registrate dal vivo (motion capture: corsa, scatto, frenata, tiro,
+  passaggio, contrasto, esultanze), con una licenza che permetta di usarli nel gioco. Il gioco è pronto ad
+  accoglierli (three.js li carica con GLTFLoader e AnimationMixer) ma è un lavoro a parte.

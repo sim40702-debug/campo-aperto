@@ -5,6 +5,8 @@
 #   riposo; il pallone non la attraversa; poco costosa da calcolare.
 # - pallone: pannelli, cuciture e rilievo (bumpMap), stessa dimensione, rotazione vera (asse giusto, angolo = strada
 #   diviso raggio).
+# - calciatori: materiale con opacità per pezzo e pieghe della stoffa, volti con occhi, tacchetti; i piedi non
+#   attraversano il pallone; frenata con la gamba avanti.
 # Prima: node build.js test. Uso: python3 tests/novita024_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -104,6 +106,30 @@ async def main():
         check('pallone: stessa dimensione di prima, con rilievo (cuciture e micro-trama)', abs(ball['r'] - 0.176) < 1e-6 and ball['bump'] and ball['mapW'] >= 512, ball)
         check('pallone: rotola girando attorno all\'asse giusto con l\'angolo giusto', abs(ball['ang'] - ball['want']) < 1e-3 and ball['axis'][2] < -0.99 and ball['axisZ'], ball)
         check('pallone: il punto a contatto con l\'erba va all\'indietro (rotola, non striscia) e in volo continua a girare', ball['low'][0] < 0 and ball['air'], ball)
+
+        # ---- SPRINT 4: calciatori
+        pl = await pg.evaluate("""() => { const R = game.renderer, m = game.match, out = {};
+            const pm = R.playerMeshes.find(q => !q.player.isGK), g = pm.chest.children[0].geometry;
+            out.attrs = !!(g.attributes.aRough && g.attributes.aFabric);
+            const r = Array.from(new Set(Array.from(pm.legs[0].ankle.children[0].geometry.attributes.aRough.array.map(v => Math.round(v * 100)))));
+            out.bootRough = r.sort((a, b) => a - b);
+            out.fabric = Math.max(...g.attributes.aFabric.array);
+            // pallone dentro la scarpa: il disegno lo sposta fuori
+            pm.root.updateMatrixWorld(true);
+            const toe = new THREE.Vector3(0.1, -0.02, 0); pm.legs[1].ankle.localToWorld(toe);
+            R.ballMesh.position.set(toe.x, 0.18, toe.z); const b0 = R.ballMesh.position.clone(); R.keepBallOffFeet();
+            out.pushed = R.ballMesh.position.distanceTo(b0);
+            // frenata forte da scatto
+            const p = pm.player; p.x = 0; p.z = 10; p.vx = 8; p.vz = 0; p.facing = 0;
+            for (let i = 0; i < 20; i++) { p.anim.phase += 0.4; R.syncFromMatch(m, 1/60); }
+            let br = 0, hip = 0;   // frena a 21 m/s² (come uno scatto fermato di colpo)
+            for (let i = 0; i < 20; i++) { p.vx = Math.max(0, p.vx - 0.35); R.syncFromMatch(m, 1/60); br = Math.max(br, pm.brake); hip = Math.max(hip, pm.legs[0].hip.rotation.z, pm.legs[1].hip.rotation.z); }
+            out.brake = br; out.hip = hip; p.vx = 0;
+            return out; }""")
+        check('calciatori: opacità diversa per pezzo (scarpe lucide, suola opaca) e stoffa con le pieghe', pl['attrs'] and pl['fabric'] == 1 and min(pl['bootRough']) <= 30 and max(pl['bootRough']) >= 60, pl)
+        check('calciatori: il pallone dentro la scarpa viene spostato fuori', pl['pushed'] > 0.02, pl)
+        check('calciatori: frenata forte con la gamba avanti', pl['brake'] > 0.3 and pl['hip'] > 0.35, pl)
+        await pg.screenshot(path=HERE + '/shots/024_calciatori.png')
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()
