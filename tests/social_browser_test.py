@@ -43,8 +43,9 @@ async def newpage(b):
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
     s = {'quality': 'bassa', 'dynamicRes': False, 'apiUrl': API}
     await pg.add_init_script('if (!localStorage.getItem("campoAperto.settings.v1")) localStorage.setItem("campoAperto.settings.v1", ' + json.dumps(json.dumps(s)) + ')')
-    await pg.goto(URL)
-    await pg.wait_for_function('window.game && window.game.loaded', timeout=60000, polling=250)
+    # la pagina è grande (c'è anche la voce di Jingle Bells) e su un computer lento ci mette un po' a caricarsi
+    await pg.goto(URL, timeout=120000)
+    await pg.wait_for_function('window.game && window.game.loaded', timeout=120000, polling=250)
     return ctx, pg, errs
 
 async def register(pg, name):
