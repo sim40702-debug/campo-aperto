@@ -107,3 +107,36 @@ Renderer.prototype.poseKick = function (pm, p, dt) {
     A0.sh.rotation.x = -1.0; A1.sh.rotation.x = 0.7;
   }
 };
+
+// ---- stop del pallone (0.24.9): chi riceve il pallone lo ammortizza, con un gesto diverso secondo come arriva
+// - basso: la gamba va incontro al pallone e si ritira (piede che "frena" il pallone), più marcato se arriva forte;
+// - alto (sopra 0,6 m): stop di petto, busto indietro e braccia larghe.
+// Si capisce dal cambio di chi ha il pallone; il gesto dura 0,32 s e si somma alla corsa.
+Renderer.prototype.watchFirstTouch = function (match, by) {
+  const b = match.ball, own = b.owner;
+  if (own !== this._lastOwner) {
+    const pm = own && !own.isGK ? this.playerMeshes.find(q => q.player === own) : null;
+    if (pm && this._lastOwner !== undefined && (this._prevBallSp || 0) > 4) pm.ctrl = { t: 0, sp: this._prevBallSp, high: (this._prevBallY || 0) > 0.6 };
+    this._lastOwner = own;
+  }
+  this._prevBallSp = own ? 0 : Math.hypot(b.vx || 0, b.vy || 0, b.vz || 0);
+  this._prevBallY = by;
+};
+Renderer.prototype.poseFirstTouch = function (pm, dt) {
+  const c = pm.ctrl;
+  if (!c) return;
+  c.t += dt;
+  const DUR = 0.32;
+  if (c.t >= DUR) { pm.ctrl = null; return; }
+  const k = Math.sin(Math.PI * c.t / DUR), a = clamp(c.sp / 18, 0.35, 1);
+  const L = pm.legs[1], A0 = pm.arms[0], A1 = pm.arms[1];
+  if (c.high) {
+    pm.chest.rotation.z += 0.3 * k * a;            // petto in fuori, busto indietro
+    A0.sh.rotation.x -= 0.6 * k; A1.sh.rotation.x += 0.6 * k;
+  } else {
+    L.hip.rotation.z += 0.45 * k * a; L.knee.rotation.z -= 0.5 * k * a;
+    if (L.ankle) L.ankle.rotation.z += 0.3 * k;     // punta su: il piede accoglie il pallone
+    pm.chest.rotation.z += 0.08 * k * a;
+    A0.sh.rotation.x -= 0.25 * k * a; A1.sh.rotation.x += 0.25 * k * a;
+  }
+};
