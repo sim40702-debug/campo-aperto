@@ -56,6 +56,7 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.24.4 — portiere che si tuffa verso il pallone, tutorial senza palla che scappa, rete morbida
 - 0.24.5 — allenamento e tutorial senza telecronaca
 - 0.24.6 — Allenamento e Partita separati (configurazione per modalità), pali e traversa distinti
-- 0.24.7 — portiere nell'uno contro uno (uscita e presa sui piedi)  ← attuale
+- 0.24.7 — portiere nell'uno contro uno (uscita e presa sui piedi)
+- 0.24.8 — presentazione della partita, panchine con riserve e allenatori, tunnel  ← attuale
 - prossime — carriera: contratti, infortuni, obiettivi della società
 - 1.0.0 — M6 rifinitura completa, prima versione completa

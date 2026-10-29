@@ -65,5 +65,6 @@ class Christmas {
   // Partita di Natale: le squadre della Nuova partita, di sera sotto la neve
   start() {
     this.g.startMatch(true);
+    this.g.startIntro();   // con la presentazione (38_intro.js)
   }
 }

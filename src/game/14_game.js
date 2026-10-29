@@ -188,7 +188,7 @@ class Game {
     if (IS_DESKTOP) { $('li-quit').hidden = false; $('btn-quit').onclick = () => window.close(); }
     this.initUpdates();   // aggiornamenti dell'app desktop (src/game/25_updates.js)
     $('setup-back').onclick = () => { if (this.setup.side === -1) this.setup.side = 0; this.showScreen('menu'); };
-    $('setup-start').onclick = () => this.startMatch();
+    $('setup-start').onclick = () => { this.startMatch(); this.startIntro(); };   // con la presentazione (38_intro.js)
     $('setup-teams').onclick = () => this.teamEditor.open('setup');
     this.teamEditor.bind();
     // nome della squadra: si scrive direttamente nella scheda; vuoto = nome originale. Resta salvato per quella squadra
@@ -385,7 +385,7 @@ class Game {
     this.renderer.localId = localId; this.renderer.names = names || null;
     this.renderer.menuDemo = false;
     this.renderer.setupMatch(m);
-    this.replay = null; this.replayPending = null; this.paused = false;
+    this.replay = null; this.replayPending = null; this.paused = false; if (this.intro) this.endIntro();
     this.finishWipe(false); this.lastMatchState = null;
     this.demo = null; this.acc = 0;
     $('sb-home').textContent = m.teams[0].data.short;
@@ -478,6 +478,7 @@ class Game {
   }
 
   quitToMenu() {
+    if (this.intro) this.endIntro();
     if (this.mode === 'fixture') { this.stopFixtureWatch(true); return; }
     if (this.match && this.match.training) { this.endTraining(); return; }   // dall'allenamento si torna agli esercizi
     // partita di competizione lasciata a metà: il tempo che manca si simula dal punteggio attuale
@@ -876,6 +877,8 @@ class Game {
     }
     $('st-full').textContent = document.fullscreenElement ? 'Disattiva' : 'Attiva';
     this.renderCommentaryOpt('st-commentary');
+    $('st-intro').checked = s.intro !== false;
+    $('st-intro').onchange = () => { s.intro = $('st-intro').checked; save(); };
     this.renderUpdateOpt();
     $('st-showfps').checked = s.showFps;
     $('st-showfps').onchange = () => { s.showFps = $('st-showfps').checked; $('fps').hidden = !s.showFps; save(); };
@@ -1161,6 +1164,7 @@ class Game {
   updateOffline(dt) {
     const m = this.match, R = this.renderer;
     if (this.paused) { R.syncFromMatch(m, 0, this.acc / CONFIG.DT); return; }
+    if (this.intro) { this.stepIntro(dt); return; }   // presentazione prima del calcio d'inizio (38_intro.js)
     // stacco come in TV in corso: finché la fascia non copre lo schermo la partita aspetta
     if (this.stepWipe(dt)) {
       if (this.replay) this.renderer.syncFromReplay(this.replay.frames[Math.floor(this.replay.i)], m, dt);

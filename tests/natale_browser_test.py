@@ -24,7 +24,7 @@ async def main():
         pg = await b.new_page(viewport={'width': 1280, 'height': 760})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "media", dynamicRes: false, })); localStorage.setItem("campoAperto.tutorialHint", "1")')
+        await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "media", dynamicRes: false, intro: false })); localStorage.setItem("campoAperto.tutorialHint", "1")')
         await pg.goto(URL)
         await pg.wait_for_function('window.game && game.loaded', timeout=90000, polling=250)
         # il ciclo del gioco si ferma: con il disegno senza scheda grafica e la rifinitura dell'immagine ogni fotogramma

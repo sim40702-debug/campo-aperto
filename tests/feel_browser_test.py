@@ -20,7 +20,7 @@ async def main():
         pg = await b.new_page(viewport={'width': 1280, 'height': 760})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "bassa", dynamicRes: false}))')
+        await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "bassa", dynamicRes: false, intro: false}))')
         await pg.goto(URL)
         await pg.wait_for_function('window.game && game.loaded', timeout=60000, polling=250)
 

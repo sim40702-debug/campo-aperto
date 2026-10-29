@@ -2,6 +2,15 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.24.8 — 30/10/2026 (presentazione della partita, panchine e tunnel)
+- **Presentazione come in TV** prima delle partite che fai partire dal menu (anche la Partita di Natale): la
+  telecamera vola sopra lo stadio e scende fino all'inquadratura televisiva, mentre al centro compare la scheda con
+  le due squadre, i loro colori e lo stadio. La partita aspetta; un tasto qualsiasi la salta. Si spegne nelle
+  impostazioni ("Presentazione"). Mai in allenamento, nel tutorial o online.
+- **Panchine**: sul lato lontano due panchine coperte con le riserve sedute nei colori della squadra e l'allenatore in
+  piedi nell'area tecnica che segue il gioco. In allenamento sono vuote.
+- **Tunnel degli spogliatoi** con la copertura, nella tribuna di fronte.
+
 ## 0.24.7 — 29/10/2026 (portiere nell'uno contro uno)
 - **Uno contro uno**: quando un attaccante arriva da solo verso la porta (nessun difensore in mezzo, entro 17 m) il
   portiere esce sulla linea tra l'attaccante e la porta per chiudere lo specchio, senza esagerare (fino a 5 m), e

@@ -38,7 +38,7 @@ async def main():
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
         await pg.add_init_script(FAKE_PAD)
-        await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", ' + json.dumps(json.dumps({'quality': 'bassa', 'dynamicRes': False})) + ')')
+        await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", ' + json.dumps(json.dumps({'quality': 'bassa', 'dynamicRes': False, 'intro': False})) + ')')
         await pg.goto(URL)
         await pg.wait_for_function('window.game && window.game.loaded', timeout=60000)
         await pg.wait_for_timeout(300)

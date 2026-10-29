@@ -21,7 +21,7 @@ async def main():
         pg = await b.new_page(viewport={'width': 1280, 'height': 760})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "bassa", dynamicRes: false}))')
+        await pg.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "bassa", dynamicRes: false, intro: false}))')
         await pg.goto(URL)
         await pg.wait_for_function('window.game && game.loaded', timeout=60000, polling=250)
 
@@ -137,7 +137,7 @@ async def main():
         for up in (True, False):
             ctx = await b.new_context(viewport={'width': 1280, 'height': 760})
             q = await ctx.new_page()
-            await q.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "bassa", dynamicRes: false}))')
+            await q.add_init_script('localStorage.setItem("campoAperto.settings.v1", JSON.stringify({quality: "bassa", dynamicRes: false, intro: false}))')
             if up: await q.route('**/api/**', lambda r: r.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'engine': 'x'}), headers={'Access-Control-Allow-Origin': '*'}))
             else: await q.route('**/api/**', lambda r: r.abort())
             await q.goto(URL + '?startup=1')
