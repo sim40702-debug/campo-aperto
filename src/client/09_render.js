@@ -43,6 +43,7 @@ class Renderer {
     this.buildStadium();
     this.buildBenches();   // panchine, allenatori e tunnel (09_render_bench.js)
     this.buildBall(); this.buildBallExtras();
+    this.buildFloodShadows();   // ombre dei fari (09_render_light.js)
     this.buildFx();
     this.buildWeather();    // pioggia e neve (src/client/09_render_weather.js)
     this.playerMeshes = [];
@@ -864,6 +865,7 @@ class Renderer {
     let charges = null;
     for (const h of (match.humans || [])) if (h.player && h.shootCharge > 0) (charges || (charges = new Map())).set(h.player, h.shootCharge);
     let ns = 0;
+    const floods = this.timeOfDay !== 'day';   // di sera e al tramonto i fari accesi: quattro ombre per calciatore
     this.watchFirstTouch(match, by);   // stop del pallone (09_render_kicks.js)
     for (const pm of this.playerMeshes) {
       const p = pm.player;
@@ -890,10 +892,12 @@ class Renderer {
       if (pm.hurtT > 0 || pm.limpT > 0 || pm.hurtAmt > 0.01) this.poseHurt(pm, dt, p.speed(), ph);
       // ombra di contatto: allungata quando è a terra (caduta, scivolata, tuffo)
       const lying = p.anim.fall > 0 || p.anim.tackle > 0.3 || p.anim.dive > 0 || pm.hurtAmt > 0.5;
-      if (ns < 22) this.setFootShadow(ns++, dx + (lying ? Math.cos(f) * 0.7 : 0), dz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0);
+      if (ns < 22) { if (floods) this.setFloodShadows(ns, dx, dz); this.setFootShadow(ns++, dx + (lying ? Math.cos(f) * 0.7 : 0), dz + (lying ? Math.sin(f) * 0.7 : 0), lying ? 2.1 : 1.0, lying ? 0.8 : 0.85, lying ? -f : 0); }
     }
     this.keepBallOffFeet();   // i piedi non attraversano il pallone (09_render_players.js)
     this.footShadows.count = ns;
+    this.floodShadows.count = floods ? ns * 4 : 0;
+    if (floods) this.floodShadows.instanceMatrix.needsUpdate = true;
     this.footShadows.instanceMatrix.needsUpdate = true;
     this.syncHumanMarks(match, this.localId, this.names);
     // pubblico: si agita di più vicino alle porte e dopo un gol
@@ -908,6 +912,7 @@ class Renderer {
     this.updateOfficials(match, dt, bx, bz);
     this.updateBenches(dt, bx, bz);
     this.updateCamera(dt, bx, by, bz, mine && mine.player, match);
+    this.updateShadowFrustum();   // ombre nitide dove si guarda (09_render_light.js)
     this.updateWeather(dt);
     this.updateChristmas(dt, this.menuDemo);   // lucine e fuochi d'artificio (09_render_natale.js)
   }
@@ -939,6 +944,7 @@ class Renderer {
     }
     this.footShadows.count = ns;
     this.footShadows.instanceMatrix.needsUpdate = true;
+    this.floodShadows.count = 0;   // nel replay niente ombre dei fari (si riaccendono con la partita)
     if (this.officials) this.officials.ref.root.visible = false;   // nel replay niente arbitro (non è registrato)
     this.updateNets(dt);
     for (const mk of this.humanMarks) { mk.ring.visible = false; if (mk.label) mk.label.visible = false; }
