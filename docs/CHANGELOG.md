@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.2 — 30/10/2026 (luce, ombre e riflessi)
+- **Ombre più nitide**: l'ombra della luce principale copre solo la zona inquadrata e la segue (a scatti di un pixel,
+  così non tremola): calciatori, pali e fili della rete hanno ombre 2-3 volte più definite.
+- **Riflessi** (qualità media e alta): pali verniciati, pallone, scarpe e telaio della porta riflettono un ambiente
+  calcolato una volta (cielo, tribune, quattro fari accesi, erba), diverso di sera, al tramonto e di giorno.
+- **Ombre dei fari**: di sera e al tramonto ogni calciatore ha quattro ombre leggere e allungate, una per torre
+  faro, come nelle partite in notturna; di giorno una sola ombra.
+
 ## 0.25.1 — 30/10/2026 (pali, traversa e pallone)
 - **Rimbalzo sul legno più credibile**: più forte il colpo, meno il pallone rimbalza (si schiaccia contro il palo);
   preso di striscio il palo frena un poco il pallone e gli dà effetto laterale; la traversa presa sotto dà rotazione

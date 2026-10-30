@@ -52,3 +52,14 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
 - **Prove**: `rete_test.js` 23/23 (rimbalzo piano più alto di quello forte, effetto dal palo, rotazione dalla
   traversa sotto e sopra, foglia morta diversa ogni volta e assente nei tiri a giro), `npm test`, novita025 11/11,
   novita024 43/43.
+
+### Sprint 0.25.2 — Luce, ombre, riflessi: fatto
+- **Analisi**: una sola mappa d'ombra per tutto lo stadio (140 × 100 m: ombre sfocate), nessun ambiente per i riflessi
+  (i materiali lucidi erano opachi), una sola ombra per calciatore anche di sera.
+- **Grafica** (`09_render_light.js`, nuovo): ombra che segue il punto guardato (zona 48-140 m secondo la distanza
+  della telecamera, a scatti di un pixel della mappa); `PMREMGenerator` da una piccola scena (cielo, fari, erba) per
+  `scene.environment`, una per ora del giorno, niente a qualità bassa; 88 ombre dei fari in un solo InstancedMesh.
+- **Correzione trovata nei test**: con i riflessi three.js definisce delle costanti `r1`, `r2` nello shader; le
+  pieghe della stoffa (0.24) usavano gli stessi nomi e lo shader dei calciatori non compilava: rinominate.
+- **Prove**: `novita025_browser_test.py` 14/14 (ombra che segue, riflessi, ombre dei fari di sera e non di giorno),
+  novita024 43/43, grafica 19/19, natale 21/21, browser (alta qualità), `npm test`.
