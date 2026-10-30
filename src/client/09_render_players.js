@@ -37,9 +37,10 @@ if (vFabric > 0.5) {
   float h = fabricH(vObjPos);
   vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition);
   float hx = dFdx(h), hy = dFdy(h);
-  vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx);
-  float det = dot(dpx, r1);
-  vec3 grad = sign(det) * (hx * r1 + hy * r2);
+  // (nomi lunghi: con i riflessi three.js definisce delle costanti r1, r2... e i nomi corti si scontrerebbero)
+  vec3 fabR1 = cross(dpy, normal), fabR2 = cross(normal, dpx);
+  float det = dot(dpx, fabR1);
+  vec3 grad = sign(det) * (hx * fabR1 + hy * fabR2);
   normal = normalize(abs(det) * normal - grad);
 }`);
   };

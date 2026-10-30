@@ -3,6 +3,8 @@
 # Per ognuno si misura dove e quanto si deforma la rete, che l'oscillazione si spenga piano, che la rete non entri mai
 # nel pallone, che il suono della rete parta una volta sola e più forte per i tiri forti. Poi i fili veri (cilindri
 # con ombra da vicino, linee da lontano) e la rete attaccata dietro ai pali.
+# Sprint 0.25.2: luce e ombre: ombra del sole che segue l'inquadratura (più nitida), riflessi dell'ambiente,
+# ombre dei fari di sera (quattro per calciatore) e non di giorno.
 # Prima: node build.js test. Uso: python3 tests/novita025_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -71,6 +73,19 @@ async def main():
             out.front = front; return out; }""")
         check('fili veri: un cilindro per filo che fa ombra; da vicino i fili, da lontano le linee', th['threads'] and th['shadow'] and th['near'] and th['far'], th)
         check('rete attaccata dietro ai pali e alla traversa (non dentro)', abs(th['front'] - 0.06) < 0.02, th)
+
+        lt = await pg.evaluate("""() => { const out = {};
+            for (const tod of ['night', 'day']) {
+              game.quitToMenu(); game.setup.side = -1; game.setup.timeOfDay = tod; game.setup.weather = 'clear'; game.startMatch();
+              for (let i = 0; i < 120; i++) game.updateOffline(1/60);
+              const R = game.renderer, c = R.sun.shadow.camera, players = game.match.allPlayers().filter(p => !p.gone).length;
+              out[tod] = { follow: Math.hypot(R.sun.target.position.x - R.camTarget.x, R.sun.target.position.z - R.camTarget.z) < 2, width: c.right - c.left,
+                env: !!R.scene.environment, floods: R.floodShadows.count, players: Math.min(22, players) };
+            }
+            return out; }""")
+        check('ombre: la luce principale fa ombra solo dove si guarda (zona più piccola di prima, 140 m) e la segue', lt['night']['follow'] and lt['night']['width'] < 140 and lt['day']['follow'], lt)
+        check('riflessi dell\'ambiente sui materiali lucidi (qualità media)', lt['night']['env'] and lt['day']['env'], lt)
+        check('ombre dei fari: di sera quattro per calciatore, di giorno nessuna', lt['night']['floods'] == lt['night']['players'] * 4 and lt['day']['floods'] == 0, lt)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()
