@@ -85,3 +85,38 @@ Renderer.prototype.setFloodShadows = function (i, x, z) {
     m.setMatrixAt(i * 4 + k, M);
   }
 };
+
+// fasci di luce dei fari (0.25.4): di sera, nell'aria umida dello stadio, si vedono i coni di luce che scendono dalle
+// torri verso il campo (più forti con la pioggia e la neve). Coni aperti, colore che si somma, quasi trasparenti.
+Renderer.prototype.buildLightBeams = function () {
+  const cv = document.createElement('canvas'); cv.width = 4; cv.height = 128;
+  const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 128);
+  const alpha = new THREE.CanvasTexture(cv);
+  const mat = this.beamMat = new THREE.MeshBasicMaterial({ color: '#fff4d6', alphaMap: alpha, transparent: true, opacity: 0.06,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const group = this.beams = new THREE.Group();
+  for (const [x, z] of FLOOD_TOWERS) {
+    const head = new THREE.Vector3(x * 0.97, 43, z * 0.96), target = new THREE.Vector3(x * 0.35, 0, z * 0.32);
+    const dir = target.clone().sub(head), L = dir.length();
+    // il cono: stretto in alto (il faro), largo in basso; l'alfa va da pieno in alto a niente in basso
+    const geo = new THREE.CylinderGeometry(3.5, 24, L, 28, 1, true);
+    geo.translate(0, -L / 2, 0);
+    // capovolge le coordinate della texture: in alto (vicino al faro) pieno
+    const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+    const m = new THREE.Mesh(geo, mat);
+    m.position.copy(head);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir.normalize());
+    m.renderOrder = 5;
+    group.add(m);
+  }
+  this.scene.add(group);
+};
+// quanto si vedono i fasci: secondo l'ora e il meteo
+Renderer.prototype.setLightBeams = function (timeOfDay, weather) {
+  if (!this.beams) return;
+  const k = timeOfDay === 'night' ? 1 : timeOfDay === 'sunset' ? 0.35 : 0;
+  this.beams.visible = k > 0 && this.Q.post > 0;   // solo con la rifinitura dell'immagine (qualità media e alta)
+  this.beamMat.opacity = 0.05 * k * (weather === 'rain' ? 2.2 : weather === 'snow' ? 1.8 : 1);
+};

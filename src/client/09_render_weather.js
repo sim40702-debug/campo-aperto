@@ -33,6 +33,7 @@ Renderer.prototype.applyEnvironment = function (weather, timeOfDay) {
   this.sun.color = col(sky.sun); this.sun.intensity = sky.sunI * w.light; this.sun.position.set(sky.sunPos[0], sky.sunPos[1], sky.sunPos[2]);
   this.sunBase = new THREE.Vector3(sky.sunPos[0], sky.sunPos[1], sky.sunPos[2]);   // direzione della luce (l'ombra la segue: 09_render_light.js)
   this.buildEnvironmentMap(this.timeOfDay);   // riflessi secondo l'ora del giorno
+  this.setLightBeams(this.timeOfDay, this.weather);   // fasci di luce dei fari
   this.fill.color = col(sky.fill); this.fill.intensity = sky.fillI;
   this.renderer.toneMappingExposure = sky.exposure;
   for (const g of this.floodGlows || []) g.material.opacity = sky.glow;

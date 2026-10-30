@@ -41,6 +41,8 @@ Renderer.prototype.setupStadiumLife = function (match) {
       for (let i = 0; i < FLAGS_PER_STAND; i++) {
         const team = (si + i) % 2;
         const p = standPoint(st, 0.15 + rnd() * 0.6, (i + 0.5) / FLAGS_PER_STAND * 2 - 1 + (rnd() - 0.5) * 0.1);
+        // niente bandiere davanti alla telecamera televisiva (tribuna principale, al centro): coprirebbero il campo
+        if (p.z > 46 && Math.abs(p.x) < 34) continue;
         const holder = new THREE.Group();
         holder.position.set(p.x, p.y, p.z); holder.rotation.y = p.face + (rnd() - 0.5) * 0.6;
         const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4.6, 5), poleMat);

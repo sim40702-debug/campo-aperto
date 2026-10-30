@@ -26,10 +26,7 @@ Renderer.prototype.setChristmas = function (on) {
   // cartelloni e pallone di Natale (o di nuovo quelli di sempre)
   const img = on ? this.xmasBoardCanvas() : this.adTex.image;
   for (const t of this.boards || []) { t.image = img; t.needsUpdate = true; }
-  const bm = this.ballMesh.material;
-  if (!this.ballTexNormal) this.ballTexNormal = bm.map;
-  bm.map = on ? this.xmasBallTexture() : this.ballTexNormal;
-  bm.needsUpdate = true;
+  this.setBallDesign();   // pallone: quello scelto nelle impostazioni, o quello di Natale se è "automatico" (09_render_ball.js)
   // tifosi con il cappello di Babbo Natale (un tifoso su tre), o di nuovo senza
   if (this.crowdCanvas) {
     const g = this.crowdCanvas.getContext('2d');

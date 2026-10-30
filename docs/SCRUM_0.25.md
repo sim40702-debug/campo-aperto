@@ -21,6 +21,8 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
 | 2 | Porta e pali: rimbalzi credibili su pali e traversa, rete attaccata bene, materiali e ombre | 0.25.0 (rete attaccata) e 0.25.1 |
 | 3 | Fisica del pallone: peso, velocità, rotazione, traiettoria, rimbalzi e impatti | 0.25.1 |
 | 4 | Grafica: luce, ombre, materiali, stadio | 0.25.2 |
+| 5 | Grafica "quasi come FC 26": inquadratura TV, erba, calciatori, fari | 0.25.4 e seguenti |
+| 6 | Scegliere il pallone nelle impostazioni (tanti disegni) | 0.25.4 |
 
 ## Review degli sprint
 
@@ -71,3 +73,16 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
   il telaio.
 - **Prove**: `novita025_browser_test.py` 16/16 (palo e traversa: la porta vibra pochi centimetri e torna ferma, la
   rete trema), novita024 43/43, `npm test`.
+
+### Sprint 0.25.4 — Inquadratura TV, palloni da scegliere: fatto
+- **Richieste del Product Owner**: "deve diventare quasi come FC 26"; "nelle impostazioni scegliere che palla usare,
+  tanti disegni".
+- **Grafica**: telecamera TV con teleobiettivo (campo visivo 30° invece di 38°, più lontana e più bassa: prospettiva
+  piatta come in TV, `applyFov`); riflesso delle strisce del prato che cambia con la direzione della telecamera
+  (`grassView`); luce di taglio sui bordi dei calciatori; fasci di luce dei fari di sera (più visibili con pioggia e
+  neve, solo qualità media e alta); niente bandiere davanti alla telecamera TV.
+- **Palloni** (`09_render_ball.js`): `BALL_DESIGNS` con 9 disegni (premium, Natale, classico a 32 pannelli, notte,
+  fuoco, ghiaccio, arancione, retrò in cuoio con i lacci, arcobaleno); `setBallDesign`; impostazione `ballDesign`
+  ("Automatico" = Natale a dicembre, premium il resto dell'anno) nel menu Grafica.
+- **Prove**: `novita025_browser_test.py` 20/20 (texture diversa per ogni pallone, automatico, menu che si salva,
+  teleobiettivo, riflesso dell'erba, fasci di sera e non di giorno), novita024 43/43, browser 31/31, `npm test`.
