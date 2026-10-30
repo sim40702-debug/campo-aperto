@@ -10,6 +10,7 @@ class Ball {
   reset(x, z) {
     this.x = x; this.y = CONFIG.BALL_R; this.z = z;
     this.vx = 0; this.vy = 0; this.vz = 0;
+    this.knuckle = null;    // tiro a foglia morta in corso (kick)
     this.spin = 0;          // effetto laterale ω (rad/s): positivo curva verso +z per un pallone che va verso +x
     this.topspin = 0;       // effetto in avanti (rad/s): positivo scende prima e rimbalza lungo, negativo galleggia e frena
     this.owner = null;      // giocatore che ha la palla al piede
@@ -24,6 +25,10 @@ class Ball {
     this.vx = vx; this.vy = vy; this.vz = vz;
     this.spin = spin || 0;
     this.topspin = topspin || 0;
+    // tiro "a foglia morta" (0.25.1): un pallone calciato forte e quasi senza rotazione sbanda un poco in aria, in
+    // modo diverso ogni volta (l'aria intorno alle cuciture). Fase e verso decisi a caso al momento del calcio
+    const sp = Math.hypot(vx, vy, vz);
+    this.knuckle = sp > 22 && Math.abs(this.spin) < 2 && Math.abs(this.topspin) < 3 ? { ph: rand() * 6.283, s: rand() < 0.5 ? -1 : 1, t: 0 } : null;
     this.lastTouch = player;
     if (player) player.kickCooldown = CONFIG.KICK_COOLDOWN;
   }
@@ -71,6 +76,14 @@ function stepBallPhysics(b, dt) {
     }
     const decay = Math.exp(-0.35 * dt);
     b.spin *= decay; b.topspin *= decay;
+    // foglia morta: spinta di lato che cambia verso (fino a 1 m/s²), solo finché il pallone è veloce
+    const kn = b.knuckle;
+    if (kn && sh > 15) {
+      kn.t += dt;
+      const a = 1.0 * Math.sin(kn.ph + kn.t * 7) * kn.s * dt;
+      const vx0 = b.vx; b.vx += -b.vz / sh * a; b.vz += vx0 / sh * a;
+      b.vy += 0.4 * Math.cos(kn.ph * 1.7 + kn.t * 9) * dt;
+    } else if (kn) b.knuckle = null;
   }
   b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
   if (b.y < R) {
@@ -86,6 +99,27 @@ function stepBallPhysics(b, dt) {
       }
       b.topspin *= 0.4; b.spin *= 0.7;
     } else b.vy = 0;
+  }
+}
+
+// rimbalzo su un palo o sulla traversa (0.25.1): (nx, ny, nz) = direzione dal legno al pallone, vn = velocità contro
+// il legno (negativa). Più forte il colpo, meno rimbalza (il pallone si schiaccia: da 0,78 a 0,55); lo strisciamento
+// sul legno frena un poco la parte di velocità lungo il palo e cambia la rotazione del pallone:
+// - palo (verticale): effetto laterale secondo come il pallone striscia sul palo;
+// - traversa: preso sotto, il pallone prende rotazione all'indietro (galleggia); preso sopra, in avanti (scende).
+function woodBounce(b, nx, ny, nz, vn, kind) {
+  const e = clamp(0.78 - 0.008 * Math.abs(vn), 0.55, 0.78);
+  // velocità lungo il legno (tangente) prima del colpo
+  const tx = b.vx - vn * nx, ty = b.vy - vn * ny, tz = b.vz - vn * nz;
+  const f = 1 - clamp(0.1 * Math.abs(vn) / (Math.hypot(tx, ty, tz) + 1), 0, 0.25);   // attrito: frena di più se il colpo è pieno
+  b.vx = tx * f - e * vn * nx; b.vy = ty * f - e * vn * ny; b.vz = tz * f - e * vn * nz;
+  if (kind === 'post') {
+    // il pallone che striscia sul palo gira su se stesso (asse verticale): segno secondo il lato del palo toccato
+    const slide = tx * -nz + tz * nx;
+    b.spin = b.spin * -0.3 + clamp(slide * 0.9, -12, 12);
+  } else {
+    // traversa: la parte di velocità in avanti diventa rotazione in avanti (sopra) o all'indietro (sotto)
+    b.topspin = (b.topspin || 0) * 0.3 + clamp(Math.abs(tx) * ny * 0.8, -12, 12);
   }
 }
 
@@ -106,7 +140,7 @@ function collideGoalFrame(b, dt) {
         if (d < minD && d > 0.0001) {
           const nx = dx / d, nz = dz / d;
           const vn = b.vx * nx + b.vz * nz;
-          if (vn < 0) { b.vx -= 1.7 * vn * nx; b.vz -= 1.7 * vn * nz; b.spin *= -0.5; hit = 'post'; }
+          if (vn < 0) { woodBounce(b, nx, 0, nz, vn, 'post'); hit = 'post'; }
           b.x = gx + nx * minD; b.z = pz + nz * minD;
         }
       }
@@ -119,7 +153,7 @@ function collideGoalFrame(b, dt) {
       if (d < minD && d > 0.0001) {
         const nx = dx / d, ny = dy / d;
         const vn = b.vx * nx + b.vy * ny;
-        if (vn < 0) { b.vx -= 1.7 * vn * nx; b.vy -= 1.7 * vn * ny; hit = 'bar'; }
+        if (vn < 0) { woodBounce(b, nx, ny, 0, vn, 'bar'); hit = 'bar'; }
         b.x = gx + nx * minD; b.y = C.GOAL_H + ny * minD;
       }
     }

@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.1 — 30/10/2026 (pali, traversa e pallone)
+- **Rimbalzo sul legno più credibile**: più forte il colpo, meno il pallone rimbalza (si schiaccia contro il palo);
+  preso di striscio il palo frena un poco il pallone e gli dà effetto laterale; la traversa presa sotto dà rotazione
+  all'indietro, presa sopra in avanti (e il pallone scende prima).
+- **Tiro a "foglia morta"**: un tiro forte calciato quasi senza rotazione sbanda un poco in aria, ogni volta in modo
+  diverso (pochi decimetri su 25 m), come i palloni veri. I tiri a giro non cambiano. Anche il portiere lo legge con
+  un po' più di fatica.
+
 ## 0.25.0 — 30/10/2026 (la rete della porta di nuova generazione)
 - **Fili veri**: a qualità media e alta ogni filo della rete è un cilindro sottile (9 mm) che prende la luce e fa
   **ombra sull'erba**; da vicino (replay, punizioni, allenamento) si vedono i fili, da lontano le linee (un filo vero

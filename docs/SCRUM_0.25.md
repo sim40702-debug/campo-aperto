@@ -40,3 +40,15 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
   rete presa da fuori, oscillazione che si spegne, nessuna compenetrazione, un suono per colpo e più forte per i tiri
   forti, fili veri e LOD, rete dietro ai pali); `rete_test.js` 18/18 (anche palo, traversa, tetto, da dietro);
   `npm test`; test nel browser della 0.24.
+
+### Sprint 0.25.1 — Pali, traversa e fisica del pallone: fatto
+- **Analisi**: il rimbalzo sul legno usava una restituzione fissa (0,7), senza attrito e senza cambiare la rotazione
+  (sul palo l'effetto veniva solo girato di segno); il volo del pallone era perfettamente prevedibile.
+- **Motore** (`03_ball.js`): `woodBounce` con restituzione da 0,78 (colpo piano) a 0,55 (colpo forte), attrito lungo
+  il legno, effetto laterale dal palo, rotazione in avanti o all'indietro dalla traversa; `knuckle` (foglia morta) per
+  i tiri sopra 22 m/s quasi senza rotazione: spinta laterale fino a 1 m/s² che cambia verso, fase decisa a caso al
+  calcio (con il generatore della partita: stesso seme, stessa partita).
+- **Equilibrio**: 3,17 → 3,04 gol a partita (24 partite, dentro la variabilità normale). `motore_ref.json` rifatto.
+- **Prove**: `rete_test.js` 23/23 (rimbalzo piano più alto di quello forte, effetto dal palo, rotazione dalla
+  traversa sotto e sopra, foglia morta diversa ogni volta e assente nei tiri a giro), `npm test`, novita025 11/11,
+  novita024 43/43.

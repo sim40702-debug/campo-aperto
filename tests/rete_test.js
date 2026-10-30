@@ -4,7 +4,7 @@
 const fs = require('fs');
 const files = require('../scripts/sorgenti.js').gameFiles(/^0[1-8]_/);
 let code = files.map(f => fs.readFileSync(f, 'utf8')).join('\n');
-code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, Ball, stepBallPhysics, collideGoalFrame, goalRoofY, GOAL_NET };';
+code += '\n;globalThis.__api = { Match, buildDatabase, setSeed, CONFIG, Ball, stepBallPhysics, collideGoalFrame, goalRoofY, GOAL_NET, makeRng };';
 require('vm').runInThisContext(code);
 const A = globalThis.__api, C = A.CONFIG;
 let ok = 0, fail = 0;
@@ -102,6 +102,41 @@ check('traversa: un solo evento "traversa", niente gol', ps.ev.length === 1 && p
 // pallone che rotola lento contro il palo: nessun evento ripetuto
 ps = postShot(C.HALF_L - 1, 0.11, W2 + 0.12, 3, 0, 0);
 check('pallone lento appoggiato al palo: al massimo un evento (niente suoni ripetuti)', ps.ev.length <= 1, ps);
+
+// legno (0.25.1): rimbalzo che dipende dalla forza del colpo, rotazione dopo il colpo
+function woodHit(x, y, z, vx, vy, vz) {
+  const b = new A.Ball(); b.x = x; b.y = y; b.z = z; b.vx = vx; b.vy = vy; b.vz = vz;
+  let hit = null, before = null;
+  for (let i = 0; i < 400 && !hit; i++) { before = { vx: b.vx, vy: b.vy, vz: b.vz }; A.stepBallPhysics(b, 1 / 240); hit = A.collideGoalFrame(b, 1 / 240); }
+  return { hit: hit, b: b, before: before };
+}
+{
+  const slow = woodHit(C.HALF_L - 1, 1.0, W, 6, 0, 0), fast = woodHit(C.HALF_L - 3, 1.0, W, 30, 0, 0);
+  const eSlow = Math.abs(slow.b.vx / slow.before.vx), eFast = Math.abs(fast.b.vx / fast.before.vx);
+  check('palo preso in pieno: rimbalza indietro, un tiro forte rimbalza in proporzione meno di uno piano (' + eSlow.toFixed(2) + ' contro ' + eFast.toFixed(2) + ')', slow.hit === 'post' && fast.hit === 'post' && slow.b.vx < 0 && fast.b.vx < 0 && eSlow > eFast && eFast > 0.5, [eSlow, eFast]);
+  const glance = woodHit(C.HALF_L - 3, 1.0, W - 0.13, 25, 0, 0);
+  check('palo preso di striscio: il pallone prende effetto laterale e continua', glance.hit === 'post' && Math.abs(glance.b.spin) > 1 && glance.b.vx > 0, [glance.b.spin, glance.b.vx]);
+  const under = woodHit(C.HALF_L - 0.8, C.GOAL_H - 0.12, 0, 25, 0, 0), top = woodHit(C.HALF_L - 0.8, C.GOAL_H + 0.12, 0, 25, 0, 0);
+  check('traversa: presa sotto dà rotazione all\'indietro, presa sopra in avanti', under.hit === 'bar' && top.hit === 'bar' && under.b.topspin < -1 && top.b.topspin > 1, [under.b.topspin, top.b.topspin]);
+}
+// foglia morta: stesso tiro forte senza effetto, sbanda in modo diverso a ogni calcio; con l'effetto no
+{
+  const endZ = (seed, spin) => {
+    let z = 0;
+    const m = new A.Match(db[0], db[1], { halfSeconds: 180, rng: A.makeRng(seed) });
+    m.withRng(() => {
+      const b = m.ball; b.owner = null; b.x = 0; b.y = 0.2; b.z = 0;
+      b.kick(28, 3, 0, null, spin, 0);
+      for (let i = 0; i < 240 && b.x < 25; i++) A.stepBallPhysics(b, 1 / 240 * 4);
+      z = b.z;
+    });
+    return z;
+  };
+  const zs = [1, 2, 3, 4, 5, 6].map(s => endZ(s, 0)), spread = Math.max(...zs) - Math.min(...zs);
+  check('foglia morta: un tiro forte senza effetto sbanda un poco e ogni volta in modo diverso (' + spread.toFixed(2) + ' m su 25 m)', spread > 0.1 && Math.max(...zs.map(Math.abs)) < 1.5, zs);
+  const zc = [1, 2, 3].map(s => endZ(s, 8));
+  check('tiro a giro (con effetto): niente foglia morta, curva sempre uguale', Math.max(...zc) - Math.min(...zc) < 0.01, zc);
+}
 
 console.log('\nRisultato: ' + ok + ' superati, ' + fail + ' falliti');
 process.exit(fail ? 1 : 0);
