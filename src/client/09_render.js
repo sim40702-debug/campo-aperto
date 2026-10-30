@@ -858,7 +858,8 @@ class Renderer {
     const mix = (prev, cur, maxJump) => (useA && prev !== undefined && Math.abs(cur - prev) < maxJump ? prev + (cur - prev) * a : cur);
     const bx = mix(b.px, b.x, 3), by = mix(b.py, b.y, 3), bz = mix(b.pz, b.z, 3);
     b.rx = bx; b.ry = by; b.rz = bz;
-    this.ballMesh.position.set(bx, by + 0.07, bz);
+    // il pallone disegnato poggia sull'erba: centro alzato della differenza tra il raggio disegnato e quello vero
+    this.ballMesh.position.set(bx, by + this.ballVisSize(dt) - CONFIG.BALL_R, bz);
     // rotazione vera del pallone (09_render_ball.js); al piede o in mano gira con il giocatore che lo porta
     this.spinBall(dt, b.vx, b.vz, by <= CONFIG.BALL_R + 0.03 && Math.abs(b.vy || 0) < 0.6, b.spin, b.topspin);
     this.placeBallShadow(bx, by, bz);
@@ -941,7 +942,7 @@ class Renderer {
     const jump = Math.hypot(frame[0] - rb.x, frame[2] - rb.z) > 3 || !(dt > 0);
     this.spinBall(dt, jump ? 0 : (frame[0] - rb.x) / dt, jump ? 0 : (frame[2] - rb.z) / dt, frame[1] <= CONFIG.BALL_R + 0.03, 0, 0);
     rb.x = frame[0]; rb.y = frame[1]; rb.z = frame[2];
-    this.ballMesh.position.set(frame[0], frame[1] + 0.07, frame[2]);
+    this.ballMesh.position.set(frame[0], frame[1] + this.ballVisSize(dt) - CONFIG.BALL_R, frame[2]);
     this.placeBallShadow(frame[0], frame[1], frame[2]);
     let k = 3, ns = 0;
     for (const pm of this.playerMeshes) {

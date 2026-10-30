@@ -7,7 +7,10 @@
 const TRAINING_KEY = 'campoAperto.training.v1';
 const DRILLS = [
   { id: 'shots', name: 'Tiri in porta', tries: 10, target: 5, text: 'Da fuori area, solo contro il portiere: tira prima che esca.' },
-  { id: 'freekick', name: 'Punizioni', tries: 10, target: 3, text: 'Con la barriera: muovi il mirino e calcia a giro, oppure disegna il tiro col mouse.' },
+  // punizioni in tre livelli (0.25.8): fk = [distanza minima, massima, quanto di lato al massimo] in metri
+  { id: 'freekick', name: 'Punizioni facili', fk: [18, 23, 9], tries: 10, target: 3, text: 'Vicino all\'area, con la barriera: muovi il mirino e calcia a giro, oppure disegna il tiro col mouse.' },
+  { id: 'freekick_hard', name: 'Punizioni difficili', fk: [25, 30, 12], tries: 10, target: 2, text: 'Più lontano: serve un tiro forte e preciso sopra la barriera.' },
+  { id: 'freekick_imp', name: 'Punizioni impossibili', fk: [34, 40, 14], tries: 10, target: 1, text: 'Da lontanissimo: solo una bordata perfetta nell\'angolo può entrare.' },
   { id: 'penalty', name: 'Rigori', tries: 10, target: 7, text: 'Dal dischetto: scegli l\'angolo e la forza.' },
   { id: 'dribble', name: 'Dribbling', tries: 8, target: 4, text: 'Supera due difensori con la finta e segna.' },
   { id: 'pass', name: 'Passaggi', seconds: 60, target: 15, text: 'Tieni palla con tre compagni contro due difensori: passaggi riusciti in 60 secondi.' },
@@ -47,7 +50,7 @@ class TrainingMatch extends Match {
     const gk = opp.roster[0];
     const defenders = opp.roster.filter(p => !p.isGK && p.slot.role === 'DF');
     let theirs = [gk];
-    if (d === 'freekick') theirs = [gk].concat(defenders.slice(0, 3));          // la barriera: tre difensori (0.25.6; 0.25.5 due, prima quattro)
+    if (this.tr.drill.fk) theirs = [gk].concat(defenders.slice(0, 3));          // la barriera: tre difensori (0.25.6; 0.25.5 due, prima quattro)
     if (d === 'dribble') theirs = [gk].concat(defenders.slice(1, 3));
     if (d === 'pass') theirs = opp.roster.filter(p => !p.isGK).sort((a, b) => b.attr.defense - a.attr.defense).slice(0, 2);
     me.players = mine; opp.players = theirs;
@@ -97,7 +100,7 @@ class TrainingMatch extends Match {
     }
     if (this.state !== 'PLAY') return;
     tr.playT += dt;   // tempo con la palla in gioco (dopo il calcio di una punizione o di un rigore)
-    if (b.owner && b.owner.team === opp) return this.attemptResult(false, b.owner.isGK ? 'Parato!' : tr.drill.id === 'freekick' ? 'Respinta dalla barriera' : 'Palla persa');
+    if (b.owner && b.owner.team === opp) return this.attemptResult(false, b.owner.isGK ? 'Parato!' : tr.drill.fk ? 'Respinta dalla barriera' : 'Palla persa');
     // tiro partito (la palla ha lasciato il piede del tuo calciatore): da qui si conta il tempo del tiro (0.23.2)
     const kicked = !b.owner && b.lastTouch && b.lastTouch.team === me;
     // (un calcio vero del tuo calciatore: lastKick si azzera a ogni tentativo; i dribbling non lo cambiano)
@@ -111,46 +114,6 @@ class TrainingMatch extends Match {
       if ((since > 0.8 && b.speed() < 1.2 && !b.inNet) || away || since > 3) return this.attemptResult(false, 'Niente gol');
     }
     if (tr.playT > (tr.drill.id === 'dribble' ? 16 : 10)) return this.attemptResult(false, 'Tempo scaduto');
-  }
-
-  // punizioni dell'allenamento (0.25.5): barriera di tre difensori (0.25.6) spalla a spalla, a 9,15 m sulla linea tra il
-  // pallone e il centro della porta, spostata un poco verso il palo vicino (come le barriere vere). Prima i quattro
-  // difensori si mettevano secondo il loro numero di maglia e coprivano quasi tutta la porta.
-  setPiecePosition(p) {
-    const sp = this.setPiece, def = sp && sp.team.opponent();
-    if (!sp || sp.type !== 'FREE_KICK' || p.team !== def || p.isGK) return super.setPiecePosition(p);
-    const gx = def.ownGoalX(), d = dist2(sp.x, sp.z, gx, 0) || 1;
-    const vx = (gx - sp.x) / d, vz = -sp.z / d;
-    const i = def.players.filter(q => !q.isGK).indexOf(p);
-    // spostamento di lato: la barriera sta un po' dalla parte del palo vicino (il portiere copre l'altro)
-    const k = (i - 1) * 0.62 - Math.sign(sp.z) * 0.45;
-    return { x: sp.x + vx * 9.15 - vz * k, z: sp.z + vz * 9.15 + vx * k };
-  }
-
-  // la barriera respingeva quasi tutto (0.25.5): nel motore un difensore colpisce di testa ogni pallone sotto i 2,6 m
-  // che gli passa vicino, anche un tiro a 80 all'ora. Nelle punizioni dell'allenamento un tiro veloce sopra 1,8 m
-  // passa sopra la barriera (i difensori non ci arrivano saltando); quelli bassi la colpiscono come prima.
-  checkBallContact() {
-    const b = this.ball;
-    if (this.tr.drill.id === 'freekick' && !b.owner && b.y > 1.8 && b.speed() > 12) {
-      for (const p of this.teams[1].players) if (!p.isGK) p.kickCooldown = Math.max(p.kickCooldown, 0.05);
-    }
-    // e il portiere: un tiro veloce che arriva al limite del tuffo (lo prenderebbe solo con la punta delle dita) entra.
-    // Chi mira bene nell'angolo segna; un tiro centrale viene parato come sempre
-    const gk = this.teams[1].players.find(p => p.isGK);
-    if (this.tr.drill.id === 'freekick' && gk && !b.owner && b.speed() > 15 && b.lastTouch && b.lastTouch.team === this.teams[0]) {
-      const q = gkReach(gk, b);
-      if (q > 0 && q < 0.4) gk.kickCooldown = Math.max(gk.kickCooldown, 0.05);
-    }
-    return super.checkBallContact();
-  }
-
-  // mirino delle punizioni (0.25.5): parte un po' più in alto (1,6 m invece di 1,4 m): il tiro a giro sale ancora un
-  // poco e passa sopra la barriera senza finire alto. Poi si sposta come sempre.
-  humanSetPieceInput(p, h, dt) {
-    const sp = this.setPiece;
-    if (sp && sp.type === 'FREE_KICK' && (!h.aim || h.aim.sp !== sp)) h.aim = { sp: sp, z: 0, y: 1.6 };
-    return super.humanSetPieceInput(p, h, dt);
   }
 
   // posizioni del passo precedente (come all'inizio di Match.step): la grafica disegna tra i due passi. Senza, durante
@@ -172,8 +135,8 @@ class TrainingMatch extends Match {
     const gk = opp.players.find(x => x.isGK);
     if (gk) { gk.x = opp.ownGoalX() - opp.dir * 0.6; gk.z = 0; gk.vx = 0; gk.vz = 0; gk.facing = Math.PI; }
     for (const x of this.allPlayers()) { x.stunned = 0; x.gkAi = null; x.anim.dive = 0; x.anim.tackle = 0; x.anim.fall = 0; x.kickCooldown = 0; }
-    if (d === 'freekick') {
-      const dist = randRange(19, 25), z = randRange(-11, 11);   // un po' più vicino e più centrale (0.25.5)
+    if (tr.drill.fk) {
+      const [d0, d1, zMax] = tr.drill.fk, dist = randRange(d0, d1), z = randRange(-zMax, zMax);   // secondo il livello
       this.pendingSetPiece = { type: 'FREE_KICK', team: me, x: gx - dist, z: z };
       p.x = gx - dist - 2; p.z = z;
       this.startSetPiece();

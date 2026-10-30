@@ -2,6 +2,17 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.8 — 30/10/2026 (punizioni sistemate, tre livelli)
+- **Pallone grande come quello vero** da vicino (punizioni, rigori, telecamera dietro al giocatore): prima era
+  disegnato più grande e vicino alla porta sembrava enorme. Da lontano resta un po' più grande per vederlo bene. La
+  porta è rimasta com'era.
+- **Punizioni in partita più giuste**: barriera di tre; i difensori non respingono più di testa i tiri forti e alti;
+  il portiere non arriva sui tiri ben angolati da vicino (da lontano sì).
+- **Punizioni che "non andavano"**: non partono più da sole dopo 10 secondi mentre miri (ora dopo 40); un tiro
+  disegnato col mouse prima che il calciatore sia pronto parte appena lo è.
+- **Allenamento: punizioni in tre livelli**: facili (vicino all'area), difficili (25-30 m), impossibili (34-40 m).
+- **Palloni con l'anteprima**: nelle impostazioni ogni pallone si vede in piccolo; basta cliccarlo.
+
 ## 0.25.7 — 30/10/2026 (via i fasci di luce)
 - **Tolti i fasci di luce dei fari** (i "raggi" sul campo di sera e al tramonto): davano fastidio.
 

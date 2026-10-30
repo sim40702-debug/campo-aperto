@@ -9,6 +9,8 @@
 # Sprint 0.25.4: palloni da scegliere nelle impostazioni, telecamera TV col teleobiettivo, riflesso dell'erba (i fasci dei fari tolti nella 0.25.7: davano fastidio).
 # Sprint 0.25.5: punizioni dell'allenamento più giuste (mirino preciso, portiere battibile negli angoli).
 # Sprint 0.25.6: barriera di tre già al suo posto; punizione disegnata col mouse (mouse vero di Playwright).
+# Sprint 0.25.8: pallone grande come quello vero da vicino; barriera di tre anche in partita; anteprime dei palloni;
+# punizioni in tre livelli; la punizione non parte più da sola mentre si mira; disegno fatto prima che il calciatore sia pronto.
 # Prima: node build.js test. Uso: python3 tests/novita025_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -35,7 +37,7 @@ SHOT = """(sc) => { const [x0, y, z, vx, vy, vz] = sc;
       if (f % 10 === 9) env.push(fm);
       if (fm > maxD) { maxD = fm; at = [net.rest[fi * 3], net.rest[fi * 3 + 1], net.rest[fi * 3 + 2]]; }
       const B = R.ballMesh.position;
-      for (let i = 0; i < net.n; i++) { const o = i * 3; if (Math.hypot(net.rest[o] + net.d[o] - B.x, net.rest[o + 1] + net.d[o + 1] - B.y, net.rest[o + 2] + net.d[o + 2] - B.z) < BALL_VIS_R - 0.01) viol++; }
+      for (let i = 0; i < net.n; i++) { const o = i * 3; if (Math.hypot(net.rest[o] + net.d[o] - B.x, net.rest[o + 1] + net.d[o + 1] - B.y, net.rest[o + 2] + net.d[o + 2] - B.z) < (R.ballVisR || BALL_VIS_R) - 0.01) viol++; }
     }
     game.handleEvent = he;
     const peak = Math.max(...env);
@@ -129,14 +131,16 @@ async def main():
             R.xmas = true; R.setBallDesign('auto'); out.autoXmas = R.ballMesh.material.map === R._ballTexs.natale.map;
             R.xmas = false; R.setBallDesign('auto'); out.autoNormal = R.ballMesh.material.map === R._ballTexs.premium.map;
             // la scelta nelle impostazioni si salva
-            game.openSettings('grafica', 'menu'); const sel = document.getElementById('st-ball');
-            out.options = sel.options.length; sel.value = 'retro'; sel.onchange();
+            // 0.25.8: un bottone con l'anteprima per ogni pallone (più "Automatico")
+            game.openSettings('grafica', 'menu'); const grid = document.getElementById('st-ball'), btns = grid.querySelectorAll('button');
+            out.options = btns.length; out.previews = [...grid.querySelectorAll('img')].filter(i => i.src.startsWith('data:image/png') && i.src.length > 2000).length;
+            grid.querySelector('[data-ball="retro"]').click(); out.marked = grid.querySelector('.on').dataset.ball;
             out.saved = JSON.parse(localStorage.getItem('campoAperto.settings.v1')).ballDesign;
             out.applied = R.ballMesh.material.map === R._ballTexs.retro.map;
-            sel.value = 'auto'; sel.onchange();
+            grid.querySelector('[data-ball="auto"]').click();
             return out; }""")
         check('palloni: ogni disegno ha la sua texture; automatico = Natale a dicembre, premium di solito', bl['distinct'] == len(bl['ids']) >= 8 and bl['autoXmas'] and bl['autoNormal'], bl)
-        check('palloni: il menu nelle impostazioni li elenca tutti, la scelta si applica e si salva', bl['options'] == len(bl['ids']) + 1 and bl['saved'] == 'retro' and bl['applied'], bl)
+        check('palloni: nelle impostazioni un\'anteprima per pallone; la scelta si evidenzia, si applica e si salva', bl['options'] == len(bl['ids']) + 1 and bl['previews'] == bl['options'] and bl['marked'] == 'retro' and bl['saved'] == 'retro' and bl['applied'], bl)
         cam = await pg.evaluate("""() => { const out = {};
             game.quitToMenu(); game.setup.side = -1; game.setup.timeOfDay = 'night'; game.setup.weather = 'clear'; game.startMatch();
             const R = game.renderer;
@@ -185,10 +189,10 @@ async def main():
         check('mirino preciso: il tiro arriva all\'altezza del mirino (in media entro 20 cm)', abs(fk['aimErr']) < 0.2, fk)
 
         # punizione disegnata col mouse: si traccia dal pallone a un angolo della porta, con una curva
-        async def drawn(target, bulge, dur, short=False, noGk=False):
+        async def drawn(target, bulge, dur, short=False, noGk=False, n=12):
             info = await pg.evaluate(DRAW_PREP, [target[0], target[1]])
             a, e = info['ball'], info['goal']
-            pts = [(a[0] + (e[0] - a[0]) * t + bulge * 4 * t * (1 - t), a[1] + (e[1] - a[1]) * t) for t in [i / 12 for i in range(13)]]
+            pts = [(a[0] + (e[0] - a[0]) * t + bulge * 4 * t * (1 - t), a[1] + (e[1] - a[1]) * t) for t in [i / n for i in range(n + 1)]]
             if short: pts = [(a[0], a[1]), (a[0] + 5, a[1] - 8)]
             await pg.mouse.move(*pts[0]); await pg.mouse.down()
             for q in pts[1:]:
@@ -198,11 +202,50 @@ async def main():
         await pg.evaluate("() => { game.quitToMenu(); game.startTraining('freekick'); game.match.tr.drill.tries = 99; }")
         d1 = await drawn([-3.0, 1.9], 150, 0.5, noGk=True)
         d2 = await drawn([3.0, 2.0], -150, 0.5, noGk=True)
-        d3 = await drawn([3.0, 2.0], -150, 0.2)
+        d3 = await drawn([3.0, 2.0], -150, 0.05, n=4)   # veloce: pochi movimenti del mouse, subito
         d4 = await drawn([0, 1.5], 0, 0.3, short=True)
         check('tiro disegnato: il pallone arriva dove finisce il disegno (entro 70 cm)', all(d['y'] is not None and abs(d['y'] - t[1]) < 0.7 and abs(d['z'] - t[0]) < 0.7 for d, t in ((d1, (-3.0, 1.9)), (d2, (3.0, 2.0)))), [d1, d2])
         check('tiro disegnato: curva a destra e curva a sinistra danno effetti opposti; disegno veloce = tiro più forte', d1['kick']['spin'] * d2['kick']['spin'] < 0 and abs(d1['kick']['spin']) > 20 and d3['kick']['v'] > d2['kick']['v'] + 1 and d1['kick']['kind'] == 'shot', [d1['kick'], d2['kick'], d3['kick']])
         check('tiro disegnato: un clic o un segno cortissimo non tira (e non fa partire un passaggio)', d4['kick'] is None, d4)
+
+        # sprint 0.25.8: pallone vero da vicino (punizione), più grande solo da lontano; barriera di tre in partita
+        sz = await pg.evaluate("""() => { const out = {}, R = game.renderer;
+            game.quitToMenu(); game.startTraining('freekick'); const m = game.match, tr = m.tr; let g = 0;
+            while ((tr.phase !== 'live' || m.state !== 'SETPIECE' || !m.aimMarker) && g++ < 900) game.updateOffline(1/60);
+            for (let i = 0; i < 60; i++) game.updateOffline(1/60);
+            out.near = R.ballVisR; out.nearY = R.ballMesh.position.y;
+            game.quitToMenu(); game.setup.side = 0; game.startMatch(); for (let i = 0; i < 30; i++) game.updateOffline(1/60);
+            const mm = game.match, me = mm.teams[0], opp = mm.teams[1], gx = me.oppGoalX();
+            R.camMode = 0; for (let i = 0; i < 120; i++) game.updateOffline(1/60); out.far = R.ballVisR;
+            mm.ball.owner = null; mm.ball.reset(gx - me.dir * 22, 3); mm.pendingSetPiece = { type: 'FREE_KICK', team: me, x: gx - me.dir * 22, z: 3 }; mm.startSetPiece();
+            for (let i = 0; i < 400; i++) game.updateOffline(1/60);
+            out.wall = opp.players.filter(p => !p.isGK && p.slot.role === 'DF' && Math.abs(Math.hypot(p.x - mm.ball.x, p.z - mm.ball.z) - 9.15) < 0.6).length;
+            return out; }""")
+        check('pallone grande come quello vero (22 cm) con la telecamera vicina, più grande solo da lontano', abs(sz['near'] - 0.11) < 0.005 and sz['far'] > 0.14 and abs(sz['nearY'] - 0.11) < 0.02, sz)
+        check('punizione in partita: barriera di tre a 9,15 m', sz['wall'] == 3, sz)
+        lv = await pg.evaluate("""() => { const out = {};
+            for (const d of ['freekick', 'freekick_hard', 'freekick_imp']) {
+              game.quitToMenu(); game.startTraining(d); const m = game.match, tr = m.tr, ds = []; let wall = 0;
+              for (let a = 0; a < 4; a++) { let g = 0; while ((tr.phase !== 'live' || m.state !== 'SETPIECE') && g++ < 900) game.updateOffline(1/60);
+                ds.push(Math.hypot(CONFIG.HALF_L - m.ball.x, m.ball.z)); wall = m.teams[1].players.filter(p => !p.isGK && Math.abs(Math.hypot(p.x - m.ball.x, p.z - m.ball.z) - 9.15) < 0.6).length;
+                tr.phase = 'ready'; tr.t = 5; m.setState('DEAD'); }
+              out[d] = { min: Math.min(...ds), max: Math.max(...ds), wall: wall };
+            }
+            // la punizione aspetta chi mira con calma: dopo 15 secondi non è ancora partita
+            game.quitToMenu(); game.startTraining('freekick'); const m = game.match, tr = m.tr; let g = 0;
+            while ((tr.phase !== 'live' || m.state !== 'SETPIECE') && g++ < 900) game.updateOffline(1/60);
+            for (let i = 0; i < 60 * 15; i++) game.updateOffline(1/60);
+            out.wait = m.state;
+            // un tiro disegnato prima che il calciatore sia pronto parte appena lo è
+            game.quitToMenu(); game.startTraining('freekick'); const m2 = game.match, tr2 = m2.tr; g = 0;
+            while ((tr2.phase !== 'live' || m2.state !== 'SETPIECE') && g++ < 900) game.updateOffline(1/60);
+            out.readyAtDraw = !!m2.setPieceReady;
+            game.pendingDrawShot = { z: 2.5, y: 2.0, spin: 0.5, power: 0.7 };
+            for (let i = 0; i < 240 && m2.state === 'SETPIECE'; i++) game.updateOffline(1/60);
+            out.early = m2.state; out.kind = m2.lastKick && m2.lastKick.kind;
+            return out; }""")
+        check('punizioni in tre livelli: facili 18-23 m, difficili 25-30 m, impossibili 34-40 m dalla porta (più lo spostamento di lato), sempre con la barriera di tre', 17.5 < lv['freekick']['min'] and lv['freekick']['max'] < 25 and 24.5 < lv['freekick_hard']['min'] and lv['freekick_hard']['max'] < 32.5 and 33.5 < lv['freekick_imp']['min'] and lv['freekick_imp']['max'] < 43 and all(lv[k]['wall'] == 3 for k in ('freekick', 'freekick_hard', 'freekick_imp')), lv)
+        check('la punizione non parte da sola mentre si mira (15 s); il tiro disegnato troppo presto parte appena il calciatore è pronto', lv['wait'] == 'SETPIECE' and lv['readyAtDraw'] is False and lv['early'] == 'PLAY' and lv['kind'] == 'shot', lv)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

@@ -26,6 +26,7 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
 | 7 | Punizioni dell'allenamento più facili: troppi difensori, respingono sempre | 0.25.5 |
 | 8 | Barriera da tre; punizione disegnata col mouse (oppure come prima) | 0.25.6 |
 | 9 | Togliere le luci fastidiose sul campo "come raggi solari" (segnalate su Mac) | 0.25.7 |
+| 10 | Punizioni: pallone troppo grande rispetto alla porta (porta da lasciare com'è), punizioni che a volte non vanno, tre livelli (facili, difficili, impossibili), anteprime dei palloni | 0.25.8 |
 
 ## Review degli sprint
 
@@ -129,3 +130,30 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
 - **Grafica**: tolti del tutto (`buildLightBeams`, `setLightBeams` e le chiamate).
 - **Prove**: `novita025_browser_test.py` 26/26 (nessun cono di luce nella scena), grafica 19/19, foto di sera e al
   tramonto con la pioggia.
+
+### Sprint 0.25.8 — Punizioni sistemate, tre livelli, anteprime dei palloni: fatto
+- **Richieste del Product Owner**: "palla più piccola o porta più grande, da punizione è un casino"; poi "la porta
+  lasciala com'era, sistema le punizioni che ogni tanto non vanno, tre livelli (facile, difficile, impossibile),
+  anteprime per scegliere i palloni".
+- **Analisi**: il pallone era disegnato 1,6 volte quello vero (35 cm) e vicino alla porta vera sembrava enorme. In
+  partita le punizioni del giocatore: 1 gol su 30, 22 respinte dalla barriera (quattro-cinque difensori che colpivano
+  di testa anche i tiri a 80 all'ora). "Non vanno": dopo 10 secondi il computer batteva al posto del giocatore
+  (anche mentre mirava o disegnava); un tiro disegnato prima che il calciatore fosse pronto andava perso.
+- **Grafica**: pallone grande come quello vero fino a 12 m dalla telecamera, poi cresce piano fino a 1,6 volte a
+  45 m (si vede ancora dalla telecamera TV); appoggiato bene sull'erba; rete e piedi usano la grandezza disegnata.
+  Porta invariata.
+- **Motore**: barriera di tre difensori anche in partita (fino a 42 m); un difensore non colpisce di testa un tiro
+  sopra 1,8 m e oltre 15 m/s; mirino che parte a 1,6 m; nelle punizioni tirate dal giocatore, se il portiere ci
+  arriva solo con le mani tese il tiro entra (fino a 23 m, poi sempre meno, da 35 m mai); per punizioni e rigori il
+  computer batte al posto del giocatore solo dopo 40 secondi. I tiri dell'IA non cambiano: 3,29 gol a partita su 24
+  (prima 3,0-3,2, dentro la variabilità).
+- **Allenamento**: tre esercizi (facili 18-23 m, difficili 25-30 m, impossibili 34-40 m; obiettivo 3, 2, 1 gol su
+  10). Con un giocatore simulato che mira bene: circa 44 %, 20 %, 15 %. Il codice della barriera e del portiere
+  ora sta solo nel motore (prima una copia nell'allenamento).
+- **Palloni**: nelle impostazioni una griglia di bottoni con l'anteprima di ogni pallone (pallina disegnata pixel per
+  pixel con la texture vera, luce e riflesso, 4 punti per pixel).
+- **Tiro disegnato**: si può disegnare subito, il tiro parte appena il calciatore è pronto.
+- **Pulizia**: tolta `xmasBallTexture` (non più usata dalla 0.25.4); aggiornati i test vecchi (allenamento con sette
+  esercizi, pallone di Natale automatico).
+- **Prove**: `novita025_browser_test.py` 30/30, novita 31/31, novita024 43/43, novita023 21/21, browser 31/31,
+  grafica 19/19, comandi 27/27, sensazioni 10/10, Natale 21/21, `npm test`.

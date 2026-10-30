@@ -13,7 +13,8 @@ Game.prototype.drawShotActive = function () {
   const m = this.match;
   if (!m || this.mode !== 'offline' || this.screen !== 'match' || this.paused || this.replay) return false;
   const sp = m.setPiece;
-  if (m.state !== 'SETPIECE' || !sp || sp.type !== 'FREE_KICK' || !m.aimMarker) return false;
+  // si può disegnare anche prima che il calciatore sia pronto: il tiro parte appena lo è (gameInput)
+  if (m.state !== 'SETPIECE' || !sp || sp.type !== 'FREE_KICK') return false;
   const h = m.humanById('local');
   return !!h && h.player === sp.taker;
 };
