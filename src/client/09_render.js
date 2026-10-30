@@ -44,7 +44,6 @@ class Renderer {
     this.buildBenches();   // panchine, allenatori e tunnel (09_render_bench.js)
     this.buildBall(); this.buildBallExtras();
     this.buildFloodShadows();   // ombre dei fari (09_render_light.js)
-    this.buildLightBeams();     // fasci di luce dei fari di sera (09_render_light.js)
     this.buildFx();
     this.buildWeather();    // pioggia e neve (src/client/09_render_weather.js)
     this.playerMeshes = [];

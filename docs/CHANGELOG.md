@@ -2,6 +2,9 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.7 — 30/10/2026 (via i fasci di luce)
+- **Tolti i fasci di luce dei fari** (i "raggi" sul campo di sera e al tramonto): davano fastidio.
+
 ## 0.25.6 — 30/10/2026 (punizione disegnata col mouse)
 - **Disegna la punizione**: tieni premuto il clic sinistro e traccia col mouse la strada del pallone fino alla porta;
   quando lasci il calciatore tira. Dove finisci il disegno arriva il pallone, la curva dà l'effetto, più in fretta
@@ -23,7 +26,7 @@ Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.j
 - **Inquadratura come in TV**: la telecamera televisiva usa un teleobiettivo da più lontano e più in basso, il campo
   non sembra più visto dall'alto; nessuna bandiera davanti all'obiettivo.
 - **Più atmosfera**: le strisce del prato luccicano secondo da dove si guarda, i calciatori hanno una luce di taglio
-  sui bordi, di sera si vedono i fasci di luce dei fari (di più con pioggia e neve).
+  sui bordi, di sera si vedono i fasci di luce dei fari (di più con pioggia e neve; tolti nella 0.25.7).
 
 ## 0.25.3 — 30/10/2026 (il legno vibra, la rete trema)
 - **Palo e traversa fanno vibrare la porta**: dopo il colpo il telaio vibra per mezzo secondo (pochi millimetri per
