@@ -63,6 +63,7 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.25.1 — rimbalzi sul legno con rotazione, tiro a foglia morta
 - 0.25.2 — ombre nitide che seguono l'inquadratura, riflessi, ombre dei fari
 - 0.25.3 — il legno vibra e la rete trema dopo pali e traverse
-- 0.25.4 — inquadratura TV col teleobiettivo, fari, palloni da scegliere  ← attuale
+- 0.25.4 — inquadratura TV col teleobiettivo, fari, palloni da scegliere
+- 0.25.5 — punizioni dell'allenamento più giuste, mirino preciso  ← attuale
 - prossime — carriera: contratti, infortuni, obiettivi della società
 - 1.0.0 — M6 rifinitura completa, prima versione completa

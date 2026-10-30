@@ -7,6 +7,7 @@
 # ombre dei fari di sera (quattro per calciatore) e non di giorno.
 # Sprint 0.25.3: palo e traversa fanno vibrare la porta e tremare la rete.
 # Sprint 0.25.4: palloni da scegliere nelle impostazioni, telecamera TV col teleobiettivo, riflesso dell'erba, fasci dei fari.
+# Sprint 0.25.5: punizioni dell'allenamento più giuste (barriera di due, mirino preciso, portiere battibile negli angoli).
 # Prima: node build.js test. Uso: python3 tests/novita025_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -128,6 +129,37 @@ async def main():
             return out; }""")
         check('telecamera TV col teleobiettivo (30 gradi), le altre normali (38)', abs(cam['fov0'] - 30) < 0.5 and abs(cam['fov1'] - 38) < 0.5, cam)
         check('erba: il riflesso delle strisce segue la telecamera; fasci dei fari di sera e non di giorno', cam['grass'] != 0 and cam['beams'] and not cam['beamsDay'], cam)
+
+        # sprint 0.25.5: punizioni dell'allenamento più giuste
+        fk = await pg.evaluate("""() => { const keep = game.gameInput, res = { gol: 0, barriera: 0, tiri: 0 }; let seed = 7;
+            const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+            game.quitToMenu(); game.startTraining('freekick'); const m = game.match, tr = m.tr; tr.drill.tries = 999;
+            res.wall = m.teams[1].players.filter(p => !p.isGK).length;
+            for (let a = 0; a < 20; a++) {
+              let g = 0; while ((tr.phase !== 'live' || m.state !== 'SETPIECE') && g++ < 900) game.updateOffline(1/60);
+              // un giocatore normale: mira verso un angolo, alza un poco il mirino, carica il tiro
+              const side = rnd() < 0.5 ? -1 : 1, aimF = 18 + rnd() * 24 | 0, upF = rnd() * 20 | 0, chF = 27 + rnd() * 30 | 0; let f = 0, wall = false;
+              const start = tr.done, score = tr.score;
+              game.gameInput = () => { if (m.aimMarker || f > 0) f++; if (f === 1) res.aimY = m.aimMarker.y; return { mx: f < upF ? 1 : 0, mz: f < aimF ? side : 0, sprint: false, shoot: f > 45 && f < 45 + chF, press: false, pressed: {} }; };
+              while (tr.done === start && f < 60 * 14) { game.updateOffline(1/60); const t = m.ball.lastTouch; if (t && t.team === m.teams[1] && !t.isGK) wall = true; }
+              res.tiri++; if (tr.score > score) res.gol++; if (wall) res.barriera++;
+            }
+            game.gameInput = keep;
+            // il mirino non mente: un tiro col mirino a 1,2 m arriva in porta a quell'altezza (prima 30-50 cm più in alto)
+            game.quitToMenu(); game.setup.side = -1; game.startMatch(); for (let i = 0; i < 30; i++) game.updateOffline(1/60);
+            const t = m && game.match.teams.find(q => q.dir > 0), p = t.players[9], gx = t.oppGoalX(), b = game.match.ball, ys = [];
+            for (let k = 0; k < 8; k++) {
+              for (const q of game.match.allPlayers()) { q.x = -30; q.z = 30; q.kickCooldown = 0; }
+              game.match.state = 'PLAY'; b.reset(gx - 22, 0); p.x = b.x - 0.7; p.z = 0; p.facing = 0; p.vx = p.vz = 0; b.owner = p;
+              doShot(p, 0.5, 0.5, { curl: true, aimH: 1.2 }); b.owner = null;
+              for (let f = 0; f < 200 && b.x < gx; f++) game.match.stepBallFree(1/60);
+              ys.push(b.y);
+            }
+            res.aimErr = ys.reduce((s, y) => s + y, 0) / ys.length - 1.2;
+            return res; }""")
+        check('punizioni in allenamento: barriera di due, mirino che parte a 1,6 m', fk['wall'] == 2 and abs(fk['aimY'] - 1.6) < 0.05, fk)
+        check('punizioni in allenamento: tirando negli angoli si segna spesso (almeno 1 su 4), la barriera respinge poco', fk['gol'] >= 5 and fk['barriera'] <= 5, fk)
+        check('mirino preciso: il tiro arriva all\'altezza del mirino (in media entro 20 cm)', abs(fk['aimErr']) < 0.2, fk)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

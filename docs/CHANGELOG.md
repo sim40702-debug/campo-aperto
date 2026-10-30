@@ -2,6 +2,13 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.5 — 30/10/2026 (punizioni dell'allenamento)
+- **Punizioni dell'allenamento più giuste**: barriera di due difensori invece di quattro; i difensori non arrivano
+  più di testa ai tiri forti alti (prima respingevano quasi tutto); il mirino parte più in alto; il portiere non
+  arriva sui tiri ben angolati; punizioni un po' più vicine e centrali.
+- **Mirino preciso** (punizioni e rigori, anche in partita): il pallone arriva all'altezza del mirino; prima finiva
+  30-50 cm più in alto e spesso sopra la traversa.
+
 ## 0.25.4 — 30/10/2026 (inquadratura TV e palloni da scegliere)
 - **Scegli il pallone**: in Impostazioni → Grafica, nove palloni (premium, Natale, classico a pannelli, notte, fuoco,
   ghiaccio, arancione, retrò in cuoio, arcobaleno) oppure "Automatico" (quello di Natale a dicembre).

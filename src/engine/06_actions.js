@@ -159,12 +159,18 @@ function doShot(p, aimZ, power, opts) {
   // velocità verticale per arrivare sulla linea di porta all'altezza voluta, con aria ed effetto veri
   let vy = 0, turn = 0;
   if (!low) {
-    const t0 = d / v;
+    // col mirino (0.25.5) il pallone deve arrivare proprio dove si vede il mirino: la distanza si misura dal pallone
+    // (chi tira sta 70 cm più indietro) e l'altezza è quella del centro del pallone. Prima i tiri col mirino
+    // arrivavano 30-50 cm più in alto e le punizioni finivano spesso sopra la traversa.
+    const aimed = opts.aimH !== undefined;
+    const fd = aimed ? Math.max(1, dist2(m.ball.x, m.ball.z, gx, aimZ)) : d;
+    const yWant = aimed ? targetH : targetH + CONFIG.BALL_R;
+    const t0 = fd / v;
     vy = Math.max(0, (targetH - CONFIG.BALL_R + 0.5 * CONFIG.GRAVITY * t0 * t0) / t0);
     for (let i = 0; i < 4; i++) {
-      const r = simulateFlight(v, vy, spin, topspin, 0, d);
+      const r = simulateFlight(v, vy, spin, topspin, 0, fd);
       if (!r) break;
-      vy = Math.max(0, vy + (targetH + CONFIG.BALL_R - r.y) / r.t);
+      vy = Math.max(0, vy + (yWant - r.y) / r.t);
       if (opts.curl) turn = -Math.atan2(r.side, r.x);
     }
   }

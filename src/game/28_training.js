@@ -47,7 +47,7 @@ class TrainingMatch extends Match {
     const gk = opp.roster[0];
     const defenders = opp.roster.filter(p => !p.isGK && p.slot.role === 'DF');
     let theirs = [gk];
-    if (d === 'freekick') theirs = [gk].concat(defenders.slice(0, 4));          // la barriera
+    if (d === 'freekick') theirs = [gk].concat(defenders.slice(0, 2));          // la barriera: due difensori (0.25.5, prima quattro)
     if (d === 'dribble') theirs = [gk].concat(defenders.slice(1, 3));
     if (d === 'pass') theirs = opp.roster.filter(p => !p.isGK).sort((a, b) => b.attr.defense - a.attr.defense).slice(0, 2);
     me.players = mine; opp.players = theirs;
@@ -113,6 +113,46 @@ class TrainingMatch extends Match {
     if (tr.playT > (tr.drill.id === 'dribble' ? 16 : 10)) return this.attemptResult(false, 'Tempo scaduto');
   }
 
+  // punizioni dell'allenamento (0.25.5): barriera di due difensori spalla a spalla, a 9,15 m sulla linea tra il
+  // pallone e il centro della porta, spostata un poco verso il palo vicino (come le barriere vere). Prima i quattro
+  // difensori si mettevano secondo il loro numero di maglia e coprivano quasi tutta la porta.
+  setPiecePosition(p) {
+    const sp = this.setPiece, def = sp && sp.team.opponent();
+    if (!sp || sp.type !== 'FREE_KICK' || p.team !== def || p.isGK) return super.setPiecePosition(p);
+    const gx = def.ownGoalX(), d = dist2(sp.x, sp.z, gx, 0) || 1;
+    const vx = (gx - sp.x) / d, vz = -sp.z / d;
+    const i = def.players.filter(q => !q.isGK).indexOf(p);
+    // spostamento di lato: la barriera sta un po' dalla parte del palo vicino (il portiere copre l'altro)
+    const k = (i - 0.5) * 0.62 - Math.sign(sp.z) * 0.45;
+    return { x: sp.x + vx * 9.15 - vz * k, z: sp.z + vz * 9.15 + vx * k };
+  }
+
+  // la barriera respingeva quasi tutto (0.25.5): nel motore un difensore colpisce di testa ogni pallone sotto i 2,6 m
+  // che gli passa vicino, anche un tiro a 80 all'ora. Nelle punizioni dell'allenamento un tiro veloce sopra 1,8 m
+  // passa sopra la barriera (i difensori non ci arrivano saltando); quelli bassi la colpiscono come prima.
+  checkBallContact() {
+    const b = this.ball;
+    if (this.tr.drill.id === 'freekick' && !b.owner && b.y > 1.8 && b.speed() > 12) {
+      for (const p of this.teams[1].players) if (!p.isGK) p.kickCooldown = Math.max(p.kickCooldown, 0.05);
+    }
+    // e il portiere: un tiro veloce che arriva al limite del tuffo (lo prenderebbe solo con la punta delle dita) entra.
+    // Chi mira bene nell'angolo segna; un tiro centrale viene parato come sempre
+    const gk = this.teams[1].players.find(p => p.isGK);
+    if (this.tr.drill.id === 'freekick' && gk && !b.owner && b.speed() > 15 && b.lastTouch && b.lastTouch.team === this.teams[0]) {
+      const q = gkReach(gk, b);
+      if (q > 0 && q < 0.4) gk.kickCooldown = Math.max(gk.kickCooldown, 0.05);
+    }
+    return super.checkBallContact();
+  }
+
+  // mirino delle punizioni (0.25.5): parte un po' più in alto (1,6 m invece di 1,4 m): il tiro a giro sale ancora un
+  // poco e passa sopra la barriera senza finire alto. Poi si sposta come sempre.
+  humanSetPieceInput(p, h, dt) {
+    const sp = this.setPiece;
+    if (sp && sp.type === 'FREE_KICK' && (!h.aim || h.aim.sp !== sp)) h.aim = { sp: sp, z: 0, y: 1.6 };
+    return super.humanSetPieceInput(p, h, dt);
+  }
+
   // posizioni del passo precedente (come all'inizio di Match.step): la grafica disegna tra i due passi. Senza, durante
   // la pausa dopo un gol il pallone disegnato restava fermo sulla linea e la rete non si muoveva (0.24.1)
   rememberPositions() {
@@ -133,7 +173,7 @@ class TrainingMatch extends Match {
     if (gk) { gk.x = opp.ownGoalX() - opp.dir * 0.6; gk.z = 0; gk.vx = 0; gk.vz = 0; gk.facing = Math.PI; }
     for (const x of this.allPlayers()) { x.stunned = 0; x.gkAi = null; x.anim.dive = 0; x.anim.tackle = 0; x.anim.fall = 0; x.kickCooldown = 0; }
     if (d === 'freekick') {
-      const dist = randRange(19, 28), z = randRange(-15, 15);
+      const dist = randRange(19, 25), z = randRange(-11, 11);   // un po' più vicino e più centrale (0.25.5)
       this.pendingSetPiece = { type: 'FREE_KICK', team: me, x: gx - dist, z: z };
       p.x = gx - dist - 2; p.z = z;
       this.startSetPiece();
