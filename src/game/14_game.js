@@ -43,6 +43,7 @@ class Game {
     // la dimensione scelta vale solo se l'app non parte a schermo intero
     if (window.campoWindow && this.settings.windowSize && !this.settings.startFullscreen) { const [w, h] = this.settings.windowSize.split('x').map(Number); window.campoWindow.setSize(w, h).catch(() => {}); }
     this.renderer.camMode = this.settings.camera || 0;
+    this.renderer.setBallDesign(this.settings.ballDesign || 'auto');   // pallone scelto nelle impostazioni
     this.audio = new GameAudio();
     this.audio.setVolumes({ master: this.settings.volMaster, sfx: this.settings.volSfx, crowd: this.settings.volCrowd, music: this.settings.volMusic, muted: this.settings.muted });
     this.input = new Input(this.settings.keys, this.settings.padKeys);
@@ -845,6 +846,11 @@ class Game {
     });
     // grafica
     this.segmented('st-quality', QUALITY_LEVELS.map(q => ({ label: q.label, value: q.id })), s.quality, v => { s.quality = v; this.renderer.setQuality(v); save(); this.renderSettings(); });
+    // pallone: tanti modelli (09_render_ball.js); si vede subito nel campo dietro al menu
+    $('st-ball').innerHTML = '<option value="auto">' + esc(tr('Automatico (di Natale a Natale)')) + '</option>' +
+      Object.keys(BALL_DESIGNS).map(k => '<option value="' + k + '">' + esc(tr(BALL_DESIGNS[k].name)) + '</option>').join('');
+    $('st-ball').value = s.ballDesign || 'auto';
+    $('st-ball').onchange = () => { s.ballDesign = $('st-ball').value; this.renderer.setBallDesign(s.ballDesign); save(); };
     const res = $('st-res');
     res.value = Math.round(s.resScale * 100); $('st-res-out').textContent = res.value + '%';
     res.oninput = () => { s.resScale = res.value / 100; $('st-res-out').textContent = res.value + '%'; this.renderer.setResolutionScale(s.resScale); this.updateDrawInfo(); };

@@ -44,6 +44,7 @@ class Renderer {
     this.buildBenches();   // panchine, allenatori e tunnel (09_render_bench.js)
     this.buildBall(); this.buildBallExtras();
     this.buildFloodShadows();   // ombre dei fari (09_render_light.js)
+    this.buildLightBeams();     // fasci di luce dei fari di sera (09_render_light.js)
     this.buildFx();
     this.buildWeather();    // pioggia e neve (src/client/09_render_weather.js)
     this.playerMeshes = [];
@@ -173,12 +174,17 @@ class Renderer {
     const pitchMat = new THREE.MeshLambertMaterial({ map: this.pitchTexture(), polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
     if (this.Q.detail >= 1) {
       const detail = this.grassDetailTexture();
+      this.grassView = { value: 0 };   // da che parte guarda la telecamera lungo il campo (-1..1): riflesso dell'erba tagliata
       pitchMat.onBeforeCompile = sh => {
         sh.uniforms.grassDetail = { value: detail };
-        sh.fragmentShader = 'uniform sampler2D grassDetail;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+        sh.uniforms.grassView = this.grassView;
+        sh.fragmentShader = 'uniform sampler2D grassDetail;\nuniform float grassView;\n' + sh.fragmentShader.replace('#include <map_fragment>',
           '#include <map_fragment>\n  float gd = texture2D(grassDetail, vUv * vec2(84.0, 54.4)).r;\n  diffuseColor.rgb *= 0.84 + gd * 0.32;' +
           // macchie larghe di erba più chiara e più scura (prato vero, non un colore uniforme), stessa trama vista da lontano
-          '\n  float gm = texture2D(grassDetail, vUv * vec2(3.1, 2.0) + vec2(0.37, 0.11)).r;\n  diffuseColor.rgb *= 0.9 + gm * 0.2;');
+          '\n  float gm = texture2D(grassDetail, vUv * vec2(3.1, 2.0) + vec2(0.37, 0.11)).r;\n  diffuseColor.rgb *= 0.9 + gm * 0.2;' +
+          // erba tagliata in due versi (0.25.4): ogni striscia è più chiara o più scura secondo da che parte la guardi,
+          // come nelle partite in TV (le strisce del tosaerba cambiano quando la telecamera si gira)
+          '\n  float stripe = mod(floor(vUv.x * 14.0), 2.0) * 2.0 - 1.0;\n  diffuseColor.rgb *= 1.0 + 0.07 * stripe * grassView;');
       };
     }
     const pitch = this.pitch = new THREE.Mesh(new THREE.PlaneGeometry(105, 68), pitchMat);
@@ -914,6 +920,7 @@ class Renderer {
     this.updateBenches(dt, bx, bz);
     this.updateCamera(dt, bx, by, bz, mine && mine.player, match);
     this.updateShadowFrustum();   // ombre nitide dove si guarda (09_render_light.js)
+    if (this.grassView) { const cd = this._camDir || (this._camDir = new THREE.Vector3()); this.camera.getWorldDirection(cd); this.grassView.value = cd.x; }
     this.updateWeather(dt);
     this.updateChristmas(dt, this.menuDemo);   // lucine e fuochi d'artificio (09_render_natale.js)
   }
@@ -929,6 +936,7 @@ class Renderer {
   // aggiornamento dal replay
   syncFromReplay(frame, match, dt) {
     this.frameDt = dt;
+    this.applyFov(CAM_FOV, 1);   // il replay ha le sue inquadrature con il campo visivo normale
     // nel replay la velocità del pallone si ricava da quanto si è spostato
     const rb = this._replayBall || (this._replayBall = { x: frame[0], y: frame[1], z: frame[2] });
     const jump = Math.hypot(frame[0] - rb.x, frame[2] - rb.z) > 3 || !(dt > 0);
@@ -970,12 +978,12 @@ class Renderer {
     // vettori riusati (niente oggetti nuovi a ogni fotogramma)
     const want = this._want || (this._want = new THREE.Vector3()), look = this._look || (this._look = new THREE.Vector3());
     // presentazione della partita (38_intro.js)
-    if (this.introU != null) { this.introCamera(this.introU); return; }
+    if (this.introU != null) { this.applyFov(CAM_FOV, 1); this.introCamera(this.introU); return; }
     // serie dei rigori: inquadrature come in televisione (09_render_shootout.js)
-    if (match && match.so && match.so.phase !== 'done') { this.shootoutCamera(dt, match, bx, by, bz); return; }
+    if (match && match.so && match.so.phase !== 'done') { this.applyFov(CAM_FOV, 1); this.shootoutCamera(dt, match, bx, by, bz); return; }
     this._soShot = null;
     // punizioni, rigori e allenamento: telecamera dietro al pallone, la porta sempre tutta in vista (09_render_setpiece.js)
-    if (match && this.camMode !== 2 && this.setPieceCamera(dt, match, bx, by, bz)) return;
+    if (match && this.camMode !== 2 && this.setPieceCamera(dt, match, bx, by, bz)) { this.applyFov(CAM_FOV, 1); return; }
     if (this.camMode === 0) {
       // televisiva (0.22): più bassa e più vicina, come nelle partite in TV di oggi; dalla 0.24 anticipa l'azione e si
       // avvicina davanti alle porte (09_render_field.js)
@@ -994,6 +1002,8 @@ class Renderer {
       want.set(f.x - dir * 15, 8.5, f.z * 0.9);
       look.set(f.x + dir * 9, 0, f.z * 0.85);
     }
+    // campo visivo: stretto con la telecamera televisiva (teleobiettivo), normale con le altre
+    this.applyFov(this.camMode === 0 ? TV_FOV : CAM_FOV, dt);
     // inseguimento esponenziale: stessa morbidezza a 30, 60 o 144 fps; dopo uno stacco (calcio d'inizio) salta subito
     if (this._cut) { this._cut = false; this.camera.position.copy(want); this.camTarget.copy(look); }
     else {
@@ -1011,6 +1021,7 @@ class Renderer {
 
   // inquadratura lenta dello stadio per il menu
   menuCamera(t) {
+    this.applyFov(CAM_FOV, 1);
     const a = t * 0.05;
     // orbita dentro lo stadio (le tribune iniziano a 44 m sui lati e 62 m sui fondi)
     this.camera.position.set(Math.cos(a) * 54, 24 + Math.sin(t * 0.1) * 3, Math.sin(a) * 40);

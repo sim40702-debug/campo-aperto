@@ -64,8 +64,21 @@ Renderer.prototype.tvCamera = function (dt, bx, bz, match, want, look) {
   const near = clamp((Math.abs(bx) - 30) / 16, 0, 1);
   S.near += (near * near * (3 - 2 * near) - S.near) * (1 - Math.exp(-1.2 * dt));
   const fx = bx + S.lx, fz = bz + S.lz;
-  want.set(fx * 0.84, 19.5 - 2.6 * S.near, fz * 0.32 + 41 - 4.5 * S.near);
+  // più bassa (0.25.4): circa 20 gradi sopra il campo, come la telecamera principale delle partite in TV
+  want.set(fx * 0.84, 14.5 - 2.0 * S.near, fz * 0.32 + 41 - 4.5 * S.near);
   look.set(fx * 0.9, 0.4 + 0.3 * S.near, fz * 0.6 + 2);
+  // teleobiettivo come le telecamere TV vere (0.25.4): campo visivo più stretto (TV_FOV) e telecamera più lontana in
+  // tribuna, stessa inquadratura: la prospettiva si appiattisce e il campo non sembra visto dall'alto
+  const k2 = Math.tan(CAM_FOV * Math.PI / 360) / Math.tan(TV_FOV * Math.PI / 360);
+  want.sub(look).multiplyScalar(k2).add(look);
+};
+const CAM_FOV = 38, TV_FOV = 30;   // campo visivo (gradi): normale e della telecamera televisiva
+// cambia il campo visivo piano (k = quanto in fretta, 1 = subito)
+Renderer.prototype.applyFov = function (fov, dt) {
+  const c = this.camera;
+  if (Math.abs(c.fov - fov) < 0.01) return;
+  c.fov += (fov - c.fov) * (this._cut || dt >= 1 ? 1 : Math.min(1, dt * 3));
+  c.updateProjectionMatrix();
 };
 
 // effetti discreti

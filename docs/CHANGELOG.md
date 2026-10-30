@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.4 — 30/10/2026 (inquadratura TV e palloni da scegliere)
+- **Scegli il pallone**: in Impostazioni → Grafica, nove palloni (premium, Natale, classico a pannelli, notte, fuoco,
+  ghiaccio, arancione, retrò in cuoio, arcobaleno) oppure "Automatico" (quello di Natale a dicembre).
+- **Inquadratura come in TV**: la telecamera televisiva usa un teleobiettivo da più lontano e più in basso, il campo
+  non sembra più visto dall'alto; nessuna bandiera davanti all'obiettivo.
+- **Più atmosfera**: le strisce del prato luccicano secondo da dove si guarda, i calciatori hanno una luce di taglio
+  sui bordi, di sera si vedono i fasci di luce dei fari (di più con pioggia e neve).
+
 ## 0.25.3 — 30/10/2026 (il legno vibra, la rete trema)
 - **Palo e traversa fanno vibrare la porta**: dopo il colpo il telaio vibra per mezzo secondo (pochi millimetri per
   un colpo piano, fino a un paio di centimetri per una bordata) e la rete, appesa al telaio, trema vicino al punto

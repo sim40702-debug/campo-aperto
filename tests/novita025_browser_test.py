@@ -6,6 +6,7 @@
 # Sprint 0.25.2: luce e ombre: ombra del sole che segue l'inquadratura (più nitida), riflessi dell'ambiente,
 # ombre dei fari di sera (quattro per calciatore) e non di giorno.
 # Sprint 0.25.3: palo e traversa fanno vibrare la porta e tremare la rete.
+# Sprint 0.25.4: palloni da scegliere nelle impostazioni, telecamera TV col teleobiettivo, riflesso dell'erba, fasci dei fari.
 # Prima: node build.js test. Uso: python3 tests/novita025_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -102,6 +103,31 @@ async def main():
             return out; }""")
         check('palo: la porta vibra (pochi centimetri al massimo) e poi torna ferma, la rete trema', wd['palo']['hit'] and 0.002 < wd['palo']['maxOff'] < 0.03 and wd['palo']['rest'] < 0.001 and wd['palo']['netMove'] > 0.02, wd['palo'])
         check('traversa: la porta vibra e la rete trema', wd['traversa']['hit'] and wd['traversa']['maxOff'] > 0.002 and wd['traversa']['netMove'] > 0.02, wd['traversa'])
+
+        # sprint 0.25.4: palloni da scegliere, telecamera TV col teleobiettivo, riflesso dell'erba, fasci dei fari
+        bl = await pg.evaluate("""() => { const R = game.renderer, out = { ids: Object.keys(BALL_DESIGNS) }, maps = new Set();
+            for (const k of out.ids) { R.setBallDesign(k); maps.add(R.ballMesh.material.map); }
+            out.distinct = maps.size;
+            R.xmas = true; R.setBallDesign('auto'); out.autoXmas = R.ballMesh.material.map === R._ballTexs.natale.map;
+            R.xmas = false; R.setBallDesign('auto'); out.autoNormal = R.ballMesh.material.map === R._ballTexs.premium.map;
+            // la scelta nelle impostazioni si salva
+            game.openSettings('grafica', 'menu'); const sel = document.getElementById('st-ball');
+            out.options = sel.options.length; sel.value = 'retro'; sel.onchange();
+            out.saved = JSON.parse(localStorage.getItem('campoAperto.settings.v1')).ballDesign;
+            out.applied = R.ballMesh.material.map === R._ballTexs.retro.map;
+            sel.value = 'auto'; sel.onchange();
+            return out; }""")
+        check('palloni: ogni disegno ha la sua texture; automatico = Natale a dicembre, premium di solito', bl['distinct'] == len(bl['ids']) >= 8 and bl['autoXmas'] and bl['autoNormal'], bl)
+        check('palloni: il menu nelle impostazioni li elenca tutti, la scelta si applica e si salva', bl['options'] == len(bl['ids']) + 1 and bl['saved'] == 'retro' and bl['applied'], bl)
+        cam = await pg.evaluate("""() => { const out = {};
+            game.quitToMenu(); game.setup.side = -1; game.setup.timeOfDay = 'night'; game.setup.weather = 'clear'; game.startMatch();
+            const R = game.renderer;
+            for (const mode of [0, 1]) { R.camMode = mode; for (let i = 0; i < 120; i++) { game.updateOffline(1/60); R.updateCamera && R.render(); } out['fov' + mode] = R.camera.fov; }
+            R.camMode = 0; out.grass = R.grassView.value; out.beams = R.beams.visible;
+            game.quitToMenu(); game.setup.timeOfDay = 'day'; game.startMatch(); out.beamsDay = R.beams.visible;
+            return out; }""")
+        check('telecamera TV col teleobiettivo (30 gradi), le altre normali (38)', abs(cam['fov0'] - 30) < 0.5 and abs(cam['fov1'] - 38) < 0.5, cam)
+        check('erba: il riflesso delle strisce segue la telecamera; fasci dei fari di sera e non di giorno', cam['grass'] != 0 and cam['beams'] and not cam['beamsDay'], cam)
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()

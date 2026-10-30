@@ -31,6 +31,11 @@ float fabricH(vec3 p) {
   return w * zone * 0.006;
 }`)
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = vRough;')
+      // luce di taglio (0.25.4): i bordi del calciatore si illuminano un poco contro lo sfondo, come con i fari dello
+      // stadio alle spalle in TV: le sagome si staccano dall'erba
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+{ vec3 vd = normalize(vViewPosition); float rim = pow(1.0 - clamp(dot(normalize(vNormal), vd), 0.0, 1.0), 3.0);
+  totalEmissiveRadiance += diffuseColor.rgb * rim * 0.35 + vec3(0.06, 0.07, 0.09) * rim; }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 if (vFabric > 0.5) {
   // la superficie si piega come se avesse le pieghe (stesso calcolo della bumpMap di three.js)
