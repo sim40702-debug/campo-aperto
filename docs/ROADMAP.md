@@ -61,6 +61,7 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.24.9 — stop del pallone, prestazioni, giro completo dei test
 - 0.25.0 — rete della porta di nuova generazione (fili veri con ombra, contatto preciso, suono)
 - 0.25.1 — rimbalzi sul legno con rotazione, tiro a foglia morta
-- 0.25.2 — ombre nitide che seguono l'inquadratura, riflessi, ombre dei fari  ← attuale
+- 0.25.2 — ombre nitide che seguono l'inquadratura, riflessi, ombre dei fari
+- 0.25.3 — il legno vibra e la rete trema dopo pali e traverse  ← attuale
 - prossime — carriera: contratti, infortuni, obiettivi della società
 - 1.0.0 — M6 rifinitura completa, prima versione completa

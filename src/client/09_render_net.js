@@ -64,6 +64,7 @@ Renderer.prototype.buildGoals = function () {
     const ropeY = HB + 0.08, ropeX = gx + s * (D + 0.25);
     tube(g, ropeMat, 0.009, [ropeX, ropeY, -(W + OUT)], [ropeX, ropeY, W + OUT], 5);
     this.scene.add(g);
+    (this.goalGroups || (this.goalGroups = {}))[s] = g;   // per la vibrazione del legno (09_render_field.js)
     const net = this.buildNet(s, gx, step);
     this.updateThreads(net);
     // lacci: dai punti della rete legati fino al sostegno o alla corda più vicini

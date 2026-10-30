@@ -108,6 +108,7 @@ function stepBallPhysics(b, dt) {
 // - palo (verticale): effetto laterale secondo come il pallone striscia sul palo;
 // - traversa: preso sotto, il pallone prende rotazione all'indietro (galleggia); preso sopra, in avanti (scende).
 function woodBounce(b, nx, ny, nz, vn, kind) {
+  b.woodV = Math.abs(vn);   // forza del colpo (per la vibrazione della porta e il suono)
   const e = clamp(0.78 - 0.008 * Math.abs(vn), 0.55, 0.78);
   // velocità lungo il legno (tangente) prima del colpo
   const tx = b.vx - vn * nx, ty = b.vy - vn * ny, tz = b.vz - vn * nz;

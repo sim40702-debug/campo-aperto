@@ -69,8 +69,37 @@ Renderer.prototype.tvCamera = function (dt, bx, bz, match, want, look) {
 };
 
 // effetti discreti
-Renderer.prototype.onPost = function (shake) {
+// palo o traversa (0.25.3): sbuffo, la porta vibra un attimo (pochi millimetri o un paio di centimetri secondo la
+// forza del colpo, 13 volte al secondo, si spegne in mezzo secondo) e la vibrazione passa alla rete, che trema
+// vicino al punto colpito. e: evento (x, z del pallone, y, power = forza del colpo)
+Renderer.prototype.onPost = function (shake, bar, e) {
   const p = this.ballMesh.position;
   this.burst('dust', p.x, p.z, { amount: 0.35 });
   if (shake !== false) this.shake = Math.max(this.shake || 0, 0.12);
+  const ex = e && Number.isFinite(e.x) ? e.x : p.x, ez = e && Number.isFinite(e.z) ? e.z : p.z, ey = e && Number.isFinite(e.y) ? e.y : p.y;
+  const side = Math.sign(ex) || 1, v = clamp(((e && e.power) || 12) / 25, 0.15, 1.2);
+  this.woodShake = { side: side, t: 0, amp: 0.02 * v, bar: !!bar };
+  // la rete legata al legno trema: spinta ai nodi vicini al punto colpito
+  const net = this.nets && this.nets.find(n => n.side === side);
+  if (!net) return;
+  for (let i = 0; i < net.n; i++) {
+    if (net.pin[i]) continue;
+    const o = i * 3, dx = net.rest[o] - ex, dy = net.rest[o + 1] - ey, dz = net.rest[o + 2] - ez, d2 = dx * dx + dy * dy + dz * dz;
+    if (d2 > 2.5) continue;
+    const k = 1.6 * v * Math.exp(-d2 / 0.6);
+    net.v[o] += side * k; net.v[o + 1] += (bar ? 1 : 0.3) * k; net.v[o + 2] -= Math.sign(ez) * 0.4 * k;
+  }
+  net.awake = true;
+};
+// vibrazione della porta dopo un colpo sul legno (ogni fotogramma)
+Renderer.prototype.updateWoodShake = function (dt) {
+  const W = this.woodShake, g = W && this.goalGroups && this.goalGroups[W.side];
+  if (!g) return;
+  W.t += dt;
+  const a = W.amp * Math.exp(-7 * W.t) * Math.sin(W.t * 2 * Math.PI * 13);
+  g.position.set(W.bar ? 0 : a * W.side, W.bar ? a : 0, W.bar ? 0 : a * 0.5);
+  if (W.t > 0.8) { g.position.set(0, 0, 0); this.woodShake = null; }
+  // la rete è appesa al telaio: si sposta con lui
+  const net = this.nets && this.nets.find(n => n.side === W.side);
+  if (net) { net.lines.position.copy(g.position); if (net.threads) net.threads.position.copy(g.position); }
 };

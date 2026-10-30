@@ -254,7 +254,7 @@ function matchEventForNet(m, e) {
   if (e.type === 'whistle') ev.kind = e.data.type;
   if (e.type === 'goal') { ev.team = e.data.team; ev.y = m.ball.netHit ? m.ball.netHit.y : m.ball.y; if (m.ball.netHit) { ev.z = m.ball.netHit.z; ev.power = m.ball.netHit.v; } }
   if (e.type === 'switch') ev.id = e.data.id;
-  if (e.type === 'post') ev.kind = e.data && e.data.bar ? 'bar' : 'post';   // palo o traversa
+  if (e.type === 'post') { ev.kind = e.data && e.data.bar ? 'bar' : 'post'; ev.power = e.data && e.data.v || 0; ev.y = m.ball.y; }   // palo o traversa
   if (e.type === 'net') ev.power = e.data && e.data.v || 0;                  // pallone contro la rete
   if (e.type === 'tackle') { ev.sev = e.data && e.data.sev || 0; ev.slide = !!(e.data && e.data.slide); }
   if (e.type === 'ref') ev.r = e.data;

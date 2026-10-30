@@ -1368,7 +1368,7 @@ class Game {
       case 'post': {
         // palo o traversa (e.kind 'bar'): colpo metallico sempre; "ooh" del pubblico e scritta solo in partita
         const bar = e.kind === 'bar', text = bar ? 'Traversa!' : 'Palo!';
-        this.audio.post(fx.crowdReactions, bar); this.rumble(160, 0.3, 0.8); R.onPost(fx.shake);
+        this.audio.post(fx.crowdReactions, bar); this.rumble(160, 0.3, 0.8); R.onPost(fx.shake, bar, e);
         if (fx.banners) { if (m && this.mode !== 'client') m.showBanner(text, 1.2); else if (m) m.banner = { text: text, t: 1.2 }; }
         break;
       }

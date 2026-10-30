@@ -2,6 +2,11 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.3 — 30/10/2026 (il legno vibra, la rete trema)
+- **Palo e traversa fanno vibrare la porta**: dopo il colpo il telaio vibra per mezzo secondo (pochi millimetri per
+  un colpo piano, fino a un paio di centimetri per una bordata) e la rete, appesa al telaio, trema vicino al punto
+  colpito. La forza del colpo arriva dal motore (anche online).
+
 ## 0.25.2 — 30/10/2026 (luce, ombre e riflessi)
 - **Ombre più nitide**: l'ombra della luce principale copre solo la zona inquadrata e la segue (a scatti di un pixel,
   così non tremola): calciatori, pali e fili della rete hanno ombre 2-3 volte più definite.
