@@ -25,7 +25,7 @@ const NET = {
   REF_TYPES: ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'SECOND_YELLOW', 'PENALTY', 'FREE_KICK', 'CORNER', 'OFFSIDE',
     'THROW_IN', 'GOAL_KICK', 'ADVANTAGE', 'KICK_OFF', 'HALF_TIME', 'FULL_TIME', 'SHOT', 'SHOT_ON_TARGET', 'SUB',
     'PENALTY_SCORED', 'PENALTY_MISSED'],
-  EV_TYPES: ['kick', 'whistle', 'post', 'save', 'goal', 'tackle', 'switch', 'ref'],
+  EV_TYPES: ['kick', 'whistle', 'post', 'save', 'goal', 'tackle', 'switch', 'ref', 'net'],
 };
 const netNow = () => performance.now() / 1000;
 // numeri di diagnostica ricevuti dalla rete (ping, fps): solo interi in un intervallo
@@ -255,6 +255,7 @@ function matchEventForNet(m, e) {
   if (e.type === 'goal') { ev.team = e.data.team; ev.y = m.ball.netHit ? m.ball.netHit.y : m.ball.y; if (m.ball.netHit) { ev.z = m.ball.netHit.z; ev.power = m.ball.netHit.v; } }
   if (e.type === 'switch') ev.id = e.data.id;
   if (e.type === 'post') ev.kind = e.data && e.data.bar ? 'bar' : 'post';   // palo o traversa
+  if (e.type === 'net') ev.power = e.data && e.data.v || 0;                  // pallone contro la rete
   if (e.type === 'tackle') { ev.sev = e.data && e.data.sev || 0; ev.slide = !!(e.data && e.data.slide); }
   if (e.type === 'ref') ev.r = e.data;
   return ev;

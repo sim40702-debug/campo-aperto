@@ -58,7 +58,8 @@ check('lato della rete preso da fuori: si ferma fuori, rimbalzo debole', Math.ab
 // pallone che cade sul tetto
 t = fly(C.HALF_L + 1.0, 5, 0, 0.3, 0, 0, 2);
 const roofMin = Math.min(...t.frames.filter(f => f.x < C.HALF_L + D).map(f => f.y - A.goalRoofY(f.x - C.HALF_L) - R));
-check('tetto: il pallone che cade dall\'alto resta sopra la rete (poi rotola giù)', roofMin >= -0.02 && !t.b.inNet, roofMin);
+const last = t.frames[t.frames.length - 1], lastOver = last.y - A.goalRoofY(Math.min(D, last.x - C.HALF_L)) - R;
+check('tetto: il pallone che cade dall\'alto fa cedere la rete (non oltre 30 cm), non entra in porta e la rete lo rialza', roofMin < -0.03 && roofMin >= -A.GOAL_NET.SIDE_MAX - 0.03 && !t.b.inNet && (lastOver > -0.05 || last.x > C.HALF_L + D), [roofMin, lastOver]);
 // da dietro la porta
 t = fly(C.HALF_L + D + 3, 0.5, 0, -15, 1, 0, 2);
 check('fondo preso da dietro: non entra', !t.b.inNet && t.b.x >= C.HALF_L + D, t.b.x);

@@ -116,6 +116,22 @@ class GameAudio {
     src.connect(f); f.connect(g); g.connect(this.sfx); src.start(t); src.stop(t + 0.06);
     if (crowd !== false) this.ooh(0.25);
   }
+  // rete (0.25.0): il pallone che entra nella rete fa un fruscio di corde (rumore filtrato che sale e scende) e un
+  // colpo sordo; più forte il tiro, più forte e più lungo il suono (v = velocità del pallone in m/s)
+  net(v) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, k = clamp((v || 8) / 28, 0.15, 1), len = 0.25 + 0.45 * k;
+    const src = ctx.createBufferSource(); src.buffer = this.noise;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.9;
+    f.frequency.setValueAtTime(2200 + 1200 * k, t); f.frequency.exponentialRampToValueAtTime(700, t + len);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.18 * k + 0.04, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + len);
+    src.connect(f); f.connect(g); g.connect(this.sfx); src.start(t, Math.random()); src.stop(t + len + 0.05);
+    // il colpo: le corde tese che fermano il pallone
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
+    const og = ctx.createGain(); og.gain.setValueAtTime(0.25 * k, t); og.gain.exponentialRampToValueAtTime(0.0005, t + 0.15);
+    o.connect(og); og.connect(this.sfx); o.start(t); o.stop(t + 0.17);
+  }
   // parata: il pallone sui guanti, un colpo sordo e corto (rumore filtrato basso)
   save() {
     if (!this.ctx) return;

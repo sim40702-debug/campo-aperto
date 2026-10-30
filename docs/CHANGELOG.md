@@ -2,6 +2,20 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.0 — 30/10/2026 (la rete della porta di nuova generazione)
+- **Fili veri**: a qualità media e alta ogni filo della rete è un cilindro sottile (9 mm) che prende la luce e fa
+  **ombra sull'erba**; da vicino (replay, punizioni, allenamento) si vedono i fili, da lontano le linee (un filo vero
+  sarebbe più sottile di un pixel e tremolerebbe).
+- **Contatto preciso**: il pallone tocca la rete nel punto vero anche quando va a 30 m/s (si segue tra un fotogramma
+  e l'altro); i fili non tagliano mai il pallone. Tiro forte al centro: la rete si gonfia di circa 70 cm proprio lì;
+  all'incrocio o nell'angolo basso si deforma quell'angolo; pallone lento: si muove poco. Dopo il colpo la rete
+  oscilla e si calma piano (dopo 2,5 s resta meno di un decimo del movimento).
+- **Rete presa da fuori** (esterno della rete, pallone che cade sul tetto): anche nella fisica la rete cede verso
+  dentro e ributta fuori il pallone piano, invece di essere un muro rigido; il pallone non entra mai.
+- **Suono della rete**: fruscio delle corde e colpo sordo, più forte e più lungo per i tiri forti, uno per colpo,
+  anche in allenamento.
+- **Rete attaccata dietro ai pali e alla traversa** (prima partiva dal loro centro).
+
 ## 0.24.9 — 30/10/2026 (stop del pallone, prestazioni, giro completo di test)
 - **Stop del pallone**: chi riceve il pallone lo ammortizza: con la gamba se arriva basso (più marcato se arriva
   forte), con il petto e le braccia larghe se arriva alto. Prima il pallone si "attaccava" al piede senza gesto.

@@ -1,0 +1,42 @@
+# Scrum — versione 0.25 (rete, porta, pallone, grafica)
+
+## Strumento
+Non c'è uno strumento Scrum collegato a questa sessione (nessun Jira, Trello o simili tra i collegamenti
+disponibili). Il lavoro segue comunque Scrum: backlog con priorità del Product Owner qui sotto, uno sprint alla volta
+con la lista delle attività nell'app, implementazione, prove automatiche e review scritta qui; ogni sprint esce come
+versione.
+
+## Ruoli
+- **Product Owner**: Simone (richiesta del 30/10/2026: "nuova fase di miglioramento, priorità massima alla rete").
+- **Scrum Master e team**: Claude.
+
+## Definition of Done
+Come per la 0.24: nel codice vero, provato con test automatici che misurano la cosa richiesta, nessun errore nella
+console, `npm test` e test nel browser superati, prestazioni controllate, CHANGELOG.
+
+## Product Backlog
+| # | Storia | Sprint |
+|---|---|---|
+| 1 | Rete della porta realistica: deformazione nel punto d'impatto, oscillazione elastica, fili visibili, nessuna compenetrazione, suono | 0.25.0 |
+| 2 | Porta e pali: rimbalzi credibili su pali e traversa, rete attaccata bene, materiali e ombre | 0.25.0 (rete attaccata) e 0.25.1 |
+| 3 | Fisica del pallone: peso, velocità, rotazione, traiettoria, rimbalzi e impatti | 0.25.1 |
+| 4 | Grafica: luce, ombre, materiali, stadio | 0.25.2 |
+
+## Review degli sprint
+
+### Sprint 0.25.0 — La rete della porta: fatto
+- **Analisi**: la rete 3D a nodi (0.24) si deformava già e tornava a riposo; mancavano il contatto preciso con i tiri
+  veloci (il pallone era guardato solo a fine fotogramma), lo spessore dei fili (linee di 1 pixel, senza ombra), la
+  cessione verso l'interno quando la rete è presa da fuori (lì era un muro rigido), il suono e l'attacco corretto ai
+  pali.
+- **Grafica** (`09_render_net.js`): posizione del pallone interpolata nei 3 sotto-passi; raggio di contatto = pallone
+  più mezza maglia; fili come InstancedMesh di cilindri (media e alta) con ombra, visibili sotto i 30 m dalla porta,
+  altrimenti solo ombra e linee; rete che parte da POST_R dietro la linea di porta; niente passo con dt = 0.
+- **Motore** (`03_ball.js`, `08_match.js`): la rete cede anche da fuori (molla, al massimo 30 cm; il pallone non
+  entra mai: `netOut` impedisce l'ingresso dalla parte sbagliata); evento `net` con la velocità, uno per colpo
+  (anche in rete per le partite online).
+- **Audio** (`10_audio.js`): `net(v)`, fruscio e colpo secondo la velocità.
+- **Prove**: `tests/novita025_browser_test.py` 11/11 (tiro forte al centro, angolo alto, angolo basso, pallone lento,
+  rete presa da fuori, oscillazione che si spegne, nessuna compenetrazione, un suono per colpo e più forte per i tiri
+  forti, fili veri e LOD, rete dietro ai pali); `rete_test.js` 18/18 (anche palo, traversa, tetto, da dietro);
+  `npm test`; test nel browser della 0.24.
