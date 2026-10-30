@@ -65,6 +65,7 @@ Gioco di calcio 3D originale. Stack: HTML5 + JavaScript + Three.js r128, pagina 
 - 0.25.3 — il legno vibra e la rete trema dopo pali e traverse
 - 0.25.4 — inquadratura TV col teleobiettivo, fari, palloni da scegliere
 - 0.25.5 — punizioni dell'allenamento più giuste, mirino preciso
-- 0.25.6 — barriera da tre, punizione disegnata col mouse  ← attuale
+- 0.25.6 — barriera da tre, punizione disegnata col mouse
+- 0.25.7 — tolti i fasci di luce dei fari  ← attuale
 - prossime — carriera: contratti, infortuni, obiettivi della società
 - 1.0.0 — M6 rifinitura completa, prima versione completa

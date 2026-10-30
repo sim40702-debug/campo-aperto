@@ -25,6 +25,7 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
 | 6 | Scegliere il pallone nelle impostazioni (tanti disegni) | 0.25.4 |
 | 7 | Punizioni dell'allenamento più facili: troppi difensori, respingono sempre | 0.25.5 |
 | 8 | Barriera da tre; punizione disegnata col mouse (oppure come prima) | 0.25.6 |
+| 9 | Togliere le luci fastidiose sul campo "come raggi solari" (segnalate su Mac) | 0.25.7 |
 
 ## Review degli sprint
 
@@ -120,3 +121,11 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
 - **Prove**: `novita025_browser_test.py` 26/26 (mouse vero: punto d'arrivo, effetti opposti, disegno veloce = tiro
   più forte, un clic non tira), novita 31/31, novita024 43/43, novita023 21/21, comandi 27/27, browser 31/31,
   sensazioni 10/10, `npm test`.
+
+### Sprint 0.25.7 — Via i fasci di luce: fatto
+- **Segnalazione del Product Owner**: "da Mac ci sono delle luci fastidiose nel campo come dei raggi solari, toglile".
+- **Causa**: i fasci di luce dei fari aggiunti nella 0.25.4 (quattro coni trasparenti con i colori che si sommano,
+  dalle torri fino al campo, di sera e al tramonto).
+- **Grafica**: tolti del tutto (`buildLightBeams`, `setLightBeams` e le chiamate).
+- **Prove**: `novita025_browser_test.py` 26/26 (nessun cono di luce nella scena), grafica 19/19, foto di sera e al
+  tramonto con la pioggia.
