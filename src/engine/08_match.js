@@ -302,13 +302,16 @@ class Match {
     if (sp.type === 'GOAL_KICK' && p.team !== atk && inBoxOf(atk, x, z)) {
       x = atk.ownGoalX() + atk.dir * (CONFIG.BOX_DEPTH + 2);
     }
-    // barriera per le punizioni vicine alla porta
+    // barriera per le punizioni vicine alla porta (0.25.8): tre difensori spalla a spalla a 9,15 m sulla linea tra il
+    // pallone e il centro della porta, un po' spostati verso il palo vicino (il portiere copre l'altro). Prima c'erano
+    // tutti i difensori (quattro o cinque) e coprivano quasi tutta la porta.
     if (sp.type === 'FREE_KICK' && p.team === def && !p.isGK && p.slot.role === 'DF') {
       const gx = def.ownGoalX();
       const dGoal = dist2(sp.x, sp.z, gx, 0);
-      if (dGoal < 30) {
+      const i = def.players.filter(q => !q.isGK && q.slot.role === 'DF').indexOf(p);
+      if (dGoal < 42 && i < 3) {   // anche da lontano (fino a 42 m) c'è la barriera
         const vx = (gx - sp.x) / dGoal, vz = -sp.z / dGoal;
-        const k = (p.slotIndex - 2.5) * 0.65;
+        const k = (i - 1) * 0.62 - Math.sign(sp.z) * 0.45;
         x = sp.x + vx * 9.15 - vz * k; z = sp.z + vz * 9.15 + vx * k;
       }
     }
@@ -575,6 +578,15 @@ class Match {
     const b = this.ball;
     if (b.owner || b.inNet) return;
     let best = null, bestD = 99, bestType = null;
+    // tiro forte e alto (0.25.8): sopra 1,8 m un difensore non riesce a colpirlo di testa (il pallone va troppo
+    // veloce, anche saltando ci si arriva solo per caso). Prima la barriera respingeva di testa quasi ogni punizione.
+    const lk = this.lastKick, fastHigh = b.y > 1.8 && b.speed() > 15 && lk && lk.kind === 'shot';
+    // punizione tirata da un giocatore (0.25.8): finché nessuno l'ha toccata, se il portiere ci arriverebbe solo con
+    // le mani tese (al limite del tuffo o sopra la testa) il tiro entra: chi mira bene lontano da lui viene premiato
+    // Da lontano il pallone ci mette di più e il portiere ha tempo: il premio vale sempre meno (mani tese fino a 23 m,
+    // poi sempre meno, da 35 m niente)
+    const fk = this.fkShot && b.lastTouch === this.fkShot.player && this.realTime - this.fkShot.t < 3 && b.speed() > 15;
+    const fkReach = fk ? clamp(0.6 - (this.fkShot.d - 23) * 0.05, 0, 0.6) : 0;
     for (const p of this.allPlayers()) {
       if (p.kickCooldown > 0 || p.stunned > 0) continue;
       const dh = dist2(p.x, p.z, b.x, b.z);
@@ -582,11 +594,12 @@ class Match {
       // portiere in area: arriva dove arrivano davvero le sue mani (in piedi, in volo, a terra: gkReach, 07_ai.js)
       const gq = gkHands ? gkReach(p, b) : 0;
       if (gkHands && gq <= 0) continue;
+      if (gkHands && fk && p.team !== this.fkShot.player.team && gq < fkReach) continue;
       if (!gkHands && dh > CONFIG.CONTROL_DIST) continue;
       let type = null;
       if (gkHands) { type = 'gk'; p.gkQuality = gq; }
       else if (b.y < 1.6) type = 'foot';
-      else if (b.y < 2.6 && dh < 1.0) type = 'head';
+      else if (b.y < 2.6 && dh < 1.0 && !(fastHigh && lk.player.team !== p.team)) type = 'head';
       if (type && dh < bestD) { bestD = dh; best = p; bestType = type; }
     }
     if (!best) return;
@@ -984,7 +997,8 @@ class Match {
     if (sp.type === 'PENALTY' || sp.type === 'FREE_KICK') {
       // mirino sulla porta: su/giù sposta di lato, verso la porta alza e indietro abbassa. Si vede in 3D (aimMarker)
       const team = p.team, W = CONFIG.GOAL_HALF_W - 0.3;
-      if (!h.aim || h.aim.sp !== sp) h.aim = { sp: sp, z: 0, y: sp.type === 'PENALTY' ? 0.5 : 1.4 };
+      // il mirino della punizione parte a 1,6 m (0.25.8, prima 1,4): il tiro passa sopra la barriera senza finire alto
+      if (!h.aim || h.aim.sp !== sp) h.aim = { sp: sp, z: 0, y: sp.type === 'PENALTY' ? 0.5 : 1.6 };
       h.aim.z = clamp(h.aim.z + (input.mz || 0) * 4.5 * dt, -W, W);
       h.aim.y = clamp(h.aim.y + (input.mx || 0) * team.dir * 1.8 * dt, 0.1, CONFIG.GOAL_H - 0.15);
       this.aimMarker = { x: team.oppGoalX(), y: h.aim.y, z: h.aim.z, id: h.id };
@@ -992,6 +1006,7 @@ class Match {
       const ds = input.drawShot;
       if (ds && sp.type === 'FREE_KICK') {
         doShot(p, ds.z, clamp(ds.power, 0.3, 1), { curl: true, aimH: ds.y, spinK: ds.spin });
+        this.fkShot = { player: p, t: this.realTime, d: dist2(sp.x, sp.z, p.team.oppGoalX(), 0) };
         h.shootCharge = 0; h.aim = null; this.aimMarker = null; h.prevShoot = shootHeld;
         this.afterSetPieceKick();
         return true;
@@ -999,6 +1014,7 @@ class Match {
       if (shootHeld) h.shootCharge = Math.min(1, h.shootCharge + dt / 0.9);
       if (!shootHeld && h.prevShoot && h.shootCharge > 0) {
         doShot(p, h.aim.z, Math.max(0.3, h.shootCharge), { curl: sp.type === 'FREE_KICK' || !!input.press, aimH: h.aim.y });
+        if (sp.type === 'FREE_KICK') this.fkShot = { player: p, t: this.realTime, d: dist2(sp.x, sp.z, p.team.oppGoalX(), 0) };
         h.shootCharge = 0; h.aim = null; this.aimMarker = null;
         h.prevShoot = shootHeld;
         this.afterSetPieceKick();
@@ -1143,7 +1159,10 @@ class Match {
       if (takerReady && this.stateTime > minWait) {
         this.setPieceReady = true;
         const humanTaker = humanSet.has(sp.taker);
-        if (!humanTaker || this.stateTime > minWait + 10) {
+        // un giocatore che mira con calma non viene anticipato (0.25.8): per punizioni e rigori il computer batte al
+        // suo posto solo dopo 40 secondi (prima 10: a volte la punizione partiva da sola mentre si mirava)
+        const wait = sp.type === 'FREE_KICK' || sp.type === 'PENALTY' ? 40 : 10;
+        if (!humanTaker || this.stateTime > minWait + wait) {
           this.executeSetPieceAI();
           this.setState('PLAY');
           this.setPieceReady = false;

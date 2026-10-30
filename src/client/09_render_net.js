@@ -251,7 +251,7 @@ Renderer.prototype.updateNets = function (dt) {
     if (inBox) net.ballIn = true;
     else if (depth < 0 || depth > C.GOAL_DEPTH + 1 || Math.abs(bp.z) > C.GOAL_HALF_W + 1 || bp.y > C.GOAL_H + 1) net.ballIn = false;
     // raggio del contatto: il pallone disegnato più mezza maglia (un filo tra due nodi non deve tagliare il pallone)
-    const r = Math.sqrt(BALL_VIS_R * BALL_VIS_R + net.step * net.step * 0.25) + 0.005;
+    const vr = this.ballVisR || BALL_VIS_R, r = Math.sqrt(vr * vr + net.step * net.step * 0.25) + 0.005;
     const h = dt / NET_VIS.SUB, bi = this._netBall || (this._netBall = { x: 0, y: 0, z: 0 });
     let energy = 0;
     for (let k = 0; k < NET_VIS.SUB; k++) {

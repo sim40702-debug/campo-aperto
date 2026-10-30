@@ -848,11 +848,15 @@ class Game {
     });
     // grafica
     this.segmented('st-quality', QUALITY_LEVELS.map(q => ({ label: q.label, value: q.id })), s.quality, v => { s.quality = v; this.renderer.setQuality(v); save(); this.renderSettings(); });
-    // pallone: tanti modelli (09_render_ball.js); si vede subito nel campo dietro al menu
-    $('st-ball').innerHTML = '<option value="auto">' + esc(tr('Automatico (di Natale a Natale)')) + '</option>' +
-      Object.keys(BALL_DESIGNS).map(k => '<option value="' + k + '">' + esc(tr(BALL_DESIGNS[k].name)) + '</option>').join('');
-    $('st-ball').value = s.ballDesign || 'auto';
-    $('st-ball').onchange = () => { s.ballDesign = $('st-ball').value; this.renderer.setBallDesign(s.ballDesign); save(); };
+    // pallone: tanti modelli (09_render_ball.js) con l'anteprima (0.25.8), un bottone per pallone, quello scelto è
+    // evidenziato; si vede subito nel campo dietro al menu
+    const ballBtn = (id, img, name) => '<button type="button" data-ball="' + id + '"><img alt="" src="' + img + '"><span>' + esc(name) + '</span></button>';
+    $('st-ball').innerHTML = ballBtn('auto', ballPreview(this.renderer.xmas ? 'natale' : 'premium', 92), tr('Automatico')) +
+      Object.keys(BALL_DESIGNS).map(k => ballBtn(k, ballPreview(k, 92), tr(BALL_DESIGNS[k].name))).join('');
+    const markBall = () => $('st-ball').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.ball === (s.ballDesign || 'auto')));
+    markBall();
+    $('st-ball').querySelectorAll('button').forEach(b => { b.onclick = () => { s.ballDesign = b.dataset.ball; this.renderer.setBallDesign(s.ballDesign); save(); markBall(); }; });
+    $('st-ball').title = tr('Automatico (di Natale a Natale)');
     const res = $('st-res');
     res.value = Math.round(s.resScale * 100); $('st-res-out').textContent = res.value + '%';
     res.oninput = () => { s.resScale = res.value / 100; $('st-res-out').textContent = res.value + '%'; this.renderer.setResolutionScale(s.resScale); this.updateDrawInfo(); };
@@ -1156,7 +1160,10 @@ class Game {
     }
     if (!useBuffer) return inp;
     // tiro disegnato col mouse: parte con questo comando (una volta sola)
-    if (this.pendingDrawShot) { inp.drawShot = this.pendingDrawShot; this.pendingDrawShot = null; }
+    // se il calciatore non è ancora pronto il tiro aspetta (0.25.8: prima andava perso e la punizione "non andava");
+    // finita la punizione un tiro rimasto in attesa si butta
+    if (this.pendingDrawShot && (!m || m.state !== 'SETPIECE')) this.pendingDrawShot = null;
+    if (this.pendingDrawShot && m.setPieceReady) { inp.drawShot = this.pendingDrawShot; this.pendingDrawShot = null; }
     const buf = this.pressBuf || (this.pressBuf = { pressed: {}, switchDir: null });
     for (const k in inp.pressed) if (inp.pressed[k]) buf.pressed[k] = true;
     if (inp.switchDir) buf.switchDir = inp.switchDir;

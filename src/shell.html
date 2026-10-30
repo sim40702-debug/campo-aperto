@@ -784,6 +784,13 @@ select.sel:focus { outline: none; border-color: var(--flood); }
 .primary:active:not(:disabled) { transform: translateY(1px) scale(0.97); filter: brightness(0.95); transition-duration: 0.04s; }
 .seg:active:not(:disabled) { background: rgba(255,216,74,0.25); }
 .tab:hover:not(.on) { color: var(--chalk); }
+/* palloni da scegliere con l'anteprima (0.25.8) */
+.ball-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.ball-grid button { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 74px; padding: 6px 2px 4px;
+  background: rgba(255,255,255,0.06); border: 2px solid transparent; border-radius: 8px; color: inherit; font: inherit; font-size: 11px; cursor: pointer; }
+.ball-grid button img { width: 46px; height: 46px; }
+.ball-grid button:hover { background: rgba(255,255,255,0.12); }
+.ball-grid button.on { border-color: #f5c84b; background: rgba(245,200,75,0.14); }
 </style>
 </head>
 <body>
@@ -1054,7 +1061,7 @@ select.sel:focus { outline: none; border-color: var(--flood); }
     </div>
     <div data-pane="grafica" class="opts">
       <span class="lbl">Qualità</span><div class="segs" id="st-quality"></div>
-      <span class="lbl">Pallone</span><select id="st-ball" class="sel"></select>
+      <span class="lbl">Pallone</span><div id="st-ball" class="ball-grid"></div>
       <span class="lbl">Risoluzione</span><div class="segs" id="st-renderres"></div>
       <span class="lbl" id="st-startlbl">Avvio</span><div class="segs" id="st-startrow"><div class="segs" id="st-start"></div></div>
       <span class="lbl" id="st-winlbl">Finestra</span><div class="segs" id="st-winrow"><div class="segs" id="st-winsize"></div></div>

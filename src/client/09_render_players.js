@@ -76,7 +76,7 @@ function shadeColor(hex, k) { return '#' + new THREE.Color(hex).multiplyScalar(k
 // pallone del motore resta dov'è). Si controllano solo i calciatori vicini al pallone.
 const _toe = new THREE.Vector3(), _heel = new THREE.Vector3();
 Renderer.prototype.keepBallOffFeet = function () {
-  const B = this.ballMesh.position, r = BALL_VIS_R + 0.035;
+  const B = this.ballMesh.position, r = (this.ballVisR || BALL_VIS_R) + 0.035;
   if (B.y > 0.6) return;   // pallone in aria o in mano al portiere
   for (const pm of this.playerMeshes) {
     if (!pm.root.visible || Math.hypot(pm.root.position.x - B.x, pm.root.position.z - B.z) > 1.3) continue;

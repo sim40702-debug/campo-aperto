@@ -6,11 +6,23 @@
 // - cuciture: un solco sottile e scuro (anche nel rilievo, bumpMap);
 // - micro-rilievo: una trama fitta di piccoli esagoni in rilievo, come la pelle sintetica dei palloni veri;
 // - materiale sintetico lucido: a qualità alta una vernice trasparente (clearcoat) che fa riflessi morbidi.
-// La dimensione (CONFIG.BALL_R * 1,6 disegnata) e le collisioni non cambiano.
+// Dimensione disegnata (0.25.8): vera (22 cm) con la telecamera vicina, fino a 1,6 volte da lontano (ballVisSize).
 // Rotazione: il pallone gira davvero attorno all'asse giusto (perpendicolare alla direzione in cui rotola), con
 // l'angolo uguale alla strada fatta diviso il raggio; in volo mantiene la rotazione e aggiunge l'effetto del tiro.
 // ============================================================
-const BALL_VIS_R = CONFIG.BALL_R * 1.6;
+const BALL_VIS_R = CONFIG.BALL_R * 1.6;   // il più grande che si disegna (telecamera lontana)
+
+// grandezza del pallone disegnato (0.25.8): prima era sempre 1,6 volte quello vero (35 cm invece di 22) per vederlo
+// dalla telecamera televisiva; nelle punizioni e nei rigori, con la telecamera vicina, sembrava enorme vicino alla
+// porta (che è grande come quella vera). Ora: grandezza vera fino a 12 m dalla telecamera, poi cresce piano fino a
+// 1,6 volte a 45 m. Cambia piano (niente salti quando la telecamera stacca).
+Renderer.prototype.ballVisSize = function (dt) {
+  const d = this.camera.position.distanceTo(this.ballMesh.position);
+  const want = CONFIG.BALL_R * (1 + 0.6 * clamp((d - 12) / 33, 0, 1));
+  this.ballVisR = this.ballVisR ? this.ballVisR + (want - this.ballVisR) * Math.min(1, (dt || 0) * 4) : want;
+  this.ballMesh.scale.setScalar(this.ballVisR / BALL_VIS_R);
+  return this.ballVisR;
+};
 // modelli di pallone (0.25.4): tutti disegni originali, senza marchi né scritte. pattern = forma dei pannelli
 // (eliche: 6 pannelli a elica; classico: 32 pannelli, pentagoni scuri; triangoli: 20 pannelli; retro: cuoio a 18
 // strisce cucite), colori: base, dark (fasce o pentagoni), accent (filetti), seam (cuciture). rainbow: ogni pannello
@@ -26,7 +38,6 @@ const BALL_DESIGNS = {
   retro: { name: 'Retrò (cuoio)', pattern: 'retro', base: [156, 96, 50], dark: [128, 76, 38], accent: [70, 40, 20], seam: [56, 32, 16] },
   arcobaleno: { name: 'Arcobaleno', pattern: 'triangoli', rainbow: true, base: [250, 250, 250], dark: [40, 40, 40], accent: [255, 255, 255], seam: [60, 60, 60] },
 };
-const BALL_PALETTES = { normale: BALL_DESIGNS.premium, natale: BALL_DESIGNS.natale };   // (nomi di prima)
 
 // centri dei pannelli per i disegni a "pannelli vicini": icosaedro (12) e dodecaedro (20)
 const PHI = (1 + Math.sqrt(5)) / 2;
@@ -124,6 +135,45 @@ function makeBallTextures(pal, W) {
 }
 
 // sceglie il modello di pallone ("auto": quello di Natale con il tema di Natale, altrimenti Premium)
+// anteprima di un pallone per le impostazioni (0.25.8): una pallina disegnata pixel per pixel in un'immagine 2D con la
+// stessa texture del gioco (avvolta sulla sfera come fa three.js), luce da sinistra in alto e un riflesso.
+// Restituisce un'immagine (data URL); si calcola una volta per pallone.
+const _ballPreviews = {};
+function ballPreview(id, size) {
+  const key = id + '@' + size;
+  if (_ballPreviews[key]) return _ballPreviews[key];
+  const des = BALL_DESIGNS[id] || BALL_DESIGNS.premium;
+  const tex = makeBallTextures(des, 512).map.image;
+  const tw = tex.width, th = tex.height, src = tex.getContext('2d').getImageData(0, 0, tw, th).data;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const g = cv.getContext('2d'), img = g.createImageData(size, size), out = img.data;
+  const L = [-0.45, 0.6, 0.66], tilt = 0.35, ct = Math.cos(tilt), st = Math.sin(tilt);
+  // ogni pixel è la media di 4 punti (bordi delle fasce lisci, senza scalini)
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      let cr = 0, cg = 0, cb = 0, ca = 0;
+      for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++) {
+        const nx = (px + 0.25 + sx * 0.5) / size * 2 - 1, ny = 1 - (py + 0.25 + sy * 0.5) / size * 2, r2 = nx * nx + ny * ny;
+        if (r2 > 1) continue;
+        const nz = Math.sqrt(1 - r2);
+        // il pallone è un po' inclinato verso chi guarda (si vede anche la parte di sopra)
+        const y2 = ny * ct + nz * st, z2 = -ny * st + nz * ct;
+        const u = (Math.atan2(nx, z2) / (2 * Math.PI) + 0.75) % 1, v = Math.acos(clamp(y2, -1, 1)) / Math.PI;
+        const o = ((Math.min(th - 1, v * th | 0)) * tw + Math.min(tw - 1, u * tw | 0)) * 4;
+        const dif = 0.38 + 0.72 * Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]);
+        const spec = Math.pow(Math.max(0, nx * -0.3 + ny * 0.42 + nz * 0.86), 40) * 120;
+        cr += Math.min(255, src[o] * dif + spec); cg += Math.min(255, src[o + 1] * dif + spec); cb += Math.min(255, src[o + 2] * dif + spec);
+        ca += clamp((1 - r2) * 6, 0, 1);   // bordo morbido
+      }
+      if (!ca) continue;
+      const q = (py * size + px) * 4, n = Math.max(1, ca);
+      out[q] = cr / n; out[q + 1] = cg / n; out[q + 2] = cb / n; out[q + 3] = 255 * ca / 4;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return _ballPreviews[key] = cv.toDataURL();
+}
+
 Renderer.prototype.setBallDesign = function (id) {
   if (id !== undefined) this.ballDesignId = id;
   const want = this.ballDesignId && this.ballDesignId !== 'auto' && BALL_DESIGNS[this.ballDesignId] ? this.ballDesignId : (this.xmas ? 'natale' : 'premium');
@@ -151,12 +201,6 @@ Renderer.prototype.buildBall = function () {
   arrow.rotation.x = Math.PI; this.arrow = arrow; this.scene.add(arrow);
 };
 
-// pallone di Natale: stesso disegno, colori rosso, verde e oro (09_render_natale.js)
-Renderer.prototype.xmasBallTexture = function () {
-  if (!this._xmasBall) this._xmasBall = makeBallTextures(BALL_PALETTES.natale, this.Q.detail >= 1 ? 1024 : 512).map;
-  return this._xmasBall;
-};
-
 // fa girare il pallone: vx, vz velocità orizzontale, spin e topspin l'effetto del motore (rad/s), ground = rotola
 const _ballQ = new THREE.Quaternion(), _ballAxis = new THREE.Vector3();
 Renderer.prototype.spinBall = function (dt, vx, vz, ground, spin, topspin) {
@@ -164,7 +208,7 @@ Renderer.prototype.spinBall = function (dt, vx, vz, ground, spin, topspin) {
   if (!(dt > 0)) return;
   if (ground) {
     // rotola senza strisciare: asse = su × velocità, giri = strada / raggio
-    w.set(vz / BALL_VIS_R, 0, -vx / BALL_VIS_R);
+    const r = this.ballVisR || BALL_VIS_R; w.set(vz / r, 0, -vx / r);
   } else {
     // in volo: mantiene la rotazione del calcio (rallenta pochissimo) e segue l'effetto del motore
     const sh = Math.hypot(vx, vz);

@@ -70,7 +70,7 @@ async def main():
         # ---- allenamento
         await pg.click('#btn-training')
         cards = await pg.evaluate("[...document.querySelectorAll('#tr-list .tr-card[data-drill] b')].map(b => b.textContent)")
-        check('Allenamento: cinque esercizi', cards == ['Tiri in porta', 'Punizioni', 'Rigori', 'Dribbling', 'Passaggi'], cards)
+        check('Allenamento: sette esercizi (punizioni in tre livelli, 0.25.8)', cards == ['Tiri in porta', 'Punizioni facili', 'Punizioni difficili', 'Punizioni impossibili', 'Rigori', 'Dribbling', 'Passaggi'], cards)
         await pg.click('[data-drill="penalty"]')
         await pg.wait_for_timeout(300)
         hud = await pg.evaluate("(()=>({screen: game.screen, tr: !!game.match.training, hud: document.getElementById('tr-hud').textContent, sb: getComputedStyle(document.querySelector('.scoreboard')).display, players: game.match.allPlayers().length}))()")

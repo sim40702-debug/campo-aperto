@@ -14,7 +14,7 @@
 // ============================================================
 const SP_CAM_RANGE = 36;      // punizioni più lontane: inquadratura normale
 const SP_CAM_AFTER = 2.2;     // secondi di telecamera ferma dopo il calcio
-const TRAIN_GOAL_CAM = { shots: true, freekick: true, penalty: true, dribble: true };
+const TRAIN_GOAL_CAM = { shots: true, freekick: true, freekick_hard: true, freekick_imp: true, penalty: true, dribble: true };
 
 Renderer.prototype.setPieceCamera = function (dt, m, bx, by, bz) {
   const S = this._spc || (this._spc = { mode: null, after: 0, ox: 0, oz: 0, gx: 0, lbx: 0, lbz: 0 });

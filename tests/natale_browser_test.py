@@ -43,7 +43,7 @@ async def main():
         on = await pg.evaluate("""() => { const R = game.renderer, X = R.xmasDeco;
             return { deco: !!X, lights: X ? X.lightN : 0, stars: X ? X.stars.length : 0,
               body: document.body.classList.contains('xmas'), demo: game.demo && game.demo.weather, time: game.demo && game.demo.timeOfDay,
-              boards: R.boards.every(t => t.image === R._xmasBoards), ball: R.ballMesh.material.map === R._xmasBall }; }""")
+              boards: R.boards.every(t => t.image === R._xmasBoards), ball: R.ballDesignShown === 'natale' }; }   // pallone automatico: a Natale quello di Natale (0.25.4)""")
         check('stadio addobbato da subito (7 alberi con la stella, centinaia di lucine)', on['deco'] and on['stars'] == 7 and on['lights'] > 600, on)
         check('cartelloni e pallone di Natale', on['boards'] and on['ball'], on)
         check('nel menu una sera con la neve', on['demo'] == 'snow' and on['time'] == 'night' and on['body'], on)
