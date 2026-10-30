@@ -138,6 +138,8 @@ function doShot(p, aimZ, power, opts) {
     // l'effetto porta il pallone dall'esterno verso il centro della porta: si mira un po' fuori e il volo lo riporta dentro
     const toward = Math.sign((0 - aimZ) * (gx - p.x)) || 1;
     spin = toward * (32 + a * 22); topspin = 4;
+    // tiro disegnato col mouse (0.25.6): verso e quantità dell'effetto li sceglie chi tira (spinK da -1 a 1)
+    if (opts.spinK !== undefined) spin = clamp(opts.spinK, -1, 1) * (32 + a * 22);
   }
   let targetH;
   if (opts.aimH !== undefined) {

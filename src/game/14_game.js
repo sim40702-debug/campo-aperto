@@ -50,6 +50,7 @@ class Game {
     this.input.mouseEnabled = this.settings.mouse;
     this.applyPadSettings();
     this.input.onAction = a => this.flashChip(a);
+    this.setupDrawShot();   // punizioni disegnate col mouse (39_tiro_disegnato.js)
     this.input.onBlur = () => { if (this.mode === 'offline' && this.screen === 'match' && !this.paused) this.togglePause(true); };
     // tastiera nei menu: frecce per spostarsi, Esc per tornare indietro
     this.input.onUiKey = (code) => this.onUiKey(code);
@@ -793,6 +794,7 @@ class Game {
       ['Calci piazzati', [
         ['Rimessa, corner, rinvio, calcio d\'inizio: passaggio corto o lancio, con o senza direzione', k('pass') + ' / ' + k('long'), g('pass') + ' / ' + g('long')],
         ['Punizione: passaggio, lancio, filtrante oppure tiro caricato', k('shoot'), g('shoot')],
+        ['Punizione col mouse: tieni premuto il clic sinistro e disegna la strada del pallone fino alla porta. La curva dà l\'effetto, la velocità del disegno la forza; lasci e tira', 'Clic sx (trascina)', '—'],
         ['Rigore: carica il tiro, su o giù per il lato', k('shoot'), g('shoot')],
         ['Rigore contro: tieni su o giù per scegliere dove si tuffa il tuo portiere', move, 'Levetta sinistra'],
       ]],
@@ -1153,6 +1155,8 @@ class Game {
       if (inp.switchDir) inp.switchDir = rot(inp.switchDir[0], inp.switchDir[1]);
     }
     if (!useBuffer) return inp;
+    // tiro disegnato col mouse: parte con questo comando (una volta sola)
+    if (this.pendingDrawShot) { inp.drawShot = this.pendingDrawShot; this.pendingDrawShot = null; }
     const buf = this.pressBuf || (this.pressBuf = { pressed: {}, switchDir: null });
     for (const k in inp.pressed) if (inp.pressed[k]) buf.pressed[k] = true;
     if (inp.switchDir) buf.switchDir = inp.switchDir;

@@ -24,6 +24,7 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
 | 5 | Grafica "quasi come FC 26": inquadratura TV, erba, calciatori, fari | 0.25.4 e seguenti |
 | 6 | Scegliere il pallone nelle impostazioni (tanti disegni) | 0.25.4 |
 | 7 | Punizioni dell'allenamento più facili: troppi difensori, respingono sempre | 0.25.5 |
+| 8 | Barriera da tre; punizione disegnata col mouse (oppure come prima) | 0.25.6 |
 
 ## Review degli sprint
 
@@ -102,3 +103,20 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
   I tiri dell'IA non cambiano (equilibrio delle partite uguale).
 - **Risultato**: 17 gol su 40 (prima 0), barriera 3 su 40 (prima 18 su 30).
 - **Prove**: `novita025_browser_test.py` 23/23, novita024 43/43, novita023 21/21, `npm test`.
+
+### Sprint 0.25.6 — Barriera da tre, punizione disegnata col mouse: fatto
+- **Richiesta del Product Owner**: "barriera da 3, e si può tirare come ora o disegnare la traiettoria con il mouse e
+  poi tira".
+- **Trovato nelle prove**: in allenamento i difensori arrivavano in barriera camminando da lontano (più di un
+  secondo e mezzo) e si poteva tirare prima che la barriera fosse fatta. Ora la barriera è già al suo posto.
+- **Allenamento** (`28_training.js`): tre difensori spalla a spalla a 9,15 m, piazzati subito.
+- **Tiro disegnato** (`39_tiro_disegnato.js`, nuovo): clic sinistro tenuto premuto durante una punizione tua (partite
+  offline e allenamento); la fine del disegno è il punto della porta (raggio dalla telecamera fino alla linea di
+  porta), la curva della linea dà verso e quantità dell'effetto, la velocità del disegno la forza; linea disegnata
+  su un foglio trasparente sopra il gioco. Il clic per disegnare non fa partire il passaggio (`Input.mouseCapture`).
+- **Motore**: `doShot` accetta `spinK` (effetto scelto da chi tira); `humanSetPieceInput` accetta `input.drawShot`.
+- **Risultato**: con la tastiera 14 gol su 40 (barriera di tre vera); col disegno il pallone arriva entro 30 cm dal
+  punto disegnato.
+- **Prove**: `novita025_browser_test.py` 26/26 (mouse vero: punto d'arrivo, effetti opposti, disegno veloce = tiro
+  più forte, un clic non tira), novita 31/31, novita024 43/43, novita023 21/21, comandi 27/27, browser 31/31,
+  sensazioni 10/10, `npm test`.

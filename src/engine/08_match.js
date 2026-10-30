@@ -988,6 +988,14 @@ class Match {
       h.aim.z = clamp(h.aim.z + (input.mz || 0) * 4.5 * dt, -W, W);
       h.aim.y = clamp(h.aim.y + (input.mx || 0) * team.dir * 1.8 * dt, 0.1, CONFIG.GOAL_H - 0.15);
       this.aimMarker = { x: team.oppGoalX(), y: h.aim.y, z: h.aim.z, id: h.id };
+      // tiro disegnato col mouse (0.25.6, solo punizioni): arriva già pronto, con punto in porta, effetto e forza
+      const ds = input.drawShot;
+      if (ds && sp.type === 'FREE_KICK') {
+        doShot(p, ds.z, clamp(ds.power, 0.3, 1), { curl: true, aimH: ds.y, spinK: ds.spin });
+        h.shootCharge = 0; h.aim = null; this.aimMarker = null; h.prevShoot = shootHeld;
+        this.afterSetPieceKick();
+        return true;
+      }
       if (shootHeld) h.shootCharge = Math.min(1, h.shootCharge + dt / 0.9);
       if (!shootHeld && h.prevShoot && h.shootCharge > 0) {
         doShot(p, h.aim.z, Math.max(0.3, h.shootCharge), { curl: sp.type === 'FREE_KICK' || !!input.press, aimH: h.aim.y });

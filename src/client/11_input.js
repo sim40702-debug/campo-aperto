@@ -182,6 +182,8 @@ class Input {
   }
 
   onMouse(e, isDown) {
+    // tiro disegnato col mouse (39_tiro_disegnato.js): durante la punizione il clic sinistro serve a disegnare
+    if (this.mouseCapture && this.mouseCapture(e, isDown)) return;
     if (!this.mouseEnabled || !this.gameKeysActive) return;
     if (e.target && e.target.closest && e.target.closest('button, input, select, a, .panel')) return;
     const code = 'Mouse' + e.button;

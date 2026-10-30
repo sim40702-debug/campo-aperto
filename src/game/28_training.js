@@ -7,7 +7,7 @@
 const TRAINING_KEY = 'campoAperto.training.v1';
 const DRILLS = [
   { id: 'shots', name: 'Tiri in porta', tries: 10, target: 5, text: 'Da fuori area, solo contro il portiere: tira prima che esca.' },
-  { id: 'freekick', name: 'Punizioni', tries: 10, target: 3, text: 'Con la barriera: muovi il mirino e calcia a giro.' },
+  { id: 'freekick', name: 'Punizioni', tries: 10, target: 3, text: 'Con la barriera: muovi il mirino e calcia a giro, oppure disegna il tiro col mouse.' },
   { id: 'penalty', name: 'Rigori', tries: 10, target: 7, text: 'Dal dischetto: scegli l\'angolo e la forza.' },
   { id: 'dribble', name: 'Dribbling', tries: 8, target: 4, text: 'Supera due difensori con la finta e segna.' },
   { id: 'pass', name: 'Passaggi', seconds: 60, target: 15, text: 'Tieni palla con tre compagni contro due difensori: passaggi riusciti in 60 secondi.' },
@@ -47,7 +47,7 @@ class TrainingMatch extends Match {
     const gk = opp.roster[0];
     const defenders = opp.roster.filter(p => !p.isGK && p.slot.role === 'DF');
     let theirs = [gk];
-    if (d === 'freekick') theirs = [gk].concat(defenders.slice(0, 2));          // la barriera: due difensori (0.25.5, prima quattro)
+    if (d === 'freekick') theirs = [gk].concat(defenders.slice(0, 3));          // la barriera: tre difensori (0.25.6; 0.25.5 due, prima quattro)
     if (d === 'dribble') theirs = [gk].concat(defenders.slice(1, 3));
     if (d === 'pass') theirs = opp.roster.filter(p => !p.isGK).sort((a, b) => b.attr.defense - a.attr.defense).slice(0, 2);
     me.players = mine; opp.players = theirs;
@@ -113,7 +113,7 @@ class TrainingMatch extends Match {
     if (tr.playT > (tr.drill.id === 'dribble' ? 16 : 10)) return this.attemptResult(false, 'Tempo scaduto');
   }
 
-  // punizioni dell'allenamento (0.25.5): barriera di due difensori spalla a spalla, a 9,15 m sulla linea tra il
+  // punizioni dell'allenamento (0.25.5): barriera di tre difensori (0.25.6) spalla a spalla, a 9,15 m sulla linea tra il
   // pallone e il centro della porta, spostata un poco verso il palo vicino (come le barriere vere). Prima i quattro
   // difensori si mettevano secondo il loro numero di maglia e coprivano quasi tutta la porta.
   setPiecePosition(p) {
@@ -123,7 +123,7 @@ class TrainingMatch extends Match {
     const vx = (gx - sp.x) / d, vz = -sp.z / d;
     const i = def.players.filter(q => !q.isGK).indexOf(p);
     // spostamento di lato: la barriera sta un po' dalla parte del palo vicino (il portiere copre l'altro)
-    const k = (i - 0.5) * 0.62 - Math.sign(sp.z) * 0.45;
+    const k = (i - 1) * 0.62 - Math.sign(sp.z) * 0.45;
     return { x: sp.x + vx * 9.15 - vz * k, z: sp.z + vz * 9.15 + vx * k };
   }
 
@@ -177,6 +177,14 @@ class TrainingMatch extends Match {
       this.pendingSetPiece = { type: 'FREE_KICK', team: me, x: gx - dist, z: z };
       p.x = gx - dist - 2; p.z = z;
       this.startSetPiece();
+      // la barriera è già al suo posto (0.25.6): prima i difensori arrivavano camminando da lontano e si poteva tirare
+      // prima che la barriera fosse fatta
+      for (const q of opp.players) {
+        if (q.isGK) continue;
+        const t = this.setPiecePosition(q);
+        q.x = t.x; q.z = t.z; q.vx = 0; q.vz = 0;
+        q.facing = Math.atan2(this.ball.z - q.z, this.ball.x - q.x);
+      }
       for (const h of this.humans) h.player = p;
       return;
     }

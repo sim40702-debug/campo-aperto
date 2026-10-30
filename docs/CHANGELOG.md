@@ -2,6 +2,14 @@
 
 Formato delle versioni: MAGGIORE.MINORE.CORREZIONE (la versione sta in package.json).
 
+## 0.25.6 — 30/10/2026 (punizione disegnata col mouse)
+- **Disegna la punizione**: tieni premuto il clic sinistro e traccia col mouse la strada del pallone fino alla porta;
+  quando lasci il calciatore tira. Dove finisci il disegno arriva il pallone, la curva dà l'effetto, più in fretta
+  disegni più il tiro è forte. Si può sempre tirare anche col mirino e il tasto del tiro. Nelle partite offline e
+  in allenamento.
+- **Barriera da tre** nelle punizioni dell'allenamento, già al suo posto quando puoi tirare (prima i difensori ci
+  arrivavano camminando e a volte si tirava senza barriera).
+
 ## 0.25.5 — 30/10/2026 (punizioni dell'allenamento)
 - **Punizioni dell'allenamento più giuste**: barriera di due difensori invece di quattro; i difensori non arrivano
   più di testa ai tiri forti alti (prima respingevano quasi tutto); il mirino parte più in alto; il portiere non
