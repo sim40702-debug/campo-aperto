@@ -23,6 +23,7 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
 | 4 | Grafica: luce, ombre, materiali, stadio | 0.25.2 |
 | 5 | Grafica "quasi come FC 26": inquadratura TV, erba, calciatori, fari | 0.25.4 e seguenti |
 | 6 | Scegliere il pallone nelle impostazioni (tanti disegni) | 0.25.4 |
+| 7 | Punizioni dell'allenamento più facili: troppi difensori, respingono sempre | 0.25.5 |
 
 ## Review degli sprint
 
@@ -86,3 +87,18 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
   ("Automatico" = Natale a dicembre, premium il resto dell'anno) nel menu Grafica.
 - **Prove**: `novita025_browser_test.py` 20/20 (texture diversa per ogni pallone, automatico, menu che si salva,
   teleobiettivo, riflesso dell'erba, fasci di sera e non di giorno), novita024 43/43, browser 31/31, `npm test`.
+
+### Sprint 0.25.5 — Punizioni dell'allenamento: fatto
+- **Richiesta del Product Owner**: "le punizioni nell'allenamento più facili: troppi difensori e respingono tutto".
+- **Analisi** (40 punizioni tirate da un giocatore simulato che mira agli angoli): 0 gol. Quattro difensori in
+  barriera messi secondo il numero di maglia; ogni difensore colpiva di testa qualsiasi pallone sotto i 2,6 m, anche
+  un tiro a 80 all'ora (18 tiri su 30 respinti); il mirino partiva a 1,4 m; i tiri col mirino arrivavano 30-50 cm
+  più in alto del mirino (distanza misurata da chi tira e non dal pallone, più il raggio del pallone) e il portiere
+  li toccava sopra la traversa.
+- **Allenamento** (`28_training.js`): barriera di due difensori spalla a spalla, verso il palo vicino; un tiro veloce
+  sopra 1,8 m passa sopra la barriera; mirino che parte a 1,6 m; il tiro veloce che il portiere prenderebbe solo con
+  la punta delle dita entra; punizioni da 19-25 m, più centrali.
+- **Motore** (`06_actions.js`): i tiri col mirino (punizioni e rigori dei giocatori) arrivano all'altezza del mirino.
+  I tiri dell'IA non cambiano (equilibrio delle partite uguale).
+- **Risultato**: 17 gol su 40 (prima 0), barriera 3 su 40 (prima 18 su 30).
+- **Prove**: `novita025_browser_test.py` 23/23, novita024 43/43, novita023 21/21, `npm test`.
