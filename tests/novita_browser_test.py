@@ -83,7 +83,7 @@ async def main():
         await pg.click('[data-drill="freekick"]')
         await pg.wait_for_function("game.match && game.match.state === 'SETPIECE'", timeout=20000, polling=100)
         fk = await pg.evaluate("(()=>({state: game.match.state, wall: game.match.teams[1].players.length, mine: game.match.humans[0].player === game.match.trMain}))()")
-        check('punizioni: barriera e il tuo tiratore', fk['state'] == 'SETPIECE' and fk['wall'] == 5 and fk['mine'], fk)
+        check('punizioni: barriera di tre più il portiere e il tuo tiratore', fk['state'] == 'SETPIECE' and fk['wall'] == 4 and fk['mine'], fk)
         await pg.keyboard.press('Escape')
         await pg.wait_for_timeout(200)
         await pg.evaluate("game.quitToMenu()")
