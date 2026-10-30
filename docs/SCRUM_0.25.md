@@ -63,3 +63,11 @@ console, `npm test` e test nel browser superati, prestazioni controllate, CHANGE
   pieghe della stoffa (0.24) usavano gli stessi nomi e lo shader dei calciatori non compilava: rinominate.
 - **Prove**: `novita025_browser_test.py` 14/14 (ombra che segue, riflessi, ombre dei fari di sera e non di giorno),
   novita024 43/43, grafica 19/19, natale 21/21, browser (alta qualità), `npm test`.
+
+### Sprint 0.25.3 — Il legno vibra, la rete trema: fatto
+- **Motore**: l'evento `post` porta la forza del colpo (`v`, dalla velocità contro il legno); in rete `power` e `y`.
+- **Grafica** (`09_render_field.js`): `onPost` avvia la vibrazione del gruppo della porta (13 Hz, si spegne in
+  0,8 s, ampiezza secondo la forza) e dà una spinta ai nodi della rete vicini al punto colpito; la rete si sposta con
+  il telaio.
+- **Prove**: `novita025_browser_test.py` 16/16 (palo e traversa: la porta vibra pochi centimetri e torna ferma, la
+  rete trema), novita024 43/43, `npm test`.

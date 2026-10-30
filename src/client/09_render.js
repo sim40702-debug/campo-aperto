@@ -909,6 +909,7 @@ class Renderer {
     const mine = match.humanById ? match.humanById(this.localId) : null;
     this.updateFx(dt);
     this.updateNets(dt);
+    this.updateWoodShake(dt);   // la porta vibra dopo un palo o una traversa (09_render_field.js)
     this.updateOfficials(match, dt, bx, bz);
     this.updateBenches(dt, bx, bz);
     this.updateCamera(dt, bx, by, bz, mine && mine.player, match);

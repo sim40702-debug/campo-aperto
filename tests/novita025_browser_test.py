@@ -5,6 +5,7 @@
 # con ombra da vicino, linee da lontano) e la rete attaccata dietro ai pali.
 # Sprint 0.25.2: luce e ombre: ombra del sole che segue l'inquadratura (più nitida), riflessi dell'ambiente,
 # ombre dei fari di sera (quattro per calciatore) e non di giorno.
+# Sprint 0.25.3: palo e traversa fanno vibrare la porta e tremare la rete.
 # Prima: node build.js test. Uso: python3 tests/novita025_browser_test.py
 import asyncio, os
 from playwright.async_api import async_playwright
@@ -86,6 +87,21 @@ async def main():
         check('ombre: la luce principale fa ombra solo dove si guarda (zona più piccola di prima, 140 m) e la segue', lt['night']['follow'] and lt['night']['width'] < 140 and lt['day']['follow'], lt)
         check('riflessi dell\'ambiente sui materiali lucidi (qualità media)', lt['night']['env'] and lt['day']['env'], lt)
         check('ombre dei fari: di sera quattro per calciatore, di giorno nessuna', lt['night']['floods'] == lt['night']['players'] * 4 and lt['day']['floods'] == 0, lt)
+
+        wd = await pg.evaluate("""() => { const out = {};
+            for (const [name, z, y] of [['palo', CONFIG.GOAL_HALF_W + 0.12, 0.8], ['traversa', 0.5, CONFIG.GOAL_H + 0.1]]) {
+              game.quitToMenu(); game.setup.side = -1; game.startMatch(); for (let i = 0; i < 30; i++) game.updateOffline(1/60);
+              const m = game.match, R = game.renderer, t = m.teams.find(q => q.dir > 0), s = t.players[9];
+              for (const q of m.allPlayers()) { q.x = -30; q.z = 30; }
+              m.state = 'PLAY'; m.ball.owner = null; m.ball.x = 52.5 - 6; m.ball.y = y; m.ball.z = z; m.ball.vx = 26; m.ball.vy = 0.4; m.ball.vz = 0; m.ball.lastTouch = s;
+              const g = R.goalGroups[1], net = R.nets.find(n => n.side > 0); let maxOff = 0, netMove = 0, hit = false;
+              for (let f = 0; f < 60; f++) { game.updateOffline(1/60); if (R.woodShake) hit = true; maxOff = Math.max(maxOff, g.position.length());
+                for (let i = 0; i < net.n; i++) netMove = Math.max(netMove, Math.abs(net.d[i * 3]) + Math.abs(net.d[i * 3 + 1])); }
+              out[name] = { hit: hit, maxOff: maxOff, netMove: netMove, rest: g.position.length() };
+            }
+            return out; }""")
+        check('palo: la porta vibra (pochi centimetri al massimo) e poi torna ferma, la rete trema', wd['palo']['hit'] and 0.002 < wd['palo']['maxOff'] < 0.03 and wd['palo']['rest'] < 0.001 and wd['palo']['netMove'] > 0.02, wd['palo'])
+        check('traversa: la porta vibra e la rete trema', wd['traversa']['hit'] and wd['traversa']['maxOff'] > 0.002 and wd['traversa']['netMove'] > 0.02, wd['traversa'])
 
         check('nessun errore nella console', not errs, errs[:3])
         await b.close()
