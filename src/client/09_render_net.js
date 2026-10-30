@@ -16,7 +16,7 @@ const NET_VIS = {
                    // distanza tra le maglie al quadrato, così la rete si comporta uguale a ogni qualità grafica
   ANCHOR: 15,      // forza che riporta la rete alla forma di riposo
   DAMP: 3.2,       // smorzamento (quanto in fretta smette di oscillare)
-  SUB: 2,          // sotto-passi per fotogramma
+  SUB: 3,          // sotto-passi per fotogramma (il pallone si sposta anche tra un sotto-passo e l'altro)
   WAKE: 1.2,       // distanza del pallone dalla porta che sveglia la rete (m)
 };
 
@@ -65,6 +65,7 @@ Renderer.prototype.buildGoals = function () {
     tube(g, ropeMat, 0.009, [ropeX, ropeY, -(W + OUT)], [ropeX, ropeY, W + OUT], 5);
     this.scene.add(g);
     const net = this.buildNet(s, gx, step);
+    this.updateThreads(net);
     // lacci: dai punti della rete legati fino al sostegno o alla corda più vicini
     const tiePts = [], R0 = net.rest;
     for (const i of net.ties) {
@@ -133,10 +134,12 @@ Renderer.prototype.buildNet = function (s, gx, step) {
   panel(nz, ny, (u, v) => [bx, v * HB, -W + 2 * W * u], [s, 0, 0], 0.07,
     (i, j) => j === 0 ? 1 : j === ny && (i % tieEvery === 0 || i === nz) ? 2 : 0);
   // lati: dalla linea di porta (palo, fissato) al fondo (i), da terra al tetto (j)
-  for (const pz of [-W, W]) panel(nd, ny, (u, v) => { const x = gx + s * D * u; return [x, v * goalRoofY(D * u), pz]; }, [0, 0, Math.sign(pz)], 0.05,
+  // la rete parte dal retro dei pali e della traversa (non dal loro centro): F = spessore del palo
+  const F = CONFIG.POST_R, dep = u => F + (D - F) * u;
+  for (const pz of [-W, W]) panel(nd, ny, (u, v) => { const x = gx + s * dep(u); return [x, v * goalRoofY(dep(u)), pz]; }, [0, 0, Math.sign(pz)], 0.05,
     (i, j) => i === 0 || j === 0 ? 1 : j === ny && (i % tieEvery === 0 || i === nd) ? 2 : 0);
   // tetto: dalla traversa (fissata) al fondo (i), da -W a W (j); i bordi di lato e dietro sono quelli già legati
-  panel(nd, nz, (u, v) => [gx + s * D * u, goalRoofY(D * u), -W + 2 * W * v], [0, 1, 0], -0.1,
+  panel(nd, nz, (u, v) => [gx + s * dep(u), goalRoofY(dep(u)), -W + 2 * W * v], [0, 1, 0], -0.1,
     i => i === 0 ? 1 : 0);
   const n = rest.length / 3;
   for (let i = 0; i < n; i++) {
@@ -181,12 +184,26 @@ Renderer.prototype.buildNet = function (s, gx, step) {
   const lines = new THREE.LineSegments(geo, mat);
   lines.frustumCulled = false;   // i nodi si muovono: la sfera di contorno calcolata a riposo non basta
   this.scene.add(lines);
+  // fili veri (0.25.0, qualità media e alta): ogni filo è un cilindro sottile (9 mm) che riceve la luce e fa ombra
+  // sull'erba. Da lontano un filo così è più sottile di un pixel: lì si vedono le linee e i cilindri fanno solo
+  // l'ombra; da vicino (replay, punizioni, allenamento) si vedono i cilindri.
+  let threads = null;
+  if (this.Q.shadows) {
+    const tgeo = new THREE.CylinderGeometry(0.0045, 0.0045, 1, 5, 1, true);
+    const near = new THREE.MeshStandardMaterial({ color: '#f4f6f8', roughness: 0.85 });
+    const shadowOnly = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+    threads = new THREE.InstancedMesh(tgeo, shadowOnly, edges.length / 2);
+    threads.castShadow = true; threads.frustumCulled = false;
+    threads.userData = { near: near, far: shadowOnly };
+    this.scene.add(threads);
+  }
   // vicini in un array piatto (più veloce da scorrere)
   const nbStart = new Int32Array(n + 1), nbList = [];
   for (let i = 0; i < n; i++) { nbStart[i] = nbList.length; nbList.push(...nbr[i]); }
   nbStart[n] = nbList.length;
   return {
-    side: s, gx: gx, geo: geo, lines: lines, n: n, tension: NET_VIS.TENSION / (step * step), ties: ties,
+    side: s, gx: gx, geo: geo, lines: lines, threads: threads, edges: Int32Array.from(edges), step: step,
+    n: n, tension: NET_VIS.TENSION / (step * step), ties: ties,
     rest: Float32Array.from(rest), nrm: Float32Array.from(normal), pin: Uint8Array.from(pinned),
     nbStart: nbStart, nb: Int32Array.from(nbList),
     d: new Float32Array(n * 3), v: new Float32Array(n * 3), acc: new Float32Array(n * 3),
@@ -212,9 +229,9 @@ Renderer.prototype.netBulge = function (side, y, z, power) {
 
 // un passo di simulazione per le due reti
 Renderer.prototype.updateNets = function (dt) {
-  if (!this.nets) return;
+  if (!this.nets || !(dt > 0)) return;   // pausa (dt = 0): la rete resta com'è
   dt = Math.min(dt, 1 / 30);
-  const bp = this.ballMesh.position, r = CONFIG.BALL_R * 1.6 + 0.01, C = CONFIG;
+  const bp = this.ballMesh.position, C = CONFIG;
   for (const net of this.nets) {
     net.touchT += dt;
     // sveglia: pallone vicino alla porta
@@ -226,15 +243,23 @@ Renderer.prototype.updateNets = function (dt) {
     const pb = net.prevBall || { x: bp.x, y: bp.y, z: bp.z };
     const bv = { x: (bp.x - pb.x) / dt, y: (bp.y - pb.y) / dt, z: (bp.z - pb.z) / dt };
     net.prevBall = { x: bp.x, y: bp.y, z: bp.z };
-    if (Math.hypot(bv.x, bv.y, bv.z) > 60) bv.x = bv.y = bv.z = 0;   // teletrasporto (calcio d'inizio, replay)
+    if (Math.hypot(bv.x, bv.y, bv.z) > 60) { bv.x = bv.y = bv.z = 0; pb.x = bp.x; pb.y = bp.y; pb.z = bp.z; }   // teletrasporto (calcio d'inizio, replay)
     // il pallone è dentro la porta o fuori? Si decide quando è chiaramente da una parte e si ricorda finché non
     // esce davvero (così anche quando spinge il fondo oltre la sua forma di riposo la rete resta dalla parte giusta)
     const inBox = depth > 0.02 && depth < C.GOAL_DEPTH && Math.abs(bp.z) < C.GOAL_HALF_W && bp.y < goalRoofY(depth);
     if (inBox) net.ballIn = true;
     else if (depth < 0 || depth > C.GOAL_DEPTH + 1 || Math.abs(bp.z) > C.GOAL_HALF_W + 1 || bp.y > C.GOAL_H + 1) net.ballIn = false;
-    const h = dt / NET_VIS.SUB;
+    // raggio del contatto: il pallone disegnato più mezza maglia (un filo tra due nodi non deve tagliare il pallone)
+    const r = Math.sqrt(BALL_VIS_R * BALL_VIS_R + net.step * net.step * 0.25) + 0.005;
+    const h = dt / NET_VIS.SUB, bi = this._netBall || (this._netBall = { x: 0, y: 0, z: 0 });
     let energy = 0;
-    for (let k = 0; k < NET_VIS.SUB; k++) energy = this.stepNet(net, h, near ? bp : null, r, bv);
+    for (let k = 0; k < NET_VIS.SUB; k++) {
+      // il pallone si sposta anche tra un sotto-passo e l'altro (a 30 m/s fa mezzo metro per fotogramma): il punto
+      // dove tocca la rete è quello vero, non quello di fine fotogramma
+      const f = (k + 1) / NET_VIS.SUB;
+      bi.x = pb.x + (bp.x - pb.x) * f; bi.y = pb.y + (bp.y - pb.y) * f; bi.z = pb.z + (bp.z - pb.z) * f;
+      energy = this.stepNet(net, h, near ? bi : null, r, bv);
+    }
     // la rete torna a dormire quando è ferma e il pallone è lontano
     if (!near && energy < 1e-6) {
       net.awake = false; net.d.fill(0); net.v.fill(0); net.prevBall = null;
@@ -242,7 +267,38 @@ Renderer.prototype.updateNets = function (dt) {
     const pos = net.geo.attributes.position.array, R0 = net.rest, d = net.d;
     for (let i = 0; i < pos.length; i++) pos[i] = R0[i] + d[i];
     net.geo.attributes.position.needsUpdate = true;
+    this.updateThreads(net);
   }
+  // fili veri o solo linee secondo la distanza della telecamera (sotto i 30 m si vedono i fili)
+  for (const net of this.nets) {
+    if (!net.threads) continue;
+    const cp = this.camera.position, close = Math.hypot(cp.x - (net.gx + net.side * 1.1), cp.y - 1.2, cp.z) < 30;
+    const U = net.threads.userData, want = close ? U.near : U.far;
+    if (net.threads.material !== want) net.threads.material = want;
+    net.lines.visible = !close;
+  }
+};
+
+// fili veri: per ogni filo (coppia di nodi) un cilindro dal primo al secondo nodo
+Renderer.prototype.updateThreads = function (net) {
+  const T = net.threads;
+  if (!T) return;
+  const P = net.geo.attributes.position.array, E = net.edges, M = T.instanceMatrix.array;
+  for (let e = 0, k = 0; e < E.length; e += 2, k += 16) {
+    const a = E[e] * 3, b = E[e + 1] * 3;
+    const yx = P[b] - P[a], yy = P[b + 1] - P[a + 1], yz = P[b + 2] - P[a + 2];
+    const l = Math.hypot(yx, yy, yz) || 1e-4, ux = yx / l, uy = yy / l, uz = yz / l;
+    // due direzioni perpendicolari al filo (lo spessore del cilindro)
+    let xx = uy, xy = -ux, xz = 0;
+    if (Math.abs(uz) > 0.9) { xx = 0; xy = uz; xz = -uy; }
+    const xl = Math.hypot(xx, xy, xz) || 1; xx /= xl; xy /= xl; xz /= xl;
+    const zx = uy * xz - uz * xy, zy = uz * xx - ux * xz, zz = ux * xy - uy * xx;
+    M[k] = xx; M[k + 1] = xy; M[k + 2] = xz; M[k + 3] = 0;
+    M[k + 4] = yx; M[k + 5] = yy; M[k + 6] = yz; M[k + 7] = 0;
+    M[k + 8] = zx; M[k + 9] = zy; M[k + 10] = zz; M[k + 11] = 0;
+    M[k + 12] = (P[a] + P[b]) / 2; M[k + 13] = (P[a + 1] + P[b + 1]) / 2; M[k + 14] = (P[a + 2] + P[b + 2]) / 2; M[k + 15] = 1;
+  }
+  T.instanceMatrix.needsUpdate = true;
 };
 
 Renderer.prototype.stepNet = function (net, h, ball, r, bv) {

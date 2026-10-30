@@ -1372,6 +1372,7 @@ class Game {
         if (fx.banners) { if (m && this.mode !== 'client') m.showBanner(text, 1.2); else if (m) m.banner = { text: text, t: 1.2 }; }
         break;
       }
+      case 'net': this.audio.net(e.power); break;   // il pallone contro la rete (suono vero, anche in allenamento)
       case 'save':
         this.audio.save();   // il pallone sui guanti (sempre)
         if (fx.crowdReactions) { this.audio.roar(false); this.audio.ooh(0.1); }

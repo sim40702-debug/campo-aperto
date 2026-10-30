@@ -157,13 +157,14 @@ function netGive(pen, n, v, dt, K, max) {
 function collideNet(b, side, gx, dt) {
   const C = CONFIG, R = C.BALL_R, W = C.GOAL_HALF_W, D = C.GOAL_DEPTH;
   const depth = (b.x - gx) * side;           // quanto il pallone è dentro la porta (negativo = in campo)
-  if (depth <= 0 || depth > D + GOAL_NET.MAX + R) return;
+  if (depth <= 0 || depth > D + GOAL_NET.MAX + R) { if (b.netOut === side) b.netOut = 0; return; }
   const roof = goalRoofY(depth), az = Math.abs(b.z), sz = Math.sign(b.z) || 1;
   // entra dalla bocca della porta: nell'ultimo passo ha attraversato la linea di porta tra i pali e sotto la traversa
-  if (!b.inNet && az < W && b.y < C.GOAL_H && depth <= Math.abs(b.vx) * dt + 0.05) b.inNet = true;
+  // (non se sta spingendo la rete da fuori: lì il pallone può trovarsi un poco dentro la sagoma della porta)
+  if (!b.inNet && b.netOut !== side && az < W && b.y < C.GOAL_H && depth <= Math.abs(b.vx) * dt + 0.05) b.inNet = true;
   if (b.inNet) {
     // dentro la porta: fondo, lati e tetto cedono come molle
-    const hit = (v) => { if (!b.netHit) b.netHit = { side: side, y: b.y, z: b.z, v: v }; };
+    const hit = (v) => { if (!b.netHit) b.netHit = { side: side, y: b.y, z: b.z, v: v }; netTouch(b, v); };
     const penB = depth - (D - R);
     if (penB > 0) {
       hit(Math.abs(b.vx));
@@ -185,21 +186,34 @@ function collideNet(b, side, gx, dt) {
     }
     return;
   }
-  // fuori dalla porta: si cerca la parete da cui il pallone arriva (quella da cui è "più fuori")
+  // fuori dalla porta: si cerca la parete da cui il pallone arriva (quella da cui è "più fuori"). Anche da fuori la
+  // rete cede (0.25.0): il pallone la spinge verso l'interno (al massimo 30 cm), viene frenato e torna indietro piano
   const outS = az - W, outB = depth - D, outR = b.y - roof;
   const best = Math.max(outS, outB, outR);
-  if (best >= R || b.y > C.GOAL_H + R) return;   // lontano dalla rete
+  if (best >= R || b.y > C.GOAL_H + R || best < -GOAL_NET.SIDE_MAX - R) { if (b.netOut === side) b.netOut = 0; return; }   // lontano dalla rete
+  b.netOut = side;
+  const pen = R - best, lim = GOAL_NET.SIDE_MAX + 0.02;
   if (best === outS) {
-    if (b.vz * sz < 0) { b.vz = -b.vz * GOAL_NET.OUT_BOUNCE; b.vx *= 0.6; b.vy *= 0.8; }
-    b.z = sz * (W + R);
+    if (b.vz * sz < 0) netTouch(b, Math.abs(b.vz));
+    b.vz = netGive(pen, -sz, b.vz, dt, GOAL_NET.SIDE_K, GOAL_NET.SIDE_MAX);
+    if (pen > lim) b.z = sz * (W + R - lim);
+    const f = Math.exp(-4 * dt); b.vx *= f; b.vy *= f;   // la rete trattiene il pallone
   } else if (best === outB) {
-    if (b.vx * side < 0) { b.vx = -b.vx * GOAL_NET.OUT_BOUNCE; b.vz *= 0.6; b.vy *= 0.8; }
-    b.x = gx + side * (D + R);
+    if (b.vx * side < 0) netTouch(b, Math.abs(b.vx));
+    b.vx = netGive(pen, -side, b.vx, dt, GOAL_NET.SIDE_K, GOAL_NET.SIDE_MAX);
+    if (pen > lim) b.x = gx + side * (D + R - lim);
+    const f = Math.exp(-4 * dt); b.vz *= f; b.vy *= f;
   } else {
-    if (b.vy < 0) { b.vy = -b.vy * GOAL_NET.OUT_BOUNCE; b.vx *= 0.7; b.vz *= 0.7; }
-    b.y = roof + R;
+    if (b.vy < 0) netTouch(b, Math.abs(b.vy));
+    b.vy = netGive(pen, -1, b.vy, dt, GOAL_NET.SIDE_K, GOAL_NET.SIDE_MAX);
+    if (pen > lim) b.y = roof + R - lim;
+    const f = Math.exp(-3 * dt); b.vx *= f; b.vz *= f;
   }
 }
+
+// il pallone tocca la rete (0.25.0): si ricorda il colpo più forte del passo; 08_match.js ne fa l'evento 'net'
+// (suono della rete), uno solo per colpo
+function netTouch(b, v) { if (v > (b.netTouchV || 0)) b.netTouchV = v; }
 
 // Prevede la posizione del pallone nei prossimi secondi
 function predictBall(ball, seconds, step) {

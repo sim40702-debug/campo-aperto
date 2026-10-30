@@ -1200,6 +1200,12 @@ class Match {
       const hit = collideGoalFrame(b, dt / sub);
       // palo o traversa: un solo evento per colpo (anche se il contatto dura qualche passo, 0.24.6)
       if (hit && this.realTime - (this.lastPostT || -9) > 0.25) { this.lastPostT = this.realTime; this.emit('post', { bar: hit === 'bar' }); }
+      // pallone contro la rete (0.25.0): un evento per colpo, con la velocità (per il suono)
+      if (b.netTouchV) {
+        if (b.netTouchV > 1.5 && this.realTime - (this.lastNetT || -9) > 0.3) this.emit('net', { v: b.netTouchV });
+        if (b.netTouchV > 1.5) this.lastNetT = this.realTime;
+        b.netTouchV = 0;
+      }
     }
   }
 
